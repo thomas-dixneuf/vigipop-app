@@ -1,20 +1,22 @@
-import { useEffect } from 'react'
 import { Link, Navigate } from 'react-router-dom'
 import Icone from '../components/Icone.tsx'
-import { besoins, centreLePlusProche, commune, situations } from '../data/fictif.ts'
+import { besoins, commune, lieuxDemo, situations } from '../data/fictif.ts'
 import { useAppState } from '../state/AppState.tsx'
 
 export default function Confirmation() {
-  const { demande, marquerEnvoyee } = useAppState()
-
-  // Envoi différé : la demande part dès que le téléphone retrouve du réseau
-  useEffect(() => {
-    if (!demande || demande.envoyee) return
-    window.addEventListener('online', marquerEnvoyee)
-    return () => window.removeEventListener('online', marquerEnvoyee)
-  }, [demande, marquerEnvoyee])
+  // L'envoi différé (sans réseau) et le suivi du statut sont gérés dans AppState
+  const { demande, lieux } = useAppState()
 
   if (!demande) return <Navigate to="/accueil" replace />
+
+  const centre = (lieux ?? lieuxDemo).find((l) => l.type === 'accueil' && l.ouvert)
+  const rang = { transmise: 1, prise_en_charge: 2, aide_organisee: 3, close: 3 }[demande.statut]
+  // Étape faite si atteinte, « en cours » pour la suivante
+  const etatEtape = (n: number) => {
+    if (!demande.envoyee) return 'a-venir'
+    if (n <= rang) return 'fait'
+    return n === rang + 1 ? 'en-cours' : 'a-venir'
+  }
 
   const situation = situations.find((s) => s.id === demande.situation)?.label
   const listeBesoins = besoins.filter((b) => demande.besoins.includes(b.id)).map((b) => b.label)
@@ -52,8 +54,8 @@ export default function Confirmation() {
             <span>Réf. {demande.reference}</span>
           </div>
           <Etape etat={demande.envoyee ? 'fait' : 'en-cours'} titre="Transmise" detail={demande.envoyee ? demande.envoyeeA : 'en attente de réseau'} />
-          <Etape etat={demande.envoyee ? 'en-cours' : 'a-venir'} titre="Prise en charge" detail={demande.envoyee ? 'en cours' : undefined} />
-          <Etape etat="a-venir" titre="Aide organisée" />
+          <Etape etat={etatEtape(2)} titre="Prise en charge" detail={demande.envoyee && rang === 1 ? 'en cours' : undefined} />
+          <Etape etat={etatEtape(3)} titre="Aide organisée" />
           <p className="texte-doux" style={{ borderTop: '1px solid var(--bordure)', paddingTop: 10, lineHeight: 1.4 }}>
             {situation} · {demande.personnes} personne{demande.personnes > 1 ? 's' : ''}
             {demande.personneVulnerable ? ' dont une vulnérable' : ''}
@@ -61,21 +63,27 @@ export default function Confirmation() {
           </p>
         </section>
 
-        <section className="carte" style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 10 }}>
-          <span className="texte-doux">Centre d'accueil le plus proche</span>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10 }}>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-              <span style={{ fontSize: 17, fontWeight: 800, color: 'var(--bleu-nuit)' }}>{centreLePlusProche.nom}</span>
-              <span style={{ fontSize: 14, color: 'var(--texte-doux)' }}>{centreLePlusProche.details}</span>
+        {centre && (
+          <section className="carte" style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <span className="texte-doux">Centre d'accueil ouvert le plus proche</span>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10 }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                <span style={{ fontSize: 17, fontWeight: 800, color: 'var(--bleu-nuit)' }}>{centre.nom}</span>
+                <span style={{ fontSize: 14, color: 'var(--texte-doux)' }}>
+                  {centre.distance} · {centre.details}
+                </span>
+              </div>
+              {centre.places !== null && (
+                <span style={{ background: 'var(--bleu-voile)', color: 'var(--bleu-nuit)', borderRadius: 8, padding: '4px 8px', fontSize: 13, fontWeight: 700, whiteSpace: 'nowrap' }}>
+                  {centre.places} places
+                </span>
+              )}
             </div>
-            <span style={{ background: 'var(--bleu-voile)', color: 'var(--bleu-nuit)', borderRadius: 8, padding: '4px 8px', fontSize: 13, fontWeight: 700, whiteSpace: 'nowrap' }}>
-              {centreLePlusProche.places}
-            </span>
-          </div>
-          <Link to="/carte" className="bouton bouton--clair" style={{ minHeight: 48, fontSize: 16 }}>
-            Itinéraire
-          </Link>
-        </section>
+            <Link to="/carte" className="bouton bouton--clair" style={{ minHeight: 48, fontSize: 16 }}>
+              Itinéraire
+            </Link>
+          </section>
+        )}
 
         <button type="button" className="bouton bouton--principal" onClick={partager}>
           <Icone nom="message" taille={20} couleur="var(--cyan)" />

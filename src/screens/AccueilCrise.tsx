@@ -4,8 +4,15 @@ import BarreNav from '../components/BarreNav.tsx'
 import BoutonDemo from '../components/BoutonDemo.tsx'
 import EnTete from '../components/EnTete.tsx'
 import Icone from '../components/Icone.tsx'
-import { alerteCrise, ouvertMaintenant } from '../data/fictif.ts'
+import { libelleLieu, lieuxDemo } from '../data/fictif.ts'
 import { useAppState } from '../state/AppState.tsx'
+
+const libelleStatut = {
+  transmise: 'Transmise · en attente de prise en charge',
+  prise_en_charge: 'Prise en charge par la mairie',
+  aide_organisee: 'Aide organisée',
+  close: 'Demande close',
+} as const
 
 const grosBouton = {
   textDecoration: 'none',
@@ -27,7 +34,8 @@ const pastille = {
 } as const
 
 export default function AccueilCrise() {
-  const { demande, enSecurite, declarerEnSecurite } = useAppState()
+  const { demande, enSecurite, declarerEnSecurite, disponible, mission, alerte, lieux } = useAppState()
+  const ouverts = (lieux ?? lieuxDemo).filter((l) => l.ouvert)
 
   return (
     <div className="ecran">
@@ -39,11 +47,11 @@ export default function AccueilCrise() {
               <Icone nom="alerte" taille={16} epaisseur={2.4} />
               Mode crise activé
             </span>
-            <span style={{ fontSize: 12, color: 'var(--bleu-clair)' }}>Mairie · {alerteCrise.heure}</span>
+            <span style={{ fontSize: 12, color: 'var(--bleu-clair)' }}>Mairie · {alerte?.heure}</span>
           </div>
-          <div style={{ fontSize: 18, fontWeight: 800, lineHeight: 1.25 }}>{alerteCrise.titre}</div>
+          <div style={{ fontSize: 18, fontWeight: 800, lineHeight: 1.25 }}>{alerte?.titre}</div>
           <div style={{ fontSize: 14, lineHeight: 1.4, color: 'var(--bleu-voile)' }}>
-            <strong style={{ color: 'var(--consigne)' }}>Consigne :</strong> {alerteCrise.consigne}
+            <strong style={{ color: 'var(--consigne)' }}>Consigne :</strong> {alerte?.consigne}
           </div>
         </section>
 
@@ -51,7 +59,7 @@ export default function AccueilCrise() {
           <Link to="/demande" className="carte" style={{ textDecoration: 'none', color: 'var(--texte)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, borderColor: 'var(--bleu)', borderWidth: 2 }}>
             <span style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
               <strong style={{ color: 'var(--bleu-nuit)' }}>Ma demande {demande.reference}</strong>
-              <span className="texte-doux">{demande.envoyee ? 'Transmise · prise en charge en cours' : 'En attente de réseau'}</span>
+              <span className="texte-doux">{demande.envoyee ? libelleStatut[demande.statut] : 'En attente de réseau'}</span>
             </span>
             <Icone nom="fleche" taille={20} />
           </Link>
@@ -71,13 +79,19 @@ export default function AccueilCrise() {
           </span>
         </Link>
 
-        <Link to="/aider" style={{ ...grosBouton, background: 'var(--bleu-clair)', color: 'var(--bleu-nuit)' }}>
+        <Link to={disponible ? '/mission' : '/aider'} style={{ ...grosBouton, background: 'var(--bleu-clair)', color: 'var(--bleu-nuit)' }}>
           <span style={{ ...pastille, background: 'var(--blanc)', color: 'var(--bleu)' }}>
             <Icone nom="main" taille={24} />
           </span>
           <span style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-            <span style={{ fontSize: 20, fontWeight: 800 }}>Je veux aider</span>
-            <span style={{ fontSize: 14, color: '#1b4a60' }}>Me rendre disponible pour une mission</span>
+            <span style={{ fontSize: 20, fontWeight: 800 }}>{mission === 'acceptee' ? 'Ma mission' : 'Je veux aider'}</span>
+            <span style={{ fontSize: 14, color: '#1b4a60' }}>
+              {mission === 'acceptee'
+                ? 'Acceptée · voir le rendez-vous'
+                : disponible
+                  ? 'Une mission vous est proposée'
+                  : 'Me rendre disponible pour une mission'}
+            </span>
           </span>
         </Link>
 
@@ -99,10 +113,11 @@ export default function AccueilCrise() {
         <section style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           <h2 className="titre-section">Ouvert maintenant</h2>
           <div style={{ display: 'flex', gap: 10 }}>
-            {ouvertMaintenant.map((o) => (
-              <Link key={o.type} to="/carte" className="carte" style={{ textDecoration: 'none', color: 'var(--texte)', flex: 1, display: 'flex', flexDirection: 'column', gap: 2 }}>
-                <span style={{ fontSize: 15, fontWeight: 700 }}>{o.type}</span>
-                <span className="texte-doux">{o.lieu} · {o.distance}</span>
+            {ouverts.length === 0 && <p className="texte-doux">Aucun lieu ouvert pour l'instant.</p>}
+            {ouverts.slice(0, 2).map((o) => (
+              <Link key={o.id} to="/carte" className="carte" style={{ textDecoration: 'none', color: 'var(--texte)', flex: 1, display: 'flex', flexDirection: 'column', gap: 2 }}>
+                <span style={{ fontSize: 15, fontWeight: 700 }}>{libelleLieu[o.type]}</span>
+                <span className="texte-doux">{o.nom} · {o.distance}</span>
               </Link>
             ))}
           </div>

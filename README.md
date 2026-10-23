@@ -9,7 +9,37 @@ s'ajoute à l'écran d'accueil comme une application, sans passer par les stores
 ⚠️ **Toutes les données sont fictives.** Aucune vraie donnée d'habitant avant la phase
 « Tests, sécurité et RGPD ». Les demandes restent sur le téléphone (stockage local).
 
-## Ce que fait cette version (incrément 1)
+## Ce que fait cette version
+
+### Espace mairie et serveur (en cours)
+- **Serveur commun** Supabase (UE) : `supabase/migrations/0001_init.sql` (tables, droits par
+  commune, temps réel, journal des actions, données fictives). Mise en place : `docs/SUPABASE.md`.
+- **Espace mairie** (`#/mairie`) : connexion coordinateur, déclenchement de la crise avec
+  double confirmation, demandes d'aide en direct classées par priorité, statuts, ouverture des
+  lieux, volontaires confirmés, journal.
+- **App habitants branchée** : la crise, la consigne et les lieux viennent de la mairie en
+  temps réel ; les demandes partent au serveur (avec envoi différé hors ligne) et leur suivi
+  se met à jour en direct. Sans serveur configuré, le mode démo local reste disponible.
+
+### Incrément 3
+- **Sans compte, accès seulement en mode crise** : en veille, il faut s'inscrire ou se
+  connecter ; en crise, on peut demander de l'aide et voir les consignes sans compte.
+  Proposer son aide demande toujours un compte.
+- **Inscription** et **connexion** sur deux pages séparées, chacune avec un lien vers l'autre
+- Après l'inscription : **3 écrans « Pourquoi Vigipop »**, puis une **visite guidée** de l'accueil
+  en 4 repères (alertes, signalement, offres, carte). La connexion mène directement à l'accueil.
+- **Mon profil** (version simple) : revoir la visite guidée, relire « Pourquoi Vigipop ? »,
+  se déconnecter
+
+### Incrément 2
+- **Logo officiel** (écran de lancement avec slogan, en-tête, icône de l'app)
+- **Inscription / connexion par code SMS** (simulée : aucun SMS envoyé, tout code à 6 chiffres
+  est accepté). L'accueil et le signalement restent accessibles sans compte.
+- **« Je veux aider »** : le volontaire choisit ce qu'il peut offrir (hébergement, véhicule,
+  matériel, main-d'œuvre, compétences, temps)
+- **Mission volontaire** : proposée en crise, acceptée ou refusée, rappelée sur l'accueil
+
+### Incrément 1
 
 - Écran de lancement
 - Accueil **mode veille** : préparation, risques de la commune, lieux d'accueil
@@ -23,8 +53,7 @@ s'ajoute à l'écran d'accueil comme une application, sans passer par les stores
 - Le **112** reste visible sur tout le parcours sinistré
 - Barre de navigation conservée en mode crise
 
-Carte, profil, notifications, « Je veux aider » et connexion par SMS sont des écrans
-provisoires, prévus aux prochains incréments.
+Carte, profil et notifications sont des écrans provisoires, prévus aux prochains incréments.
 
 ## Lancer le projet
 

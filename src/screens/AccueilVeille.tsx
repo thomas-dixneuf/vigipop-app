@@ -1,18 +1,23 @@
 import { Link } from 'react-router-dom'
 import BarreNav from '../components/BarreNav.tsx'
 import BoutonDemo from '../components/BoutonDemo.tsx'
+import VisiteGuidee from '../components/VisiteGuidee.tsx'
+import { useAppState } from '../state/AppState.tsx'
 import EnTete from '../components/EnTete.tsx'
 import Icone from '../components/Icone.tsx'
-import { lieuxAccueil, risques } from '../data/fictif.ts'
+import { lieuxDemo, risques } from '../data/fictif.ts'
 
 const preparation = 60
 
 export default function AccueilVeille() {
+  const { visiteAFaire, lieux } = useAppState()
+  const lieuxAccueil = (lieux ?? lieuxDemo).filter((l) => l.type === 'accueil').slice(0, 2)
   return (
     <div className="ecran">
+      {visiteAFaire && <VisiteGuidee />}
       <EnTete />
       <main className="contenu">
-        <section style={{ display: 'flex', alignItems: 'center', gap: 12, background: 'var(--bleu-voile)', borderRadius: 16, padding: '14px 16px' }}>
+        <section data-visite="alerte" style={{ display: 'flex', alignItems: 'center', gap: 12, background: 'var(--bleu-voile)', borderRadius: 16, padding: '14px 16px' }}>
           <span style={{ width: 40, height: 40, borderRadius: 20, background: 'var(--blanc)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--bleu)' }}>
             <Icone nom="bouclier" />
           </span>
@@ -23,7 +28,8 @@ export default function AccueilVeille() {
         </section>
 
         <Link
-          to="/profil"
+          to="/aider"
+          data-visite="preparation"
           style={{ textDecoration: 'none', color: 'var(--blanc)', background: 'var(--bleu)', borderRadius: 20, padding: 18, display: 'flex', flexDirection: 'column', gap: 10 }}
         >
           <span style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
@@ -64,7 +70,7 @@ export default function AccueilVeille() {
           <h2 className="titre-section">Lieux d'accueil prévus</h2>
           <div style={{ display: 'flex', gap: 10 }}>
             {lieuxAccueil.map((l) => (
-              <div key={l.nom} className="carte" style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 2 }}>
+              <div key={l.id} className="carte" style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 2 }}>
                 <span style={{ fontSize: 15, fontWeight: 700 }}>{l.nom}</span>
                 <span className="texte-doux">{l.distance} de chez vous</span>
               </div>
@@ -74,6 +80,7 @@ export default function AccueilVeille() {
 
         <Link
           to="/signaler"
+          data-visite="signaler"
           style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, minHeight: 52, padding: '0 16px', borderRadius: 16, border: '2px solid var(--urgence)', background: 'var(--blanc)', color: 'var(--urgence)', fontSize: 15, fontWeight: 800 }}
         >
           Une urgence ? Signaler ma situation
