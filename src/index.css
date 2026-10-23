@@ -1,0 +1,107 @@
+/* Charte Vigipop : couleurs du logo + accents réservés à l'urgence */
+:root {
+  --bleu-nuit: #0e3a52;
+  --bleu: #1b5b7a;
+  --cyan: #86ddff;
+  --bleu-clair: #b2d8de;
+  --bleu-voile: #e6f2f5;
+  --fond: #f3f7f8;
+  --bordure: #d3e2e7;
+  --texte: #0f2a38;
+  --texte-doux: #4b6371;
+  --blanc: #ffffff;
+  /* L'orange est réservé aux gestes urgents, l'ambre aux consignes de crise */
+  --urgence: #c2410c;
+  --urgence-fonce: #9a3412;
+  --urgence-pale: #ffe4d6;
+  --danger: #b42318;
+  --consigne: #ffd166;
+
+  --rayon: 16px;
+  font-family: 'Open Sans', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  color: var(--texte);
+  background: var(--bleu-nuit);
+  -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+}
+
+* { box-sizing: border-box; }
+body { margin: 0; min-height: 100dvh; }
+button, input { font: inherit; color: inherit; }
+button { cursor: pointer; }
+a { color: var(--bleu); }
+h1, h2, p { margin: 0; }
+
+/* Cadre « téléphone » : plein écran sur mobile, centré sur ordinateur */
+.ecran {
+  max-width: 480px;
+  min-height: 100dvh;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  background: var(--fond);
+}
+.ecran--sombre { background: var(--bleu-nuit); color: var(--blanc); }
+
+.contenu {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 0 20px 20px;
+}
+
+.titre-section {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--texte-doux);
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+}
+.texte-doux { font-size: 13px; color: var(--texte-doux); }
+
+.carte {
+  background: var(--blanc);
+  border: 1px solid var(--bordure);
+  border-radius: 14px;
+  padding: 12px;
+}
+
+.bouton {
+  min-height: 56px;
+  border-radius: var(--rayon);
+  border: none;
+  font-size: 17px;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  text-decoration: none;
+  padding: 0 16px;
+}
+.bouton--principal { background: var(--bleu); color: var(--blanc); }
+.bouton--clair { background: var(--bleu-clair); color: var(--bleu-nuit); }
+.bouton--urgence { background: var(--urgence); color: var(--blanc); }
+.bouton--contour { background: var(--blanc); color: var(--bleu); border: 2px solid var(--bleu); }
+.bouton:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.puce {
+  min-height: 48px;
+  border-radius: 12px;
+  font-size: 14px;
+  font-weight: 700;
+  padding: 0 14px;
+  text-align: left;
+  background: var(--blanc);
+  border: 2px solid var(--bordure);
+  color: var(--texte);
+}
+.puce[aria-pressed='true'] { background: var(--bleu); border-color: var(--bleu); color: var(--blanc); }
+
+:focus-visible { outline: 3px solid var(--cyan); outline-offset: 2px; }
+
+@media (prefers-reduced-motion: no-preference) {
+  .bouton, .puce { transition: transform 0.08s ease; }
+  .bouton:active, .puce:active { transform: scale(0.98); }
+}

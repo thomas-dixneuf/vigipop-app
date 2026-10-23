@@ -1,0 +1,116 @@
+import { Link } from 'react-router-dom'
+import Bandeau112 from '../components/Bandeau112.tsx'
+import BarreNav from '../components/BarreNav.tsx'
+import BoutonDemo from '../components/BoutonDemo.tsx'
+import EnTete from '../components/EnTete.tsx'
+import Icone from '../components/Icone.tsx'
+import { alerteCrise, ouvertMaintenant } from '../data/fictif.ts'
+import { useAppState } from '../state/AppState.tsx'
+
+const grosBouton = {
+  textDecoration: 'none',
+  borderRadius: 20,
+  padding: '16px 18px',
+  display: 'flex',
+  alignItems: 'center',
+  gap: 14,
+  minHeight: 80,
+} as const
+
+const pastille = {
+  width: 48,
+  height: 48,
+  borderRadius: 24,
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+} as const
+
+export default function AccueilCrise() {
+  const { demande, enSecurite, declarerEnSecurite } = useAppState()
+
+  return (
+    <div className="ecran">
+      <EnTete nonLues={3} />
+      <main className="contenu" style={{ gap: 12 }}>
+        <section role="alert" style={{ background: 'var(--bleu-nuit)', color: 'var(--blanc)', borderRadius: 16, padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 6 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <span style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, fontWeight: 800, color: 'var(--consigne)', textTransform: 'uppercase', letterSpacing: 0.8 }}>
+              <Icone nom="alerte" taille={16} epaisseur={2.4} />
+              Mode crise activé
+            </span>
+            <span style={{ fontSize: 12, color: 'var(--bleu-clair)' }}>Mairie · {alerteCrise.heure}</span>
+          </div>
+          <div style={{ fontSize: 18, fontWeight: 800, lineHeight: 1.25 }}>{alerteCrise.titre}</div>
+          <div style={{ fontSize: 14, lineHeight: 1.4, color: 'var(--bleu-voile)' }}>
+            <strong style={{ color: 'var(--consigne)' }}>Consigne :</strong> {alerteCrise.consigne}
+          </div>
+        </section>
+
+        {demande ? (
+          <Link to="/demande" className="carte" style={{ textDecoration: 'none', color: 'var(--texte)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, borderColor: 'var(--bleu)', borderWidth: 2 }}>
+            <span style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+              <strong style={{ color: 'var(--bleu-nuit)' }}>Ma demande {demande.reference}</strong>
+              <span className="texte-doux">{demande.envoyee ? 'Transmise · prise en charge en cours' : 'En attente de réseau'}</span>
+            </span>
+            <Icone nom="fleche" taille={20} />
+          </Link>
+        ) : (
+          <h1 style={{ margin: '2px 0 0', fontSize: 22, fontWeight: 800, lineHeight: 1.2, color: 'var(--bleu-nuit)' }}>
+            {enSecurite ? 'Merci, vous êtes en sécurité.' : 'Êtes-vous en sécurité ?'}
+          </h1>
+        )}
+
+        <Link to="/signaler" style={{ ...grosBouton, background: 'var(--urgence)', color: 'var(--blanc)' }}>
+          <span style={{ ...pastille, background: 'var(--urgence-fonce)' }}>
+            <Icone nom="sos" taille={24} />
+          </span>
+          <span style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+            <span style={{ fontSize: 20, fontWeight: 800 }}>J'ai besoin d'aide</span>
+            <span style={{ fontSize: 14, color: 'var(--urgence-pale)' }}>Signaler ma situation en 30 secondes</span>
+          </span>
+        </Link>
+
+        <Link to="/aider" style={{ ...grosBouton, background: 'var(--bleu-clair)', color: 'var(--bleu-nuit)' }}>
+          <span style={{ ...pastille, background: 'var(--blanc)', color: 'var(--bleu)' }}>
+            <Icone nom="main" taille={24} />
+          </span>
+          <span style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+            <span style={{ fontSize: 20, fontWeight: 800 }}>Je veux aider</span>
+            <span style={{ fontSize: 14, color: '#1b4a60' }}>Me rendre disponible pour une mission</span>
+          </span>
+        </Link>
+
+        {!demande && (
+          <button
+            type="button"
+            className="bouton bouton--contour"
+            style={{ minHeight: 52, fontSize: 16 }}
+            onClick={declarerEnSecurite}
+            disabled={enSecurite}
+          >
+            <Icone nom="valide" taille={20} epaisseur={2.6} />
+            {enSecurite ? 'Signalé à la mairie' : 'Je suis en sécurité'}
+          </button>
+        )}
+
+        <Bandeau112 />
+
+        <section style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <h2 className="titre-section">Ouvert maintenant</h2>
+          <div style={{ display: 'flex', gap: 10 }}>
+            {ouvertMaintenant.map((o) => (
+              <Link key={o.type} to="/carte" className="carte" style={{ textDecoration: 'none', color: 'var(--texte)', flex: 1, display: 'flex', flexDirection: 'column', gap: 2 }}>
+                <span style={{ fontSize: 15, fontWeight: 700 }}>{o.type}</span>
+                <span className="texte-doux">{o.lieu} · {o.distance}</span>
+              </Link>
+            ))}
+          </div>
+        </section>
+
+        <BoutonDemo />
+      </main>
+      <BarreNav />
+    </div>
+  )
+}
