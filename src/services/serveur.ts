@@ -51,6 +51,8 @@ export type DemandeServeur = {
   personnes: number
   personne_vulnerable: boolean
   position: string
+  prenom: string
+  telephone: string
   statut: StatutDemande
   created_at: string
   updated_at: string

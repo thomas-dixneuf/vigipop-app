@@ -21,6 +21,9 @@ export type Demande = {
   personnes: number
   personneVulnerable: boolean
   position: string
+  // Pour que la mairie puisse rappeler ; facultatif, jamais bloquant
+  prenom: string
+  telephone: string
   envoyeeA: string
   // Faux tant que la demande n'a pas pu partir (pas de réseau)
   envoyee: boolean
@@ -32,6 +35,9 @@ export type Utilisateur = {
   telephone: string
   commune: string
 }
+
+// Ce qu'une personne sans compte a déjà saisi : repris pour pré-remplir l'inscription
+export type Contact = { prenom: string; telephone: string }
 
 export type Alerte = { titre: string; consigne: string; heure: string }
 
@@ -47,6 +53,7 @@ type Etat = {
   enSecurite: boolean
   demande: Demande | null
   utilisateur: Utilisateur | null
+  contact: Contact | null
   ressources: RessourceId[]
   disponible: boolean
   mission: ReponseMission
@@ -84,6 +91,7 @@ const etatInitial: Etat = {
   enSecurite: false,
   demande: null,
   utilisateur: null,
+  contact: null,
   ressources: ressourcesParDefaut,
   disponible: false,
   mission: 'en-attente',
@@ -108,6 +116,7 @@ function lireEtat(): Etat {
     const etat = { ...etatInitial, ...JSON.parse(brut) } as Etat
     // Demandes enregistrées par une version précédente du prototype
     if (etat.demande && !etat.demande.id) etat.demande = { ...etat.demande, id: crypto.randomUUID(), statut: 'transmise' }
+    if (etat.demande) etat.demande = { ...etat.demande, prenom: etat.demande.prenom ?? '', telephone: etat.demande.telephone ?? '' }
     return etat
   } catch {
     return etatInitial
@@ -227,6 +236,8 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
           personnes: demande.personnes,
           personne_vulnerable: demande.personneVulnerable,
           position: demande.position,
+          prenom: demande.prenom,
+          telephone: demande.telephone,
         })
         if (!error) marquer()
       } catch {
@@ -326,11 +337,12 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
       setEtat((e) => ({
         ...e,
         enSecurite: false,
+        contact: e.utilisateur || (!demande.prenom && !demande.telephone) ? e.contact : { prenom: demande.prenom, telephone: demande.telephone },
         // « Ma situation a changé » : même demande, mise à jour côté mairie
         demande: { ...demande, id: id ?? crypto.randomUUID(), statut: id && e.demande?.id === id ? e.demande.statut : 'transmise', envoyee: false },
       })),
     connecter: (utilisateur, nouveauCompte) =>
-      setEtat((e) => ({ ...e, utilisateur, dernierUtilisateur: utilisateur, visiteAFaire: nouveauCompte })),
+      setEtat((e) => ({ ...e, utilisateur, dernierUtilisateur: utilisateur, contact: null, visiteAFaire: nouveauCompte })),
     lancerVisite: () => setEtat((e) => ({ ...e, visiteAFaire: true })),
     terminerVisite: () => setEtat((e) => ({ ...e, visiteAFaire: false })),
     deconnecter: () => setEtat((e) => ({ ...e, utilisateur: null, visiteAFaire: false })),

@@ -22,4 +22,6 @@ export type EtatCode = {
   telephone: string
   commune: string
   nouveauCompte: boolean
+  // Écran où revenir une fois le compte créé (par défaut selon le mode)
+  suite?: string
 }

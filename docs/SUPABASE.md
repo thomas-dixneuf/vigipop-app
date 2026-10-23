@@ -11,8 +11,9 @@ fonctionne en mode démo local, avec un bouton « Démo » pour simuler la crise
 2. Colle tout le contenu de `supabase/migrations/0001_init.sql`, puis clique sur **Run**.
    Le script crée les tables, les droits par commune, le temps réel, une « Commune démo »,
    3 lieux et une mission fictive.
-3. Fais de même avec `supabase/migrations/0002_volontaires.sql` : volontaires disponibles,
-   missions créées par la mairie. Chaque nouveau fichier de `supabase/migrations/` se lance
+3. Fais de même avec `supabase/migrations/0002_volontaires.sql` (volontaires disponibles,
+   missions créées par la mairie), puis `0003_contact_demande.sql` (prénom et numéro de
+   rappel dans les demandes). Chaque nouveau fichier de `supabase/migrations/` se lance
    une seule fois, dans l'ordre des numéros.
 
 ## 2. Autoriser les habitants sans mot de passe

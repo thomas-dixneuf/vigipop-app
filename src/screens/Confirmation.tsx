@@ -5,7 +5,7 @@ import { useAppState } from '../state/AppState.tsx'
 
 export default function Confirmation() {
   // L'envoi différé (sans réseau) et le suivi du statut sont gérés dans AppState
-  const { demande, lieux } = useAppState()
+  const { demande, lieux, utilisateur } = useAppState()
 
   if (!demande) return <Navigate to="/accueil" replace />
 
@@ -81,6 +81,18 @@ export default function Confirmation() {
             </div>
             <Link to="/carte" className="bouton bouton--clair" style={{ minHeight: 48, fontSize: 16 }}>
               Itinéraire
+            </Link>
+          </section>
+        )}
+
+        {!utilisateur && (
+          <section className="carte" style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <span style={{ fontSize: 16, fontWeight: 800, color: 'var(--bleu-nuit)' }}>Gardez le suivi de votre demande</span>
+            <span className="texte-doux" style={{ lineHeight: 1.4 }}>
+              Créez votre compte en une étape : vos informations sont déjà remplies.
+            </span>
+            <Link to="/inscription" state={{ suite: '/demande' }} className="bouton bouton--clair" style={{ minHeight: 48, fontSize: 16 }}>
+              Créer mon compte
             </Link>
           </section>
         )}
