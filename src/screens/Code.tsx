@@ -12,7 +12,7 @@ export default function Code() {
   const [renvoye, setRenvoye] = useState(false)
 
   if (!etat) return <Navigate to="/" replace />
-  const { nouveauCompte, ...utilisateur } = etat
+  const { nouveauCompte, suite: suiteDemandee, ...utilisateur } = etat
 
   const valide = /^\d{6}$/.test(code)
 
@@ -23,7 +23,7 @@ export default function Code() {
     connecter(utilisateur, nouveauCompte)
     // Nouveau compte en veille : on explique d'abord pourquoi Vigipop compte, puis visite guidée.
     // En crise, la personne vient pour aider : on l'y emmène directement.
-    const suite = !nouveauCompte ? '/accueil' : mode === 'crise' ? '/aider' : '/pourquoi/1'
+    const suite = suiteDemandee ?? (!nouveauCompte ? '/accueil' : mode === 'crise' ? '/aider' : '/pourquoi/1')
     navigate(suite, { replace: true })
   }
 

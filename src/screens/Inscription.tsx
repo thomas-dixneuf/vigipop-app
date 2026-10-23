@@ -1,14 +1,18 @@
 import { useState, type FormEvent } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import ChampTelephone from '../components/ChampTelephone.tsx'
 import EnTeteRetour from '../components/EnTeteRetour.tsx'
 import { commune as communeDemo } from '../data/fictif.ts'
 import { champ, libelle, numeroValide, type EtatCode } from '../outils/formulaire.ts'
+import { useAppState } from '../state/AppState.tsx'
 
 export default function Inscription() {
   const navigate = useNavigate()
-  const [prenom, setPrenom] = useState('')
-  const [telephone, setTelephone] = useState('')
+  const suite = (useLocation().state as { suite?: string } | null)?.suite
+  // Ce qui a été saisi sans compte (demande d'aide) est repris
+  const { contact } = useAppState()
+  const [prenom, setPrenom] = useState(contact?.prenom ?? '')
+  const [telephone, setTelephone] = useState(contact?.telephone ?? '')
   const [commune, setCommune] = useState('')
   const [consentement, setConsentement] = useState(false)
 
@@ -17,7 +21,7 @@ export default function Inscription() {
   const envoyer = (e: FormEvent) => {
     e.preventDefault()
     if (!valide) return
-    const etat: EtatCode = { prenom: prenom.trim(), telephone, commune: commune.trim() || communeDemo, nouveauCompte: true }
+    const etat: EtatCode = { prenom: prenom.trim(), telephone, commune: commune.trim() || communeDemo, nouveauCompte: true, suite }
     navigate('/code', { state: etat })
   }
 
@@ -29,6 +33,11 @@ export default function Inscription() {
       </EnTeteRetour>
 
       <form onSubmit={envoyer} className="contenu" style={{ paddingTop: 16 }}>
+        {contact && (
+          <p role="status" style={{ background: 'var(--bleu-voile)', color: 'var(--bleu-nuit)', borderRadius: 12, padding: '10px 14px', fontSize: 14, lineHeight: 1.4 }}>
+            Nous avons repris les informations de votre demande d'aide. Vérifiez-les et complétez.
+          </p>
+        )}
         <label style={libelle}>
           Prénom
           <input type="text" value={prenom} onChange={(e) => setPrenom(e.target.value)} placeholder="Camille" autoComplete="given-name" style={champ} />

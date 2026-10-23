@@ -248,6 +248,19 @@ function Demandes({ demandes }: { demandes: DemandeServeur[] }) {
                 d.position
               )}
             </div>
+            <div style={{ fontSize: 14 }}>
+              Contact :{' '}
+              {d.telephone ? (
+                <>
+                  {d.prenom || 'Sans prénom'} ·{' '}
+                  <a href={`tel:${d.telephone.replace(/[\s.-]/g, '')}`} style={{ fontWeight: 700 }}>
+                    Appeler le {d.telephone}
+                  </a>
+                </>
+              ) : (
+                <span className="texte-doux">{d.prenom ? `${d.prenom} · ` : ''}aucun numéro laissé</span>
+              )}
+            </div>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
               {d.statut === 'transmise' && (
                 <button type="button" className="mairie-bouton mairie-bouton--principal" onClick={() => void changerStatut(d.id, 'prise_en_charge')}>

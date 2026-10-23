@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react'
+import ChampTelephone from '../components/ChampTelephone.tsx'
 import { useNavigate } from 'react-router-dom'
 import EnTeteRetour from '../components/EnTeteRetour.tsx'
 import Icone from '../components/Icone.tsx'
 import { besoins, commune, situations, type BesoinId, type SituationId } from '../data/fictif.ts'
+import { champ, libelle } from '../outils/formulaire.ts'
 import { useAppState } from '../state/AppState.tsx'
 
 type Position =
@@ -20,7 +22,7 @@ function nouvelleReference() {
 
 export default function Signaler() {
   const navigate = useNavigate()
-  const { demande, enregistrerDemande } = useAppState()
+  const { demande, enregistrerDemande, utilisateur, contact } = useAppState()
 
   // « Ma situation a changé » : on repart de la demande précédente
   const [situation, setSituation] = useState<SituationId | null>(demande?.situation ?? null)
@@ -31,6 +33,9 @@ export default function Signaler() {
     'geolocation' in navigator ? { etat: 'recherche' } : { etat: 'indisponible' },
   )
   const [adresseSaisie, setAdresseSaisie] = useState('')
+  // Avec un compte, la mairie a déjà le numéro ; sans compte, on le propose sans l'exiger
+  const [prenom, setPrenom] = useState(demande?.prenom || contact?.prenom || '')
+  const [telephone, setTelephone] = useState(demande?.telephone || contact?.telephone || '')
 
   useEffect(() => {
     if (!('geolocation' in navigator)) return
@@ -64,6 +69,8 @@ export default function Signaler() {
       personnes,
       personneVulnerable: vulnerable,
       position: positionTexte,
+      prenom: utilisateur?.prenom ?? prenom.trim(),
+      telephone: utilisateur?.telephone ?? telephone.trim(),
       envoyeeA: heureActuelle(),
     })
     navigate('/demande', { replace: true })
@@ -157,6 +164,26 @@ export default function Signaler() {
             <input type="checkbox" checked={vulnerable} onChange={(e) => setVulnerable(e.target.checked)} style={{ width: 20, height: 20, accentColor: 'var(--bleu)' }} />
             Dont une personne âgée, handicapée ou un enfant en bas âge
           </label>
+        </section>
+
+        <section style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <h2 style={{ fontSize: 15, fontWeight: 800, color: 'var(--bleu-nuit)' }}>
+            4. Pour que la mairie vous rappelle{' '}
+            {!utilisateur && <span style={{ fontWeight: 400, color: 'var(--texte-doux)', fontSize: 13 }}>(facultatif)</span>}
+          </h2>
+          {utilisateur ? (
+            <p className="carte" style={{ fontSize: 14 }}>
+              La mairie pourra vous rappeler au <strong>{utilisateur.telephone}</strong>.
+            </p>
+          ) : (
+            <div className="carte" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <label style={libelle}>
+                Prénom
+                <input type="text" value={prenom} onChange={(e) => setPrenom(e.target.value)} placeholder="Camille" autoComplete="given-name" maxLength={60} style={champ} />
+              </label>
+              <ChampTelephone valeur={telephone} onChange={setTelephone} />
+            </div>
+          )}
         </section>
       </main>
 
