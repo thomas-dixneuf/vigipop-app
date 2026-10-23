@@ -26,7 +26,7 @@ s'ajoute à l'écran d'accueil comme une application, sans passer par les stores
   connecter ; en crise, on peut demander de l'aide et voir les consignes sans compte.
   Proposer son aide demande toujours un compte.
 - **Inscription** et **connexion** sur deux pages séparées, chacune avec un lien vers l'autre
-- Après l'inscription : **3 écrans « Pourquoi Vigipop »**, puis une **visite guidée** de l'accueil
+- Après une inscription en veille : **3 écrans « Pourquoi Vigipop »**, puis une **visite guidée** de l'accueil ; en crise, l'inscription mène directement à « Je veux aider »
   en 4 repères (alertes, signalement, offres, carte). La connexion mène directement à l'accueil.
 - **Mon profil** (version simple) : revoir la visite guidée, relire « Pourquoi Vigipop ? »,
   se déconnecter
