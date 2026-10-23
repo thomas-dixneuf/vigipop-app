@@ -5,6 +5,7 @@ import BoutonDemo from '../components/BoutonDemo.tsx'
 import EnTete from '../components/EnTete.tsx'
 import Icone from '../components/Icone.tsx'
 import { libelleLieu, lieuxDemo } from '../data/fictif.ts'
+import { serveur } from '../services/serveur.ts'
 import { useAppState } from '../state/AppState.tsx'
 
 const libelleStatut = {
@@ -34,7 +35,7 @@ const pastille = {
 } as const
 
 export default function AccueilCrise() {
-  const { demande, enSecurite, declarerEnSecurite, disponible, mission, alerte, lieux } = useAppState()
+  const { demande, enSecurite, declarerEnSecurite, disponible, mission, missionServeur, alerte, lieux } = useAppState()
   const ouverts = (lieux ?? lieuxDemo).filter((l) => l.ouvert)
 
   return (
@@ -89,7 +90,9 @@ export default function AccueilCrise() {
               {mission === 'acceptee'
                 ? 'Acceptée · voir le rendez-vous'
                 : disponible
-                  ? 'Une mission vous est proposée'
+                  ? missionServeur || !serveur
+                    ? 'Une mission vous est proposée'
+                    : 'Disponible · en attente d’une mission'
                   : 'Me rendre disponible pour une mission'}
             </span>
           </span>

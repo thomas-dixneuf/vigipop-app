@@ -2,6 +2,7 @@ import { Link, Navigate, useNavigate } from 'react-router-dom'
 import EnTeteRetour from '../components/EnTeteRetour.tsx'
 import Icone from '../components/Icone.tsx'
 import { commune, mission as missionDemo } from '../data/fictif.ts'
+import { serveur } from '../services/serveur.ts'
 import { useAppState } from '../state/AppState.tsx'
 
 const cellule = { padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 2 } as const
@@ -16,6 +17,9 @@ export default function Mission() {
 
   // Une mission n'existe qu'en crise, pour un volontaire qui s'est dit disponible
   if (mode !== 'crise' || !disponible) return <Navigate to="/accueil" replace />
+
+  // Avec le serveur, seule la mairie propose des missions : on attend la sienne
+  if (serveur && !missionServeur) return <EnAttenteDeMission />
 
   const acceptee = reponse === 'acceptee'
 
@@ -99,6 +103,33 @@ export default function Mission() {
           </>
         )}
       </footer>
+    </div>
+  )
+}
+
+function EnAttenteDeMission() {
+  return (
+    <div className="ecran">
+      <EnTeteRetour retour="/accueil">
+        <span style={{ fontSize: 12, fontWeight: 800, color: 'var(--bleu)', textTransform: 'uppercase', letterSpacing: 0.8 }}>
+          Vous êtes disponible
+        </span>
+        <span style={{ fontSize: 14, color: 'var(--texte-doux)' }}>Coordinateur · Mairie de {commune}</span>
+      </EnTeteRetour>
+      <main className="contenu" style={{ paddingTop: 10 }}>
+        <section role="status" className="carte" style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+          <Icone nom="valide" taille={24} couleur="var(--bleu)" epaisseur={2.4} />
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+            <strong style={{ fontSize: 17, color: 'var(--bleu-nuit)' }}>La mairie a reçu votre disponibilité</strong>
+            <span className="texte-doux">
+              Aucune mission n'est ouverte pour le moment. Elle s'affichera ici dès que le coordinateur en proposera une.
+            </span>
+          </div>
+        </section>
+        <Link to="/accueil" className="bouton bouton--contour">
+          Retour à l'accueil
+        </Link>
+      </main>
     </div>
   )
 }

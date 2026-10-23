@@ -50,6 +50,11 @@ type Etat = {
   ressources: RessourceId[]
   disponible: boolean
   mission: ReponseMission
+  // Mission à laquelle se rapporte la réponse : une nouvelle mission repart « en attente »
+  missionRepondue: string | null
+  // Faux tant que la mairie n'a pas reçu la disponibilité ou la réponse (pas de réseau)
+  disponibiliteEnvoyee: boolean
+  reponseEnvoyee: boolean
   // Visite guidée de l'accueil, proposée une fois après l'inscription
   visiteAFaire: boolean
   // Compte connu sur ce téléphone, gardé après déconnexion pour simuler le serveur
@@ -82,6 +87,9 @@ const etatInitial: Etat = {
   ressources: ressourcesParDefaut,
   disponible: false,
   mission: 'en-attente',
+  missionRepondue: null,
+  disponibiliteEnvoyee: true,
+  reponseEnvoyee: true,
   visiteAFaire: false,
   dernierUtilisateur: null,
 }
@@ -108,7 +116,18 @@ function lireEtat(): Etat {
 
 // Fin de crise : on efface tout ce qui était propre à cet événement
 function finDeCrise(e: Etat): Etat {
-  return { ...e, mode: 'veille', alerte: null, enSecurite: false, demande: null, disponible: false, mission: 'en-attente' }
+  return {
+    ...e,
+    mode: 'veille',
+    alerte: null,
+    enSecurite: false,
+    demande: null,
+    disponible: false,
+    mission: 'en-attente',
+    missionRepondue: null,
+    disponibiliteEnvoyee: true,
+    reponseEnvoyee: true,
+  }
 }
 
 const AppStateContext = createContext<AppStateValue | null>(null)
@@ -146,8 +165,13 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     // Sans réseau, on garde la dernière situation connue
     if (crise.error || lieux.error || mission.error) return
     const active = crise.data as CriseServeur | null
+    const missionServeur = mission.data as MissionServeur | null
     setEtat((e) => {
-      const suite = { ...e, lieux: lieux.data as LieuServeur[], missionServeur: mission.data as MissionServeur | null }
+      const suite = { ...e, lieux: lieux.data as LieuServeur[], missionServeur }
+      // La mairie a remplacé ou clos la mission : la réponse précédente ne vaut plus
+      if (e.missionRepondue && e.missionRepondue !== missionServeur?.id) {
+        Object.assign(suite, { mission: 'en-attente', missionRepondue: null, reponseEnvoyee: true })
+      }
       if (active) {
         return { ...suite, mode: 'crise', alerte: { titre: active.titre, consigne: active.consigne, heure: heure(active.declenchee_a) } }
       }
@@ -238,6 +262,60 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     }
   }, [idSuivi])
 
+  // ─── Disponibilité du volontaire, transmise à la mairie (renvoyée au retour du réseau) ───
+  const { utilisateur, disponible, ressources, disponibiliteEnvoyee } = etat
+  useEffect(() => {
+    if (disponibiliteEnvoyee || !enLigne || !utilisateur) return
+    let annule = false
+    const marquer = () => !annule && setEtat((e) => ({ ...e, disponibiliteEnvoyee: true }))
+    if (!serveur) {
+      marquer()
+      return
+    }
+    const client = serveur
+    ;(async () => {
+      try {
+        const auteur = await assurerSession(client)
+        const { error } = await client
+          .from('volontaires')
+          .upsert({ auteur, commune_id: COMMUNE_ID, prenom: utilisateur.prenom, ressources, disponible })
+        if (!error) marquer()
+      } catch {
+        // Nouvel essai au prochain retour en ligne
+      }
+    })()
+    return () => {
+      annule = true
+    }
+  }, [disponibiliteEnvoyee, enLigne, utilisateur, disponible, ressources])
+
+  // ─── Réponse à la mission proposée par la mairie ───
+  const { mission: reponse, missionRepondue, reponseEnvoyee } = etat
+  useEffect(() => {
+    if (reponseEnvoyee || !enLigne || reponse === 'en-attente' || !missionRepondue) return
+    let annule = false
+    const marquer = () => !annule && setEtat((e) => ({ ...e, reponseEnvoyee: true }))
+    if (!serveur) {
+      marquer()
+      return
+    }
+    const client = serveur
+    ;(async () => {
+      try {
+        const auteur = await assurerSession(client)
+        const { error } = await client
+          .from('reponses_mission')
+          .upsert({ mission_id: missionRepondue, auteur, prenom: utilisateur?.prenom ?? '', reponse })
+        if (!error) marquer()
+      } catch {
+        // Nouvel essai au prochain retour en ligne
+      }
+    })()
+    return () => {
+      annule = true
+    }
+  }, [reponseEnvoyee, enLigne, reponse, missionRepondue, utilisateur])
+
   const value: AppStateValue = {
     ...etat,
     // Mode démo local uniquement : avec le serveur, c'est la mairie qui déclenche la crise
@@ -259,23 +337,20 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     basculerRessource: (id) =>
       setEtat((e) => ({
         ...e,
+        disponibiliteEnvoyee: e.disponibiliteEnvoyee && !e.disponible,
         ressources: e.ressources.includes(id) ? e.ressources.filter((r) => r !== id) : [...e.ressources, id],
       })),
-    seRendreDisponible: () => setEtat((e) => ({ ...e, disponible: true, mission: 'en-attente' })),
-    repondreMission: (reponse) => {
-      setEtat((e) => ({ ...e, mission: reponse, disponible: reponse === 'acceptee' }))
-      const client = serveur
-      const missionId = etat.missionServeur?.id
-      if (client && missionId) {
-        void assurerSession(client)
-          .then(() =>
-            client.from('reponses_mission').upsert({ mission_id: missionId, prenom: etat.utilisateur?.prenom ?? '', reponse }),
-          )
-          .catch(() => {
-            // Réponse non transmise : le coordinateur relancera par téléphone
-          })
-      }
-    },
+    seRendreDisponible: () =>
+      setEtat((e) => ({ ...e, disponible: true, disponibiliteEnvoyee: false, mission: 'en-attente', missionRepondue: null })),
+    repondreMission: (reponse) =>
+      setEtat((e) => ({
+        ...e,
+        mission: reponse,
+        missionRepondue: e.missionServeur?.id ?? 'demo',
+        reponseEnvoyee: false,
+        disponible: reponse === 'acceptee',
+        disponibiliteEnvoyee: reponse === 'acceptee' ? e.disponibiliteEnvoyee : false,
+      })),
     reinitialiser: () => setEtat(etatInitial),
   }
 
