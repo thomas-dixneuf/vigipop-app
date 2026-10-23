@@ -1,16 +1,18 @@
 import { useState, type FormEvent } from 'react'
 import { Navigate, useLocation, useNavigate } from 'react-router-dom'
 import EnTeteRetour from '../components/EnTeteRetour.tsx'
-import { useAppState, type Utilisateur } from '../state/AppState.tsx'
+import type { EtatCode } from '../outils/formulaire.ts'
+import { useAppState } from '../state/AppState.tsx'
 
 export default function Code() {
   const navigate = useNavigate()
   const { connecter } = useAppState()
-  const utilisateur = useLocation().state as Utilisateur | null
+  const etat = useLocation().state as EtatCode | null
   const [code, setCode] = useState('')
   const [renvoye, setRenvoye] = useState(false)
 
-  if (!utilisateur) return <Navigate to="/connexion" replace />
+  if (!etat) return <Navigate to="/" replace />
+  const { nouveauCompte, ...utilisateur } = etat
 
   const valide = /^\d{6}$/.test(code)
 
@@ -18,13 +20,14 @@ export default function Code() {
     e.preventDefault()
     if (!valide) return
     // Prototype : aucun SMS n'est envoyé, n'importe quel code à 6 chiffres est accepté
-    connecter(utilisateur)
-    navigate('/accueil', { replace: true })
+    connecter(utilisateur, nouveauCompte)
+    // Nouveau compte : on explique d'abord pourquoi Vigipop compte, puis visite guidée
+    navigate(nouveauCompte ? '/pourquoi/1' : '/accueil', { replace: true })
   }
 
   return (
     <div className="ecran">
-      <EnTeteRetour retour="/connexion">
+      <EnTeteRetour retour={nouveauCompte ? '/inscription' : '/connexion'}>
         <h1 style={{ fontSize: 21, fontWeight: 800, color: 'var(--bleu-nuit)' }}>Code de vérification</h1>
         <span className="texte-doux">Envoyé par SMS au {utilisateur.telephone}</span>
       </EnTeteRetour>

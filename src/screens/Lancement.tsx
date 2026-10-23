@@ -5,7 +5,7 @@ import { useAppState } from '../state/AppState.tsx'
 export default function Lancement() {
   const { utilisateur } = useAppState()
   // Déjà inscrit : on va droit à l'accueil
-  const suite = utilisateur ? '/accueil' : '/connexion'
+  const suite = utilisateur ? '/accueil' : '/inscription'
 
   return (
     <div
@@ -18,11 +18,11 @@ export default function Lancement() {
       </p>
       <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 12, alignItems: 'center' }}>
         <Link to={suite} className="bouton bouton--clair" style={{ width: '100%', fontSize: 18 }}>
-          {utilisateur ? `Continuer, ${utilisateur.prenom}` : 'Commencer'}
+          {utilisateur ? (utilisateur.prenom ? `Continuer, ${utilisateur.prenom}` : 'Continuer') : 'Créer mon compte'}
         </Link>
         {!utilisateur && (
           <Link
-            to="/connexion?onglet=connexion"
+            to="/connexion"
             style={{ color: 'var(--cyan)', fontSize: 15, fontWeight: 700, minHeight: 44, display: 'flex', alignItems: 'center' }}
           >
             J'ai déjà un compte

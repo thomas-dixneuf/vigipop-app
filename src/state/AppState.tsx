@@ -32,6 +32,10 @@ type Etat = {
   ressources: RessourceId[]
   disponible: boolean
   mission: ReponseMission
+  // Visite guidée de l'accueil, proposée une fois après l'inscription
+  visiteAFaire: boolean
+  // Compte connu sur ce téléphone, gardé après déconnexion pour simuler le serveur
+  dernierUtilisateur: Utilisateur | null
 }
 
 type AppStateValue = Etat & {
@@ -39,7 +43,10 @@ type AppStateValue = Etat & {
   declarerEnSecurite: () => void
   enregistrerDemande: (demande: Demande) => void
   marquerEnvoyee: () => void
-  connecter: (utilisateur: Utilisateur) => void
+  connecter: (utilisateur: Utilisateur, nouveauCompte: boolean) => void
+  lancerVisite: () => void
+  terminerVisite: () => void
+  deconnecter: () => void
   basculerRessource: (id: RessourceId) => void
   seRendreDisponible: () => void
   repondreMission: (reponse: 'acceptee' | 'refusee') => void
@@ -55,6 +62,8 @@ const etatInitial: Etat = {
   ressources: ressourcesParDefaut,
   disponible: false,
   mission: 'en-attente',
+  visiteAFaire: false,
+  dernierUtilisateur: null,
 }
 
 function lireEtat(): Etat {
@@ -96,7 +105,11 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     enregistrerDemande: (demande) => setEtat((e) => ({ ...e, demande, enSecurite: false })),
     marquerEnvoyee: () =>
       setEtat((e) => (e.demande ? { ...e, demande: { ...e.demande, envoyee: true } } : e)),
-    connecter: (utilisateur) => setEtat((e) => ({ ...e, utilisateur })),
+    connecter: (utilisateur, nouveauCompte) =>
+      setEtat((e) => ({ ...e, utilisateur, dernierUtilisateur: utilisateur, visiteAFaire: nouveauCompte })),
+    lancerVisite: () => setEtat((e) => ({ ...e, visiteAFaire: true })),
+    terminerVisite: () => setEtat((e) => ({ ...e, visiteAFaire: false })),
+    deconnecter: () => setEtat((e) => ({ ...e, utilisateur: null, visiteAFaire: false })),
     basculerRessource: (id) =>
       setEtat((e) => ({
         ...e,

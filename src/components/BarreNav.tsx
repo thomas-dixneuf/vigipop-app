@@ -26,6 +26,7 @@ export default function BarreNav() {
         <NavLink
           key={o.vers}
           to={o.vers}
+          data-visite={o.nom}
           style={({ isActive }) => ({
             textDecoration: 'none',
             color: isActive ? 'var(--bleu)' : 'var(--texte-doux)',

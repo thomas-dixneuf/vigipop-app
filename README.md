@@ -11,6 +11,13 @@ s'ajoute à l'écran d'accueil comme une application, sans passer par les stores
 
 ## Ce que fait cette version
 
+### Incrément 3
+- **Inscription** et **connexion** sur deux pages séparées, chacune avec un lien vers l'autre
+- Après l'inscription : **3 écrans « Pourquoi Vigipop »**, puis une **visite guidée** de l'accueil
+  en 4 repères (alertes, signalement, offres, carte). La connexion mène directement à l'accueil.
+- **Mon profil** (version simple) : revoir la visite guidée, relire « Pourquoi Vigipop ? »,
+  se déconnecter
+
 ### Incrément 2
 - **Logo officiel** (écran de lancement avec slogan, en-tête, icône de l'app)
 - **Inscription / connexion par code SMS** (simulée : aucun SMS envoyé, tout code à 6 chiffres

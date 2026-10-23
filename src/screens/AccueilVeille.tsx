@@ -1,6 +1,8 @@
 import { Link } from 'react-router-dom'
 import BarreNav from '../components/BarreNav.tsx'
 import BoutonDemo from '../components/BoutonDemo.tsx'
+import VisiteGuidee from '../components/VisiteGuidee.tsx'
+import { useAppState } from '../state/AppState.tsx'
 import EnTete from '../components/EnTete.tsx'
 import Icone from '../components/Icone.tsx'
 import { lieuxAccueil, risques } from '../data/fictif.ts'
@@ -8,11 +10,13 @@ import { lieuxAccueil, risques } from '../data/fictif.ts'
 const preparation = 60
 
 export default function AccueilVeille() {
+  const { visiteAFaire } = useAppState()
   return (
     <div className="ecran">
+      {visiteAFaire && <VisiteGuidee />}
       <EnTete />
       <main className="contenu">
-        <section style={{ display: 'flex', alignItems: 'center', gap: 12, background: 'var(--bleu-voile)', borderRadius: 16, padding: '14px 16px' }}>
+        <section data-visite="alerte" style={{ display: 'flex', alignItems: 'center', gap: 12, background: 'var(--bleu-voile)', borderRadius: 16, padding: '14px 16px' }}>
           <span style={{ width: 40, height: 40, borderRadius: 20, background: 'var(--blanc)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--bleu)' }}>
             <Icone nom="bouclier" />
           </span>
@@ -24,6 +28,7 @@ export default function AccueilVeille() {
 
         <Link
           to="/aider"
+          data-visite="preparation"
           style={{ textDecoration: 'none', color: 'var(--blanc)', background: 'var(--bleu)', borderRadius: 20, padding: 18, display: 'flex', flexDirection: 'column', gap: 10 }}
         >
           <span style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
@@ -74,6 +79,7 @@ export default function AccueilVeille() {
 
         <Link
           to="/signaler"
+          data-visite="signaler"
           style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, minHeight: 52, padding: '0 16px', borderRadius: 16, border: '2px solid var(--urgence)', background: 'var(--blanc)', color: 'var(--urgence)', fontSize: 15, fontWeight: 800 }}
         >
           Une urgence ? Signaler ma situation
