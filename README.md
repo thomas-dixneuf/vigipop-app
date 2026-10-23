@@ -9,7 +9,17 @@ s'ajoute à l'écran d'accueil comme une application, sans passer par les stores
 ⚠️ **Toutes les données sont fictives.** Aucune vraie donnée d'habitant avant la phase
 « Tests, sécurité et RGPD ». Les demandes restent sur le téléphone (stockage local).
 
-## Ce que fait cette version (incrément 1)
+## Ce que fait cette version
+
+### Incrément 2
+- **Logo officiel** (écran de lancement avec slogan, en-tête, icône de l'app)
+- **Inscription / connexion par code SMS** (simulée : aucun SMS envoyé, tout code à 6 chiffres
+  est accepté). L'accueil et le signalement restent accessibles sans compte.
+- **« Je veux aider »** : le volontaire choisit ce qu'il peut offrir (hébergement, véhicule,
+  matériel, main-d'œuvre, compétences, temps)
+- **Mission volontaire** : proposée en crise, acceptée ou refusée, rappelée sur l'accueil
+
+### Incrément 1
 
 - Écran de lancement
 - Accueil **mode veille** : préparation, risques de la commune, lieux d'accueil
@@ -23,8 +33,7 @@ s'ajoute à l'écran d'accueil comme une application, sans passer par les stores
 - Le **112** reste visible sur tout le parcours sinistré
 - Barre de navigation conservée en mode crise
 
-Carte, profil, notifications, « Je veux aider » et connexion par SMS sont des écrans
-provisoires, prévus aux prochains incréments.
+Carte, profil et notifications sont des écrans provisoires, prévus aux prochains incréments.
 
 ## Lancer le projet
 

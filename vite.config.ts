@@ -10,7 +10,7 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['favicon.svg'],
+      includeAssets: ['favicon.png', 'logo.png', 'logo-slogan.png'],
       manifest: {
         name: 'Vigipop',
         short_name: 'Vigipop',
@@ -19,7 +19,7 @@ export default defineConfig({
         start_url: './',
         display: 'standalone',
         orientation: 'portrait',
-        background_color: '#0E3A52',
+        background_color: '#1B5B7A',
         theme_color: '#0E3A52',
         icons: [
           { src: 'icon-192.png', sizes: '192x192', type: 'image/png' },

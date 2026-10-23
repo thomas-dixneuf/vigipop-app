@@ -19,6 +19,8 @@ les secours et l'alerte officielle (FR-Alert), elle ne les remplace jamais.
 Variables dans `src/index.css`. Bleu nuit `#0E3A52`, cyan `#86DDFF`, bleu clair `#B2D8DE`.
 L'**orange** (`--urgence`) est réservé aux gestes urgents ; l'**ambre** (`--consigne`) aux
 consignes de crise. Police Open Sans (repli système).
+Logos dans `public/` : `logo.png` (recadré, petites tailles), `logo-slogan.png` (lancement),
+`icon-192.png` / `icon-512.png` (icône de l'app). Sources 2000 px dans les assets de la maquette.
 
 ## Maquettes de référence
 - DA d'origine : https://claude.ai/artifact/Br6dZo449UJ3GGEw1iem4a

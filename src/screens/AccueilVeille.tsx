@@ -23,7 +23,7 @@ export default function AccueilVeille() {
         </section>
 
         <Link
-          to="/profil"
+          to="/aider"
           style={{ textDecoration: 'none', color: 'var(--blanc)', background: 'var(--bleu)', borderRadius: 20, padding: 18, display: 'flex', flexDirection: 'column', gap: 10 }}
         >
           <span style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>

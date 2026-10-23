@@ -1,0 +1,101 @@
+import { Link, Navigate, useNavigate } from 'react-router-dom'
+import EnTeteRetour from '../components/EnTeteRetour.tsx'
+import Icone from '../components/Icone.tsx'
+import { commune, mission } from '../data/fictif.ts'
+import { useAppState } from '../state/AppState.tsx'
+
+const cellule = { padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 2 } as const
+const separateur = '1px solid var(--bleu-voile)'
+
+export default function Mission() {
+  const navigate = useNavigate()
+  const { mode, disponible, mission: reponse, repondreMission } = useAppState()
+
+  // Une mission n'existe qu'en crise, pour un volontaire qui s'est dit disponible
+  if (mode !== 'crise' || !disponible) return <Navigate to="/accueil" replace />
+
+  const acceptee = reponse === 'acceptee'
+
+  const refuser = () => {
+    repondreMission('refusee')
+    navigate('/accueil')
+  }
+
+  return (
+    <div className="ecran">
+      <EnTeteRetour retour="/accueil">
+        <span style={{ fontSize: 12, fontWeight: 800, color: 'var(--bleu)', textTransform: 'uppercase', letterSpacing: 0.8 }}>
+          {acceptee ? 'Mission acceptée' : 'Nouvelle mission'}
+        </span>
+        <span style={{ fontSize: 14, color: 'var(--texte-doux)' }}>Coordinateur · Mairie de {commune}</span>
+      </EnTeteRetour>
+
+      <main className="contenu" style={{ paddingTop: 10 }}>
+        <h1 style={{ fontSize: 25, fontWeight: 800, lineHeight: 1.2, color: 'var(--bleu-nuit)' }}>{mission.titre}</h1>
+
+        {acceptee && (
+          <p role="status" style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'var(--bleu)', color: 'var(--blanc)', borderRadius: 14, padding: '12px 14px', fontSize: 15, fontWeight: 700 }}>
+            <Icone nom="valide" taille={20} couleur="var(--cyan)" epaisseur={2.6} />
+            Le coordinateur vous attend à {mission.rendezVous}.
+          </p>
+        )}
+
+        <section className="carte" style={{ padding: 0, borderRadius: 16, display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))' }}>
+          <div style={{ ...cellule, borderRight: separateur, borderBottom: separateur }}>
+            <span className="texte-doux">Rendez-vous</span>
+            <span style={{ fontSize: 17, fontWeight: 800 }}>{mission.rendezVous}</span>
+          </div>
+          <div style={{ ...cellule, borderBottom: separateur }}>
+            <span className="texte-doux">Durée estimée</span>
+            <span style={{ fontSize: 17, fontWeight: 800 }}>{mission.duree}</span>
+          </div>
+          <div style={{ ...cellule, borderRight: separateur }}>
+            <span className="texte-doux">Équipe</span>
+            <span style={{ fontSize: 17, fontWeight: 800 }}>{mission.equipe}</span>
+          </div>
+          <div style={cellule}>
+            <span className="texte-doux">Votre ressource</span>
+            <span style={{ fontSize: 17, fontWeight: 800 }}>{mission.ressource}</span>
+          </div>
+        </section>
+
+        <section className="carte" style={{ padding: '14px 16px', borderRadius: 16, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+            <span className="texte-doux">Point de rendez-vous</span>
+            <span style={{ fontSize: 16, fontWeight: 800, color: 'var(--bleu-nuit)' }}>{mission.lieu}</span>
+            <span className="texte-doux">Demandez {mission.coordinateur}, coordinateur</span>
+          </div>
+          <Link
+            to="/carte"
+            aria-label="Itinéraire vers le point de rendez-vous"
+            style={{ width: 48, height: 48, borderRadius: 12, background: 'var(--bleu-clair)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--bleu-nuit)', flexShrink: 0 }}
+          >
+            <Icone nom="itineraire" epaisseur={2} />
+          </Link>
+        </section>
+
+        <section style={{ background: 'var(--bleu-nuit)', borderRadius: 16, padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 6 }}>
+          <span style={{ fontSize: 14, fontWeight: 800, color: 'var(--consigne)' }}>Consignes de sécurité</span>
+          <span style={{ fontSize: 14, lineHeight: 1.45, color: 'var(--bleu-voile)' }}>{mission.consignes}</span>
+        </section>
+      </main>
+
+      <footer style={{ position: 'sticky', bottom: 0, padding: '12px 20px calc(18px + env(safe-area-inset-bottom))', background: 'var(--blanc)', borderTop: '1px solid var(--bordure)', display: 'flex', gap: 10 }}>
+        {acceptee ? (
+          <button type="button" className="bouton bouton--contour" style={{ flex: 1 }} onClick={refuser}>
+            Je ne peux plus venir
+          </button>
+        ) : (
+          <>
+            <button type="button" className="bouton" style={{ flex: 1, border: '2px solid var(--bordure)', background: 'var(--blanc)', color: 'var(--texte)', fontWeight: 700, fontSize: 16 }} onClick={refuser}>
+              Pas disponible
+            </button>
+            <button type="button" className="bouton bouton--principal" style={{ flex: 1.4 }} onClick={() => repondreMission('acceptee')}>
+              J'accepte
+            </button>
+          </>
+        )}
+      </footer>
+    </div>
+  )
+}

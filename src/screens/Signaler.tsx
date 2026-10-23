@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
+import EnTeteRetour from '../components/EnTeteRetour.tsx'
 import Icone from '../components/Icone.tsx'
 import { besoins, commune, situations, type BesoinId, type SituationId } from '../data/fictif.ts'
 import { useAppState } from '../state/AppState.tsx'
@@ -70,19 +71,10 @@ export default function Signaler() {
 
   return (
     <div className="ecran">
-      <header style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '20px 20px 8px' }}>
-        <Link
-          to="/accueil"
-          aria-label="Retour"
-          style={{ width: 44, height: 44, borderRadius: 22, background: 'var(--blanc)', border: '1px solid var(--bordure)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--bleu)' }}
-        >
-          <Icone nom="retour" taille={20} epaisseur={2.4} />
-        </Link>
-        <div style={{ display: 'flex', flexDirection: 'column' }}>
-          <h1 style={{ fontSize: 21, fontWeight: 800, color: 'var(--bleu-nuit)' }}>J'ai besoin d'aide</h1>
-          <span className="texte-doux">3 questions · transmis à la cellule de crise de {commune}</span>
-        </div>
-      </header>
+      <EnTeteRetour retour="/accueil">
+        <h1 style={{ fontSize: 21, fontWeight: 800, color: 'var(--bleu-nuit)' }}>J'ai besoin d'aide</h1>
+        <span className="texte-doux">3 questions · transmis à la cellule de crise de {commune}</span>
+      </EnTeteRetour>
 
       <main className="contenu" style={{ gap: 18, paddingTop: 10 }}>
         <section style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>

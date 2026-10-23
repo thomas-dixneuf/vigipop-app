@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
-import type { BesoinId, SituationId } from '../data/fictif'
+import { ressourcesParDefaut, type BesoinId, type RessourceId, type SituationId } from '../data/fictif'
 
 export type Mode = 'veille' | 'crise'
 
@@ -15,10 +15,23 @@ export type Demande = {
   envoyee: boolean
 }
 
+export type Utilisateur = {
+  prenom: string
+  telephone: string
+  commune: string
+}
+
+// Réponse du volontaire à la mission proposée par le coordinateur
+export type ReponseMission = 'en-attente' | 'acceptee' | 'refusee'
+
 type Etat = {
   mode: Mode
   enSecurite: boolean
   demande: Demande | null
+  utilisateur: Utilisateur | null
+  ressources: RessourceId[]
+  disponible: boolean
+  mission: ReponseMission
 }
 
 type AppStateValue = Etat & {
@@ -26,11 +39,23 @@ type AppStateValue = Etat & {
   declarerEnSecurite: () => void
   enregistrerDemande: (demande: Demande) => void
   marquerEnvoyee: () => void
+  connecter: (utilisateur: Utilisateur) => void
+  basculerRessource: (id: RessourceId) => void
+  seRendreDisponible: () => void
+  repondreMission: (reponse: 'acceptee' | 'refusee') => void
   reinitialiser: () => void
 }
 
 const CLE_STOCKAGE = 'vigipop-demo'
-const etatInitial: Etat = { mode: 'veille', enSecurite: false, demande: null }
+const etatInitial: Etat = {
+  mode: 'veille',
+  enSecurite: false,
+  demande: null,
+  utilisateur: null,
+  ressources: ressourcesParDefaut,
+  disponible: false,
+  mission: 'en-attente',
+}
 
 function lireEtat(): Etat {
   try {
@@ -57,12 +82,29 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
   const value: AppStateValue = {
     ...etat,
     // En vrai, c'est la mairie qui déclenche la crise ; ici un bouton démo suffit
+    // Fin de crise : on efface tout ce qui était propre à cet événement
     basculerMode: () =>
-      setEtat((e) => ({ ...e, mode: e.mode === 'veille' ? 'crise' : 'veille', enSecurite: false })),
+      setEtat((e) => ({
+        ...e,
+        mode: e.mode === 'veille' ? 'crise' : 'veille',
+        enSecurite: false,
+        demande: null,
+        disponible: false,
+        mission: 'en-attente',
+      })),
     declarerEnSecurite: () => setEtat((e) => ({ ...e, enSecurite: true })),
     enregistrerDemande: (demande) => setEtat((e) => ({ ...e, demande, enSecurite: false })),
     marquerEnvoyee: () =>
       setEtat((e) => (e.demande ? { ...e, demande: { ...e.demande, envoyee: true } } : e)),
+    connecter: (utilisateur) => setEtat((e) => ({ ...e, utilisateur })),
+    basculerRessource: (id) =>
+      setEtat((e) => ({
+        ...e,
+        ressources: e.ressources.includes(id) ? e.ressources.filter((r) => r !== id) : [...e.ressources, id],
+      })),
+    seRendreDisponible: () => setEtat((e) => ({ ...e, disponible: true, mission: 'en-attente' })),
+    repondreMission: (reponse) =>
+      setEtat((e) => ({ ...e, mission: reponse, disponible: reponse === 'acceptee' })),
     reinitialiser: () => setEtat(etatInitial),
   }
 

@@ -27,7 +27,7 @@ const pastille = {
 } as const
 
 export default function AccueilCrise() {
-  const { demande, enSecurite, declarerEnSecurite } = useAppState()
+  const { demande, enSecurite, declarerEnSecurite, disponible, mission } = useAppState()
 
   return (
     <div className="ecran">
@@ -71,13 +71,19 @@ export default function AccueilCrise() {
           </span>
         </Link>
 
-        <Link to="/aider" style={{ ...grosBouton, background: 'var(--bleu-clair)', color: 'var(--bleu-nuit)' }}>
+        <Link to={disponible ? '/mission' : '/aider'} style={{ ...grosBouton, background: 'var(--bleu-clair)', color: 'var(--bleu-nuit)' }}>
           <span style={{ ...pastille, background: 'var(--blanc)', color: 'var(--bleu)' }}>
             <Icone nom="main" taille={24} />
           </span>
           <span style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-            <span style={{ fontSize: 20, fontWeight: 800 }}>Je veux aider</span>
-            <span style={{ fontSize: 14, color: '#1b4a60' }}>Me rendre disponible pour une mission</span>
+            <span style={{ fontSize: 20, fontWeight: 800 }}>{mission === 'acceptee' ? 'Ma mission' : 'Je veux aider'}</span>
+            <span style={{ fontSize: 14, color: '#1b4a60' }}>
+              {mission === 'acceptee'
+                ? 'Acceptée · voir le rendez-vous'
+                : disponible
+                  ? 'Une mission vous est proposée'
+                  : 'Me rendre disponible pour une mission'}
+            </span>
           </span>
         </Link>
 
