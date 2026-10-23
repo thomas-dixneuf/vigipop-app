@@ -1,7 +1,7 @@
 import { useAppState } from '../state/AppState.tsx'
 
 // Réservé aux démonstrations en mairie : simule le déclenchement de crise par la commune
-export default function BoutonDemo() {
+export default function BoutonDemo({ sombre = false }: { sombre?: boolean }) {
   const { mode, basculerMode } = useAppState()
   return (
     <button
@@ -12,9 +12,9 @@ export default function BoutonDemo() {
         minHeight: 44,
         padding: '0 16px',
         borderRadius: 22,
-        border: '1px dashed var(--texte-doux)',
+        border: `1px dashed ${sombre ? 'var(--bleu-clair)' : 'var(--texte-doux)'}`,
         background: 'transparent',
-        color: 'var(--texte-doux)',
+        color: sombre ? 'var(--bleu-clair)' : 'var(--texte-doux)',
         fontSize: 13,
         fontWeight: 700,
       }}

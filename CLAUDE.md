@@ -13,6 +13,9 @@ les secours et l'alerte officielle (FR-Alert), elle ne les remplace jamais.
 - Un signalement ne doit **jamais être bloqué** par la connexion, le réseau ou le GPS :
   saisie d'adresse en secours, envoi différé hors ligne.
 - Connexion prévue par code SMS, sans mot de passe.
+- **Sans compte, l'app n'est accessible qu'en mode crise** (`src/components/AccesProtege.tsx`) :
+  signalement, consignes, lieux ouverts. Se proposer comme volontaire exige toujours un compte.
+  Le 112 reste affiché sur l'écran de lancement, avec ou sans compte.
 - Accessibilité : zones tactiles ≥ 44 px, vrais `<button>` et `<a>`, contrastes AA.
 
 ## Charte

@@ -1,4 +1,5 @@
 import { Navigate, Route, Routes } from 'react-router-dom'
+import AccesProtege from './components/AccesProtege.tsx'
 import Accueil from './screens/Accueil.tsx'
 import Aider from './screens/Aider.tsx'
 import Code from './screens/Code.tsx'
@@ -20,15 +21,16 @@ export default function App() {
       <Route path="/connexion" element={<Connexion />} />
       <Route path="/code" element={<Code />} />
       <Route path="/pourquoi/:etape" element={<Pourquoi />} />
-      {/* Accueil et signalement restent accessibles sans compte : rien ne doit bloquer un appel à l'aide */}
-      <Route path="/accueil" element={<Accueil />} />
-      <Route path="/signaler" element={<Signaler />} />
-      <Route path="/demande" element={<Confirmation />} />
-      <Route path="/carte" element={<AVenir titre="Carte" onglet="carte" />} />
-      <Route path="/profil" element={<Profil />} />
-      <Route path="/notifications" element={<AVenir titre="Notifications" />} />
-      <Route path="/aider" element={<Aider />} />
-      <Route path="/mission" element={<Mission />} />
+      {/* Sans compte : accessible seulement en mode crise, pour ne jamais bloquer un appel à l'aide */}
+      <Route path="/accueil" element={<AccesProtege><Accueil /></AccesProtege>} />
+      <Route path="/signaler" element={<AccesProtege><Signaler /></AccesProtege>} />
+      <Route path="/demande" element={<AccesProtege><Confirmation /></AccesProtege>} />
+      <Route path="/carte" element={<AccesProtege><AVenir titre="Carte" onglet="carte" /></AccesProtege>} />
+      <Route path="/profil" element={<AccesProtege><Profil /></AccesProtege>} />
+      <Route path="/notifications" element={<AccesProtege><AVenir titre="Notifications" /></AccesProtege>} />
+      {/* Se proposer comme volontaire demande toujours un compte : la mairie doit savoir qui vient */}
+      <Route path="/aider" element={<AccesProtege compteObligatoire><Aider /></AccesProtege>} />
+      <Route path="/mission" element={<AccesProtege compteObligatoire><Mission /></AccesProtege>} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   )

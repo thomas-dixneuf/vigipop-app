@@ -12,6 +12,9 @@ s'ajoute à l'écran d'accueil comme une application, sans passer par les stores
 ## Ce que fait cette version
 
 ### Incrément 3
+- **Sans compte, accès seulement en mode crise** : en veille, il faut s'inscrire ou se
+  connecter ; en crise, on peut demander de l'aide et voir les consignes sans compte.
+  Proposer son aide demande toujours un compte.
 - **Inscription** et **connexion** sur deux pages séparées, chacune avec un lien vers l'autre
 - Après l'inscription : **3 écrans « Pourquoi Vigipop »**, puis une **visite guidée** de l'accueil
   en 4 repères (alertes, signalement, offres, carte). La connexion mène directement à l'accueil.
