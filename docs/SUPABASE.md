@@ -27,8 +27,12 @@ La connexion par SMS remplacera ce mécanisme plus tard.
    ```sql
    insert into public.coordinateurs (user_id, commune_id, nom)
    select id, '00000000-0000-4000-8000-000000000001', 'Mairie démo'
-   from auth.users where email = 'maire@exemple.fr';
+   from auth.users where email = 'maire@exemple.fr'
+   on conflict (user_id) do update set commune_id = excluded.commune_id, nom = excluded.nom;
    ```
+
+   La requête peut être relancée sans erreur. Pour vérifier :
+   `select * from public.coordinateurs;`
 
 ## 4. Renseigner l'app
 
