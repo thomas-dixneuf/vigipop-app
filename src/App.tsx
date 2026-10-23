@@ -6,6 +6,7 @@ import Code from './screens/Code.tsx'
 import Connexion from './screens/Connexion.tsx'
 import Confirmation from './screens/Confirmation.tsx'
 import Lancement from './screens/Lancement.tsx'
+import MairieApp from './mairie/MairieApp.tsx'
 import Inscription from './screens/Inscription.tsx'
 import Mission from './screens/Mission.tsx'
 import Pourquoi from './screens/Pourquoi.tsx'
@@ -31,6 +32,8 @@ export default function App() {
       {/* Se proposer comme volontaire demande toujours un compte : la mairie doit savoir qui vient */}
       <Route path="/aider" element={<AccesProtege compteObligatoire><Aider /></AccesProtege>} />
       <Route path="/mission" element={<AccesProtege compteObligatoire><Mission /></AccesProtege>} />
+      {/* Espace mairie : tableau de bord des coordinateurs (compte e-mail + mot de passe) */}
+      <Route path="/mairie" element={<MairieApp />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   )

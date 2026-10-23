@@ -1,8 +1,11 @@
+import { serveur } from '../services/serveur.ts'
 import { useAppState } from '../state/AppState.tsx'
 
 // Réservé aux démonstrations en mairie : simule le déclenchement de crise par la commune
 export default function BoutonDemo({ sombre = false }: { sombre?: boolean }) {
   const { mode, basculerMode } = useAppState()
+  // Avec le serveur, seule la mairie déclenche la crise (tableau de bord)
+  if (serveur) return null
   return (
     <button
       type="button"

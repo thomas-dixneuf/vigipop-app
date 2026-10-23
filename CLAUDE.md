@@ -29,6 +29,12 @@ Logos dans `public/` : `logo.png` (recadré, petites tailles), `logo-slogan.png`
 - DA d'origine : https://claude.ai/artifact/Br6dZo449UJ3GGEw1iem4a
 - Accents urgence (référence actuelle) : https://claude.ai/artifact/LYHinyv5K2VnWhE7x8tyHv
 
+## Serveur
+- Supabase (UE). Schéma et droits : `supabase/migrations/` ; mise en place : `docs/SUPABASE.md`.
+- Toute nouvelle table : RLS activée, droits par commune via `public.est_coordinateur()`.
+- Côté app : `src/services/serveur.ts` ; sans variables d'environnement, mode démo local.
+- Espace mairie : `src/mairie/` (route `#/mairie`).
+
 ## Code
 - React + TypeScript + Vite, PWA via `vite-plugin-pwa`, `HashRouter`.
 - Nommage et textes en français. Un écran par fichier dans `src/screens/`.

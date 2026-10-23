@@ -11,6 +11,16 @@ s'ajoute à l'écran d'accueil comme une application, sans passer par les stores
 
 ## Ce que fait cette version
 
+### Espace mairie et serveur (en cours)
+- **Serveur commun** Supabase (UE) : `supabase/migrations/0001_init.sql` (tables, droits par
+  commune, temps réel, journal des actions, données fictives). Mise en place : `docs/SUPABASE.md`.
+- **Espace mairie** (`#/mairie`) : connexion coordinateur, déclenchement de la crise avec
+  double confirmation, demandes d'aide en direct classées par priorité, statuts, ouverture des
+  lieux, volontaires confirmés, journal.
+- **App habitants branchée** : la crise, la consigne et les lieux viennent de la mairie en
+  temps réel ; les demandes partent au serveur (avec envoi différé hors ligne) et leur suivi
+  se met à jour en direct. Sans serveur configuré, le mode démo local reste disponible.
+
 ### Incrément 3
 - **Sans compte, accès seulement en mode crise** : en veille, il faut s'inscrire ou se
   connecter ; en crise, on peut demander de l'aide et voir les consignes sans compte.

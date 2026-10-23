@@ -57,6 +57,7 @@ export default function Signaler() {
   const envoyer = () => {
     if (!peutEnvoyer) return
     enregistrerDemande({
+      id: demande?.id,
       reference: demande?.reference ?? nouvelleReference(),
       situation,
       besoins: choix,
@@ -64,7 +65,6 @@ export default function Signaler() {
       personneVulnerable: vulnerable,
       position: positionTexte,
       envoyeeA: heureActuelle(),
-      envoyee: navigator.onLine,
     })
     navigate('/demande', { replace: true })
   }

@@ -1,3 +1,5 @@
+import type { LieuServeur } from '../services/serveur'
+
 // Données de démonstration : tout est fictif tant que la phase RGPD n'est pas validée.
 // Ne jamais remplacer par de vraies données d'habitants dans ce prototype.
 
@@ -5,26 +7,18 @@ export const commune = '[VOTRE COMMUNE]'
 
 export const risques = ['Inondation', 'Tempête', '[AUTRE RISQUE]']
 
-export const lieuxAccueil = [
-  { nom: '[NOM DU GYMNASE]', distance: '1,2 km' },
-  { nom: '[SALLE DES FÊTES]', distance: '2,4 km' },
+// Lieux de démonstration, au même format que ceux du serveur
+export const lieuxDemo: LieuServeur[] = [
+  { id: 'gymnase', type: 'accueil', nom: '[NOM DU GYMNASE]', details: 'ouvert 24 h/24 · repas chauds', distance: '1,2 km', places: 80, ouvert: true },
+  { id: 'salle', type: 'accueil', nom: '[SALLE DES FÊTES]', details: 'lits de camp', distance: '2,4 km', places: 40, ouvert: false },
+  { id: 'eau', type: 'eau', nom: '[NOM DU LIEU]', details: 'eau potable en bouteilles', distance: '800 m', places: null, ouvert: true },
 ]
 
-export const alerteCrise = {
-  heure: '14:05',
-  titre: 'Crue de [RIVIÈRE] — vigilance rouge',
-  consigne: "montez à l'étage, ne prenez pas votre voiture.",
-}
-
-export const ouvertMaintenant = [
-  { type: "Centre d'accueil", lieu: '[NOM DU LIEU]', distance: '1,2 km' },
-  { type: "Distribution d'eau", lieu: '[NOM DU LIEU]', distance: '800 m' },
-]
-
-export const centreLePlusProche = {
-  nom: '[NOM DU GYMNASE]',
-  details: '1,2 km · ouvert 24 h/24 · repas chauds',
-  places: '[N] places',
+export const libelleLieu: Record<LieuServeur['type'], string> = {
+  accueil: "Centre d'accueil",
+  eau: "Distribution d'eau",
+  soins: 'Point de soins',
+  autre: "Point d'aide",
 }
 
 export const situations = [

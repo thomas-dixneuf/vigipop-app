@@ -1,0 +1,110 @@
+/* Tableau de bord mairie : pensé pour un ordinateur, utilisable sur tablette et téléphone */
+.mairie {
+  min-height: 100dvh;
+  background: var(--fond);
+  color: var(--texte);
+}
+.mairie-barre {
+  background: var(--bleu-nuit);
+  color: var(--blanc);
+  padding: 12px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.mairie-contenu {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 20px 24px 40px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 380px;
+  gap: 20px;
+  align-items: start;
+}
+.mairie-colonne {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  min-width: 0;
+}
+.mairie-panneau {
+  background: var(--blanc);
+  border: 1px solid var(--bordure);
+  border-radius: 16px;
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.mairie-panneau h2 {
+  font-size: 17px;
+  font-weight: 800;
+  color: var(--bleu-nuit);
+}
+.mairie-compteurs {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+.mairie-compteur {
+  background: var(--blanc);
+  border: 1px solid var(--bordure);
+  border-radius: 14px;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.mairie-compteur strong { font-size: 26px; color: var(--bleu-nuit); }
+.mairie-champ {
+  width: 100%;
+  min-height: 44px;
+  border: 2px solid var(--bordure);
+  border-radius: 10px;
+  padding: 8px 12px;
+  font-size: 15px;
+  background: var(--blanc);
+}
+textarea.mairie-champ { resize: vertical; min-height: 72px; }
+.mairie-bouton {
+  min-height: 44px;
+  padding: 0 14px;
+  border-radius: 10px;
+  border: 2px solid var(--bordure);
+  background: var(--blanc);
+  color: var(--texte);
+  font-size: 14px;
+  font-weight: 700;
+}
+.mairie-bouton--principal { background: var(--bleu); border-color: var(--bleu); color: var(--blanc); }
+.mairie-bouton--urgence { background: var(--urgence); border-color: var(--urgence); color: var(--blanc); }
+.mairie-bouton:disabled { opacity: 0.5; cursor: not-allowed; }
+.mairie-onglets { display: flex; gap: 6px; flex-wrap: wrap; }
+.mairie-onglets button[aria-pressed='true'] { background: var(--bleu); border-color: var(--bleu); color: var(--blanc); }
+.mairie-demande {
+  border: 1px solid var(--bordure);
+  border-left-width: 6px;
+  border-radius: 12px;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.mairie-etiquette {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 2px 10px;
+  font-size: 12px;
+  font-weight: 800;
+  background: var(--bleu-voile);
+  color: var(--bleu-nuit);
+}
+.mairie-etiquette--urgent { background: var(--urgence-pale); color: var(--urgence-fonce); }
+
+@media (max-width: 900px) {
+  .mairie-contenu { grid-template-columns: minmax(0, 1fr); padding: 16px; }
+  .mairie-compteurs { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}

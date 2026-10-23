@@ -5,12 +5,13 @@ import VisiteGuidee from '../components/VisiteGuidee.tsx'
 import { useAppState } from '../state/AppState.tsx'
 import EnTete from '../components/EnTete.tsx'
 import Icone from '../components/Icone.tsx'
-import { lieuxAccueil, risques } from '../data/fictif.ts'
+import { lieuxDemo, risques } from '../data/fictif.ts'
 
 const preparation = 60
 
 export default function AccueilVeille() {
-  const { visiteAFaire } = useAppState()
+  const { visiteAFaire, lieux } = useAppState()
+  const lieuxAccueil = (lieux ?? lieuxDemo).filter((l) => l.type === 'accueil').slice(0, 2)
   return (
     <div className="ecran">
       {visiteAFaire && <VisiteGuidee />}
@@ -69,7 +70,7 @@ export default function AccueilVeille() {
           <h2 className="titre-section">Lieux d'accueil prévus</h2>
           <div style={{ display: 'flex', gap: 10 }}>
             {lieuxAccueil.map((l) => (
-              <div key={l.nom} className="carte" style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 2 }}>
+              <div key={l.id} className="carte" style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 2 }}>
                 <span style={{ fontSize: 15, fontWeight: 700 }}>{l.nom}</span>
                 <span className="texte-doux">{l.distance} de chez vous</span>
               </div>

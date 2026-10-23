@@ -2,13 +2,12 @@ import { Link } from 'react-router-dom'
 import BoutonDemo from '../components/BoutonDemo.tsx'
 import Icone from '../components/Icone.tsx'
 import Logo from '../components/Logo.tsx'
-import { alerteCrise } from '../data/fictif.ts'
 import { useAppState } from '../state/AppState.tsx'
 
 const lienClair = { color: 'var(--cyan)', fontSize: 15, fontWeight: 700, minHeight: 44, display: 'flex', alignItems: 'center' } as const
 
 export default function Lancement() {
-  const { utilisateur, mode } = useAppState()
+  const { utilisateur, mode, alerte } = useAppState()
   // Sans compte, seul le mode crise ouvre l'app (accès d'urgence)
   const urgenceSansCompte = !utilisateur && mode === 'crise'
 
@@ -25,7 +24,7 @@ export default function Lancement() {
             <Icone nom="alerte" taille={16} epaisseur={2.4} />
             Mode crise activé par la mairie
           </span>
-          <span style={{ fontSize: 17, fontWeight: 800, color: 'var(--bleu-nuit)' }}>{alerteCrise.titre}</span>
+          <span style={{ fontSize: 17, fontWeight: 800, color: 'var(--bleu-nuit)' }}>{alerte?.titre}</span>
           <span style={{ fontSize: 14, lineHeight: 1.4 }}>
             Vous pouvez demander de l'aide <strong>sans créer de compte</strong>.
           </span>

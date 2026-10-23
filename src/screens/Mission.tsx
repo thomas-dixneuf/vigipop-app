@@ -1,7 +1,7 @@
 import { Link, Navigate, useNavigate } from 'react-router-dom'
 import EnTeteRetour from '../components/EnTeteRetour.tsx'
 import Icone from '../components/Icone.tsx'
-import { commune, mission } from '../data/fictif.ts'
+import { commune, mission as missionDemo } from '../data/fictif.ts'
 import { useAppState } from '../state/AppState.tsx'
 
 const cellule = { padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 2 } as const
@@ -9,7 +9,10 @@ const separateur = '1px solid var(--bleu-voile)'
 
 export default function Mission() {
   const navigate = useNavigate()
-  const { mode, disponible, mission: reponse, repondreMission } = useAppState()
+  const { mode, disponible, mission: reponse, repondreMission, missionServeur } = useAppState()
+  const mission = missionServeur
+    ? { ...missionServeur, rendezVous: missionServeur.rendez_vous }
+    : missionDemo
 
   // Une mission n'existe qu'en crise, pour un volontaire qui s'est dit disponible
   if (mode !== 'crise' || !disponible) return <Navigate to="/accueil" replace />
