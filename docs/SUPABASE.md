@@ -11,6 +11,9 @@ fonctionne en mode démo local, avec un bouton « Démo » pour simuler la crise
 2. Colle tout le contenu de `supabase/migrations/0001_init.sql`, puis clique sur **Run**.
    Le script crée les tables, les droits par commune, le temps réel, une « Commune démo »,
    3 lieux et une mission fictive.
+3. Fais de même avec `supabase/migrations/0002_volontaires.sql` : volontaires disponibles,
+   missions créées par la mairie. Chaque nouveau fichier de `supabase/migrations/` se lance
+   une seule fois, dans l'ordre des numéros.
 
 ## 2. Autoriser les habitants sans mot de passe
 
@@ -55,6 +58,11 @@ dans l'app.**
 Le coordinateur déclenche la crise : le téléphone bascule en mode crise en quelques secondes.
 L'habitant envoie une demande : elle apparaît en direct dans le tableau de bord. Le
 coordinateur la prend en charge : le suivi se met à jour sur le téléphone.
+
+Côté volontaire (avec un compte) : « Je veux aider » → « Je suis disponible maintenant ».
+Le volontaire apparaît dans « Volontaires disponibles ». Le coordinateur crée une mission
+(« Nouvelle mission ») : elle s'affiche sur le téléphone, et « J'accepte » fait monter le
+compteur de volontaires confirmés.
 
 Utilise deux appareils, ou une fenêtre de navigation privée : dans un même navigateur, la
 session mairie remplace la session de l'habitant.
