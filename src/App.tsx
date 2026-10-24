@@ -11,12 +11,15 @@ import Inscription from './screens/Inscription.tsx'
 import Mission from './screens/Mission.tsx'
 import Pourquoi from './screens/Pourquoi.tsx'
 import Profil from './screens/Profil.tsx'
-import AVenir from './screens/AVenir.tsx'
 import Carte from './screens/Carte.tsx'
+import Notifications from './screens/Notifications.tsx'
+import Notifieur from './components/Notifieur.tsx'
 import Signaler from './screens/Signaler.tsx'
 
 export default function App() {
   return (
+    <>
+    <Notifieur />
     <Routes>
       <Route path="/" element={<Lancement />} />
       <Route path="/inscription" element={<Inscription />} />
@@ -30,7 +33,7 @@ export default function App() {
       {/* La carte des secours reste consultable sans compte, avant même une crise */}
       <Route path="/carte" element={<Carte />} />
       <Route path="/profil" element={<AccesProtege><Profil /></AccesProtege>} />
-      <Route path="/notifications" element={<AccesProtege><AVenir titre="Notifications" /></AccesProtege>} />
+      <Route path="/notifications" element={<AccesProtege><Notifications /></AccesProtege>} />
       {/* Se proposer comme volontaire demande toujours un compte : la mairie doit savoir qui vient */}
       <Route path="/aider" element={<AccesProtege compteObligatoire><Aider /></AccesProtege>} />
       <Route path="/mission" element={<AccesProtege compteObligatoire><Mission /></AccesProtege>} />
@@ -38,5 +41,6 @@ export default function App() {
       <Route path="/mairie" element={<MairieApp />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
+    </>
   )
 }

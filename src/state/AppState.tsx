@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react'
+import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react'
 import { missionsDemo, ressourcesParDefaut, type BesoinId, type RessourceId, type SituationId } from '../data/fictif'
 import {
   assurerSession,
@@ -43,7 +43,10 @@ export type Contact = { prenom: string; telephone: string }
 // Logement proposé par un volontaire hébergeur : visible par la mairie seulement
 export type Accueil = { places: number; adresse: string; lat: number | null; lng: number | null }
 
-export type Alerte = { titre: string; consigne: string; heure: string }
+// Notification de l'app : la clé évite d'annoncer deux fois le même événement
+export type NotificationApp = { cle: string; titre: string; texte: string; lien: string; heure: string; lue: boolean; urgente?: boolean }
+
+export type Alerte = { titre: string; consigne: string; heure: string; id?: string }
 
 // Réponse du volontaire à la mission proposée par le coordinateur
 export type ReponseMission = 'en-attente' | 'acceptee'
@@ -72,6 +75,8 @@ type Etat = {
   disponibiliteEnvoyee: boolean
   // Réponses aux missions en attente de réseau
   reponsesAEnvoyer: ReponseAEnvoyer[]
+  // Centre de notifications, les plus récentes d'abord
+  notifications: NotificationApp[]
   // Visite guidée de l'accueil, proposée une fois après l'inscription
   visiteAFaire: boolean
   // Compte connu sur ce téléphone, gardé après déconnexion pour simuler le serveur
@@ -94,6 +99,9 @@ type AppStateValue = Etat & {
   seRendreDisponible: () => void
   repondreMission: (reponse: 'acceptee' | 'refusee') => void
   reinitialiser: () => void
+  // Ajoute une notification si son événement n'a pas déjà été annoncé ; vrai si elle est nouvelle
+  ajouterNotification: (n: Omit<NotificationApp, 'heure' | 'lue'>) => boolean
+  marquerNotificationsLues: () => void
 }
 
 const CLE_STOCKAGE = 'vigipop-demo'
@@ -114,12 +122,14 @@ const etatInitial: Etat = {
   missionsRefusees: [],
   disponibiliteEnvoyee: true,
   reponsesAEnvoyer: [],
+  notifications: [],
   visiteAFaire: false,
   dernierUtilisateur: null,
 }
 
 // Mode démo local : alerte fictive affichée quand on simule la crise
 const alerteDemo: Alerte = {
+  id: 'demo',
   titre: 'Crue de [RIVIÈRE] — vigilance rouge',
   consigne: "montez à l'étage, ne prenez pas votre voiture.",
   heure: '14:05',
@@ -162,6 +172,8 @@ const AppStateContext = createContext<AppStateValue | null>(null)
 export function AppStateProvider({ children }: { children: ReactNode }) {
   const [etat, setEtat] = useState<Etat>(lireEtat)
   const [enLigne, setEnLigne] = useState(navigator.onLine)
+  // Clés déjà annoncées, lues de façon synchrone pour ne jamais notifier deux fois
+  const dejaAnnoncees = useRef(new Set(etat.notifications.map((n) => n.cle)))
 
   useEffect(() => {
     try {
@@ -206,7 +218,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
         missionsRefusees: e.missionsRefusees.filter((id) => ouvertes.has(id)),
       }
       if (active) {
-        return { ...suite, mode: 'crise', alerte: { titre: active.titre, consigne: active.consigne, heure: heure(active.declenchee_a) } }
+        return { ...suite, mode: 'crise', alerte: { id: active.id, titre: active.titre, consigne: active.consigne, heure: heure(active.declenchee_a) } }
       }
       return e.mode === 'crise' ? finDeCrise(suite) : suite
     })
@@ -419,6 +431,18 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
       }))
     },
     reinitialiser: () => setEtat(etatInitial),
+    ajouterNotification: (n) => {
+      if (dejaAnnoncees.current.has(n.cle)) return false
+      dejaAnnoncees.current.add(n.cle)
+      setEtat((e) =>
+        e.notifications.some((x) => x.cle === n.cle)
+          ? e
+          : { ...e, notifications: [{ ...n, heure: heure(new Date().toISOString()), lue: false }, ...e.notifications].slice(0, 40) },
+      )
+      return true
+    },
+    marquerNotificationsLues: () =>
+      setEtat((e) => (e.notifications.some((n) => !n.lue) ? { ...e, notifications: e.notifications.map((n) => ({ ...n, lue: true })) } : e)),
   }
 
   return <AppStateContext.Provider value={value}>{children}</AppStateContext.Provider>

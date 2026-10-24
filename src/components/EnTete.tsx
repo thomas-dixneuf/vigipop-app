@@ -1,9 +1,11 @@
 import { Link } from 'react-router-dom'
 import { commune } from '../data/fictif.ts'
+import { useAppState } from '../state/AppState.tsx'
 import Icone from './Icone.tsx'
 import Logo from './Logo.tsx'
 
-export default function EnTete({ nonLues = 0 }: { nonLues?: number }) {
+export default function EnTete() {
+  const nonLues = useAppState().notifications.filter((n) => !n.lue).length
   return (
     <header style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '20px 20px 12px' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
@@ -15,7 +17,7 @@ export default function EnTete({ nonLues = 0 }: { nonLues?: number }) {
       </div>
       <Link
         to="/notifications"
-        aria-label={nonLues ? `Notifications, ${nonLues} non lues` : 'Notifications'}
+        aria-label={nonLues ? `Notifications, ${nonLues} non lue${nonLues > 1 ? 's' : ''}` : 'Notifications'}
         style={{
           position: 'relative',
           width: 44,

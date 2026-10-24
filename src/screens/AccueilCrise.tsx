@@ -41,7 +41,7 @@ export default function AccueilCrise() {
 
   return (
     <div className="ecran">
-      <EnTete nonLues={3} />
+      <EnTete />
       <main className="contenu" style={{ gap: 12 }}>
         <section role="alert" style={{ background: 'var(--bleu-nuit)', color: 'var(--blanc)', borderRadius: 16, padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 6 }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>

@@ -14,6 +14,8 @@ export default defineConfig({
       workbox: {
         // Le prototype embarque Supabase et la carte : une seule archive, gardée hors ligne
         maximumFileSizeToCacheInBytes: 4 * 1024 * 1024,
+        // Clic sur une alerte système → ouverture de l'app sur l'écran concerné
+        importScripts: ['sw-alertes.js'],
         runtimeCaching: [
           {
             // Zones de carte déjà consultées : encore visibles si le réseau tombe pendant la crise
