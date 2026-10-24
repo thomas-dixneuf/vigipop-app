@@ -708,7 +708,10 @@ function PanneauHebergement({ demandes, volontaires, hebergements, communeId }: 
             return (
               <article key={v.auteur} className="mairie-demande" style={{ borderLeftColor: restantes > 0 ? 'var(--bleu)' : 'var(--bordure)' }}>
                 <strong style={{ fontSize: 15 }}>
-                  {v.prenom || 'Volontaire'} · {restantes}/{v.places_hebergement} place{v.places_hebergement > 1 ? 's' : ''} libre{restantes > 1 ? 's' : ''}
+                  {v.prenom || 'Volontaire'} ·{' '}
+                  {v.places_hebergement === 0
+                    ? 'nombre de places non transmis'
+                    : `${restantes}/${v.places_hebergement} place${v.places_hebergement > 1 ? 's' : ''} libre${restantes > 1 ? 's' : ''}`}
                 </strong>
                 <span className="texte-doux">{v.adresse || 'Adresse non renseignée'}</span>
                 {accueils.map((h) => (
