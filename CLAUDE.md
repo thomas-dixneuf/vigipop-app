@@ -19,6 +19,10 @@ les secours et l'alerte officielle (FR-Alert), elle ne les remplace jamais.
 - **Compte express** : sans compte, la demande d'aide propose un prénom et un numéro de rappel
   facultatifs (jamais bloquants). Ces informations pré-remplissent l'inscription proposée
   après l'envoi ; le compte créé reste lié à la même demande.
+- **Carte** : fond OpenStreetMap (Leaflet), adresses officielles via la Base Adresse Nationale,
+  « Itinéraire » ouvre Google Maps. Jamais d'adresse privée (hébergement chez l'habitant) sur
+  la carte des habitants : seulement un nombre de foyers ; la mairie fait la mise en relation.
+  Zones à éviter tracées par la mairie, en rouge.
 - Accessibilité : zones tactiles ≥ 44 px, vrais `<button>` et `<a>`, contrastes AA.
 
 ## Charte

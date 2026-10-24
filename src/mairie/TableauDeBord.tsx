@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
+import CarteInteractive, { type Repere } from '../components/CarteInteractive.tsx'
 import Logo from '../components/Logo.tsx'
-import { besoins as listeBesoins, libelleLieu, ressources as listeRessources, situations } from '../data/fictif.ts'
+import ChampAdresse from './ChampAdresse.tsx'
+import { besoins as listeBesoins, centreCommune, libelleLieu, ressources as listeRessources, situations } from '../data/fictif.ts'
 import {
   heure,
   serveur,
@@ -9,7 +11,9 @@ import {
   type LieuServeur,
   type MissionServeur,
   type StatutDemande,
+  type ZoneServeur,
 } from '../services/serveur.ts'
+import { couleurLieu, estPlace, type ResultatAdresse } from '../outils/carte.ts'
 
 export type Coordinateur = { nom: string; communeId: string; communeNom: string }
 
@@ -24,6 +28,7 @@ type Donnees = {
   missions: MissionServeur[]
   reponses: Reponse[]
   volontaires: Volontaire[]
+  zones: ZoneServeur[]
   journal: Evenement[]
 }
 
@@ -62,16 +67,17 @@ export default function TableauDeBord({ coordinateur }: { coordinateur: Coordina
   const [erreur, setErreur] = useState('')
 
   const charger = useCallback(async () => {
-    const [crise, demandes, lieux, missions, reponses, volontaires, journal] = await Promise.all([
+    const [crise, demandes, lieux, missions, reponses, volontaires, zones, journal] = await Promise.all([
       client.from('crises').select('id, titre, consigne, active, declenchee_a').eq('commune_id', commune).eq('active', true).maybeSingle(),
       client.from('demandes').select('*').eq('commune_id', commune).order('created_at', { ascending: false }).limit(300),
       client.from('lieux').select('*').eq('commune_id', commune).order('nom'),
       client.from('missions').select('*').eq('commune_id', commune).eq('active', true).order('created_at', { ascending: false }),
       client.from('reponses_mission').select('mission_id, prenom, reponse'),
       client.from('volontaires').select('auteur, prenom, ressources, updated_at').eq('commune_id', commune).eq('disponible', true).order('updated_at', { ascending: false }),
+      client.from('zones_danger').select('id, nom, consigne, points').eq('commune_id', commune).eq('active', true).order('created_at'),
       client.from('journal').select('id, action, details, created_at').eq('commune_id', commune).order('id', { ascending: false }).limit(12),
     ])
-    const echec = [crise, demandes, lieux, missions, reponses, volontaires, journal].find((r) => r.error)
+    const echec = [crise, demandes, lieux, missions, reponses, volontaires, zones, journal].find((r) => r.error)
     if (echec) {
       setErreur('Connexion au serveur perdue. Nouvel essai automatique.')
       return
@@ -84,6 +90,7 @@ export default function TableauDeBord({ coordinateur }: { coordinateur: Coordina
       lieux: lieux.data as LieuServeur[],
       missions: missions.data as MissionServeur[],
       reponses: reponses.data as Reponse[],
+      zones: zones.data as ZoneServeur[],
       // Seules comptent les disponibilités données pendant la crise en cours
       volontaires: criseActive ? (volontaires.data as Volontaire[]).filter((v) => v.updated_at >= criseActive.declenchee_a) : [],
       journal: journal.data as Evenement[],
@@ -96,7 +103,7 @@ export default function TableauDeBord({ coordinateur }: { coordinateur: Coordina
     void charger()
     const filtre = `commune_id=eq.${commune}`
     const canal = client.channel(`mairie-${commune}`)
-    for (const table of ['crises', 'demandes', 'lieux', 'missions', 'volontaires']) {
+    for (const table of ['crises', 'demandes', 'lieux', 'missions', 'volontaires', 'zones_danger']) {
       canal.on('postgres_changes', { event: '*', schema: 'public', table, filter: filtre }, () => void charger())
     }
     canal.on('postgres_changes', { event: '*', schema: 'public', table: 'reponses_mission' }, () => void charger())
@@ -142,11 +149,12 @@ export default function TableauDeBord({ coordinateur }: { coordinateur: Coordina
         <main className="mairie-contenu">
           <div className="mairie-colonne">
             <Compteurs demandes={donnees.demandes} />
+            <CarteMairie lieux={donnees.lieux} demandes={donnees.demandes} zones={donnees.zones} communeId={commune} />
             <Demandes demandes={donnees.demandes} />
           </div>
           <div className="mairie-colonne">
             <PanneauCrise crise={donnees.crise} communeId={commune} />
-            <PanneauLieux lieux={donnees.lieux} />
+            <PanneauLieux lieux={donnees.lieux} communeId={commune} />
             <PanneauVolontaires volontaires={donnees.volontaires} enCrise={!!donnees.crise} />
             <PanneauMissions missions={donnees.missions} reponses={donnees.reponses} communeId={commune} />
             <PanneauJournal journal={donnees.journal} />
@@ -378,8 +386,178 @@ function PanneauCrise({ crise, communeId }: { crise: CriseServeur | null; commun
   )
 }
 
-function PanneauLieux({ lieux }: { lieux: LieuServeur[] }) {
+// Position GPS envoyée par l'habitant (« lat, lng ») ; une adresse saisie n'est pas placée
+function coordonneesDemande(d: DemandeServeur) {
+  const m = d.position.match(/^\s*(-?\d+(?:\.\d+)?),\s*(-?\d+(?:\.\d+)?)\s*$/)
+  return m ? { lat: Number(m[1]), lng: Number(m[2]) } : null
+}
+
+type PropsCarte = { lieux: LieuServeur[]; demandes: DemandeServeur[]; zones: ZoneServeur[]; communeId: string }
+
+function CarteMairie({ lieux, demandes, zones, communeId }: PropsCarte) {
+  // Tracé d'une zone à éviter : chaque clic sur la carte ajoute un point du contour
+  const [trace, setTrace] = useState<[number, number][] | null>(null)
+  const [nom, setNom] = useState('')
+  const [consigne, setConsigne] = useState('')
+  const [message, setMessage] = useState('')
+  const ajouterPoint = useCallback((p: [number, number]) => setTrace((t) => (t ? [...t, p] : t)), [])
+
+  const enregistrer = async (e: FormEvent) => {
+    e.preventDefault()
+    if (!trace || trace.length < 3) return
+    const { error } = await serveur!.from('zones_danger').insert({ commune_id: communeId, nom: nom.trim(), consigne: consigne.trim(), points: trace })
+    if (error) {
+      setMessage("Échec : la zone n'a pas été publiée.")
+      return
+    }
+    setMessage('Zone publiée : elle apparaît en rouge chez les habitants.')
+    setTrace(null)
+    setNom('')
+    setConsigne('')
+  }
+
+  const retirer = async (z: ZoneServeur) => {
+    if (!window.confirm(`Retirer la zone « ${z.nom} » de la carte des habitants ?`)) return
+    const { error } = await serveur!.from('zones_danger').update({ active: false }).eq('id', z.id)
+    setMessage(error ? 'Échec : la zone est toujours affichée.' : '')
+  }
+
+  const ouvertes = demandes.filter((d) => d.statut !== 'close' && d.statut !== 'aide_organisee')
+  const reperes: Repere[] = [
+    ...lieux.filter(estPlace).map((l) => ({
+      id: `lieu-${l.id}`,
+      lat: l.lat,
+      lng: l.lng,
+      couleur: couleurLieu[l.type],
+      titre: `${l.nom} · ${l.ouvert ? 'ouvert' : 'fermé'}`,
+      attenue: !l.ouvert,
+    })),
+    ...ouvertes.flatMap((d) => {
+      const c = coordonneesDemande(d)
+      if (!c) return []
+      const urgent = d.situation === 'blesse' || d.situation === 'evac' || d.personne_vulnerable
+      return [{ id: `demande-${d.id}`, ...c, couleur: urgent ? '#c2410c' : '#e9a23b', titre: `${d.reference} · ${libelleStatut[d.statut]}` }]
+    }),
+  ]
+  const sansPosition = ouvertes.filter((d) => !coordonneesDemande(d)).length
+  return (
+    <section className="mairie-panneau" aria-labelledby="titre-carte">
+      <h2 id="titre-carte">Carte de la commune</h2>
+      <CarteInteractive
+        reperes={reperes}
+        zones={zones}
+        trace={trace ?? undefined}
+        onClicCarte={trace ? ajouterPoint : undefined}
+        centre={centreCommune}
+        hauteur={380}
+      />
+      <div className="texte-doux" style={{ display: 'flex', gap: 14, flexWrap: 'wrap', fontSize: 13 }}>
+        <Legende couleur="#c2410c" texte="Demande prioritaire" />
+        <Legende couleur="#e9a23b" texte="Autre demande" />
+        <Legende couleur={couleurLieu.accueil} texte="Accueil" />
+        <Legende couleur={couleurLieu.soins} texte="Secours" />
+        <Legende couleur={couleurLieu.eau} texte="Eau" />
+        <Legende couleur="#d92d20" texte="Zone à éviter" />
+      </div>
+      {trace ? (
+        <form onSubmit={enregistrer} style={{ display: 'flex', flexDirection: 'column', gap: 10, borderTop: '1px solid var(--bordure)', paddingTop: 12 }}>
+          <p style={{ fontSize: 14, fontWeight: 700 }}>
+            Cliquez sur la carte pour tracer le contour ({trace.length} point{trace.length > 1 ? 's' : ''}, 3 minimum).
+          </p>
+          <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 14, fontWeight: 700 }}>
+            Nom de la zone
+            <input className="mairie-champ" value={nom} maxLength={120} placeholder="Quartier du bord de rivière" onChange={(e) => setNom(e.target.value)} />
+          </label>
+          <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 14, fontWeight: 700 }}>
+            Consigne
+            <input className="mairie-champ" value={consigne} maxLength={300} placeholder="Ne pas circuler, même à pied." onChange={(e) => setConsigne(e.target.value)} />
+          </label>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <button type="submit" className="mairie-bouton mairie-bouton--urgence" disabled={trace.length < 3 || nom.trim().length < 3}>
+              Publier la zone
+            </button>
+            <button type="button" className="mairie-bouton" disabled={trace.length === 0} onClick={() => setTrace(trace.slice(0, -1))}>
+              Retirer le dernier point
+            </button>
+            <button type="button" className="mairie-bouton" onClick={() => setTrace(null)}>
+              Annuler
+            </button>
+          </div>
+        </form>
+      ) : (
+        <button type="button" className="mairie-bouton" style={{ alignSelf: 'flex-start' }} onClick={() => setTrace([])}>
+          Tracer une zone à éviter
+        </button>
+      )}
+      {zones.map((z) => (
+        <div key={z.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10 }}>
+          <span style={{ fontSize: 14 }}>
+            <strong style={{ color: 'var(--danger)' }}>{z.nom}</strong>
+            {z.consigne ? <span className="texte-doux"> · {z.consigne}</span> : null}
+          </span>
+          <button type="button" className="mairie-bouton" onClick={() => void retirer(z)}>
+            Retirer
+          </button>
+        </div>
+      ))}
+      {message && (
+        <p role="status" style={{ fontSize: 14 }}>
+          {message}
+        </p>
+      )}
+      {sansPosition > 0 && (
+        <p className="texte-doux" style={{ fontSize: 13 }}>
+          {sansPosition} demande{sansPosition > 1 ? 's' : ''} sans GPS (adresse saisie à la main) : voir la liste.
+        </p>
+      )}
+    </section>
+  )
+}
+
+function Legende({ couleur, texte }: { couleur: string; texte: string }) {
+  return (
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+      <span aria-hidden="true" style={{ width: 10, height: 10, borderRadius: 5, background: couleur }} />
+      {texte}
+    </span>
+  )
+}
+
+const lieuVide = { nom: '', type: 'accueil' as LieuServeur['type'], details: '', places: '' }
+
+function PanneauLieux({ lieux, communeId }: { lieux: LieuServeur[]; communeId: string }) {
+  const [ouvert, setOuvert] = useState(false)
+  const [lieu, setLieu] = useState(lieuVide)
+  const [adresse, setAdresse] = useState<ResultatAdresse | null>(null)
+  const [message, setMessage] = useState('')
   const basculer = (l: LieuServeur) => void serveur!.from('lieux').update({ ouvert: !l.ouvert }).eq('id', l.id)
+
+  const ajouter = async (e: FormEvent) => {
+    e.preventDefault()
+    if (!adresse) return
+    const { error } = await serveur!.from('lieux').insert({
+      commune_id: communeId,
+      type: lieu.type,
+      nom: lieu.nom.trim(),
+      details: lieu.details.trim(),
+      places: lieu.places ? Number(lieu.places) : null,
+      adresse: adresse.libelle,
+      lat: adresse.lat,
+      lng: adresse.lng,
+      ouvert: false,
+    })
+    if (error) {
+      setMessage("Échec : le lieu n'a pas été ajouté.")
+      return
+    }
+    setMessage('Lieu ajouté, fermé par défaut : ouvrez-le quand il est prêt.')
+    setLieu(lieuVide)
+    setAdresse(null)
+    setOuvert(false)
+  }
+
+  const valide = lieu.nom.trim().length >= 3 && adresse !== null
+
   return (
     <section className="mairie-panneau" aria-labelledby="titre-lieux">
       <h2 id="titre-lieux">Lieux d'accueil et d'aide</h2>
@@ -390,6 +568,7 @@ function PanneauLieux({ lieux }: { lieux: LieuServeur[] }) {
             <span className="texte-doux">
               {libelleLieu[l.type]}
               {l.places !== null ? ` · ${l.places} places` : ''}
+              {!estPlace(l) ? ' · pas encore sur la carte' : ''}
             </span>
           </div>
           <button
@@ -405,6 +584,50 @@ function PanneauLieux({ lieux }: { lieux: LieuServeur[] }) {
           </button>
         </div>
       ))}
+      {ouvert ? (
+        <form onSubmit={ajouter} style={{ display: 'flex', flexDirection: 'column', gap: 10, borderTop: '1px solid var(--bordure)', paddingTop: 12 }}>
+          <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 14, fontWeight: 700 }}>
+            Nom du lieu
+            <input className="mairie-champ" value={lieu.nom} maxLength={120} onChange={(e) => setLieu({ ...lieu, nom: e.target.value })} />
+          </label>
+          <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 14, fontWeight: 700 }}>
+            Type
+            <select className="mairie-champ" value={lieu.type} onChange={(e) => setLieu({ ...lieu, type: e.target.value as LieuServeur['type'] })}>
+              {(Object.keys(libelleLieu) as LieuServeur['type'][]).map((t) => (
+                <option key={t} value={t}>
+                  {libelleLieu[t]}
+                </option>
+              ))}
+            </select>
+          </label>
+          <ChampAdresse onChoix={setAdresse} />
+          <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 14, fontWeight: 700 }}>
+            Précisions (horaires, services)
+            <input className="mairie-champ" value={lieu.details} maxLength={140} onChange={(e) => setLieu({ ...lieu, details: e.target.value })} />
+          </label>
+          <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 14, fontWeight: 700 }}>
+            Places (facultatif)
+            <input className="mairie-champ" inputMode="numeric" value={lieu.places} onChange={(e) => setLieu({ ...lieu, places: e.target.value.replace(/\D/g, '') })} />
+          </label>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <button type="submit" className="mairie-bouton mairie-bouton--principal" disabled={!valide}>
+              Ajouter le lieu
+            </button>
+            <button type="button" className="mairie-bouton" onClick={() => setOuvert(false)}>
+              Annuler
+            </button>
+          </div>
+        </form>
+      ) : (
+        <button type="button" className="mairie-bouton mairie-bouton--principal" style={{ alignSelf: 'flex-start' }} onClick={() => setOuvert(true)}>
+          Ajouter un lieu
+        </button>
+      )}
+      {message && (
+        <p role="status" style={{ fontSize: 14 }}>
+          {message}
+        </p>
+      )}
     </section>
   )
 }

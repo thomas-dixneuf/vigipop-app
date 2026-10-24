@@ -13,7 +13,8 @@ fonctionne en mode démo local, avec un bouton « Démo » pour simuler la crise
    3 lieux et une mission fictive.
 3. Fais de même avec `supabase/migrations/0002_volontaires.sql` (volontaires disponibles,
    missions créées par la mairie), puis `0003_contact_demande.sql` (prénom et numéro de
-   rappel dans les demandes). Chaque nouveau fichier de `supabase/migrations/` se lance
+   rappel dans les demandes), puis `0004_carte.sql` (position des lieux, zones à éviter,
+   nombre de foyers d'hébergement solidaire). Chaque nouveau fichier de `supabase/migrations/` se lance
    une seule fois, dans l'ordre des numéros.
 
 ## 2. Autoriser les habitants sans mot de passe

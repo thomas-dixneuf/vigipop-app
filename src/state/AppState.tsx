@@ -8,6 +8,7 @@ import {
   type CriseServeur,
   type LieuServeur,
   type MissionServeur,
+  type ZoneServeur,
   type StatutDemande,
 } from '../services/serveur'
 
@@ -49,6 +50,8 @@ type Etat = {
   // Alerte de la mairie ; gardée en mémoire pour rester lisible sans réseau
   alerte: Alerte | null
   lieux: LieuServeur[] | null
+  // Zones à éviter tracées par la mairie (null : pas encore chargées, mode démo)
+  zones: ZoneServeur[] | null
   missionServeur: MissionServeur | null
   enSecurite: boolean
   demande: Demande | null
@@ -87,6 +90,7 @@ const etatInitial: Etat = {
   mode: 'veille',
   alerte: null,
   lieux: null,
+  zones: null,
   missionServeur: null,
   enSecurite: false,
   demande: null,
@@ -166,17 +170,18 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
   // ─── Ce que décide la mairie : crise, lieux ouverts, mission ───
   const chargerCommune = useCallback(async () => {
     if (!serveur) return
-    const [crise, lieux, mission] = await Promise.all([
+    const [crise, lieux, mission, zones] = await Promise.all([
       serveur.from('crises').select('id, titre, consigne, active, declenchee_a').eq('commune_id', COMMUNE_ID).eq('active', true).maybeSingle(),
-      serveur.from('lieux').select('id, type, nom, details, distance, places, ouvert').eq('commune_id', COMMUNE_ID).order('nom'),
+      serveur.from('lieux').select('id, type, nom, details, distance, places, ouvert, adresse, lat, lng').eq('commune_id', COMMUNE_ID).order('nom'),
       serveur.from('missions').select('id, titre, rendez_vous, duree, lieu, coordinateur, ressource, equipe, consignes').eq('commune_id', COMMUNE_ID).eq('active', true).order('created_at', { ascending: false }).limit(1).maybeSingle(),
+      serveur.from('zones_danger').select('id, nom, consigne, points').eq('commune_id', COMMUNE_ID).eq('active', true),
     ])
     // Sans réseau, on garde la dernière situation connue
-    if (crise.error || lieux.error || mission.error) return
+    if (crise.error || lieux.error || mission.error || zones.error) return
     const active = crise.data as CriseServeur | null
     const missionServeur = mission.data as MissionServeur | null
     setEtat((e) => {
-      const suite = { ...e, lieux: lieux.data as LieuServeur[], missionServeur }
+      const suite = { ...e, lieux: lieux.data as LieuServeur[], zones: zones.data as ZoneServeur[], missionServeur }
       // La mairie a remplacé ou clos la mission : la réponse précédente ne vaut plus
       if (e.missionRepondue && e.missionRepondue !== missionServeur?.id) {
         Object.assign(suite, { mission: 'en-attente', missionRepondue: null, reponseEnvoyee: true })
@@ -200,6 +205,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'crises', filter: filtre }, () => void chargerCommune())
       .on('postgres_changes', { event: '*', schema: 'public', table: 'lieux', filter: filtre }, () => void chargerCommune())
       .on('postgres_changes', { event: '*', schema: 'public', table: 'missions', filter: filtre }, () => void chargerCommune())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'zones_danger', filter: filtre }, () => void chargerCommune())
       .subscribe()
     const auRetour = () => document.visibilityState === 'visible' && void chargerCommune()
     document.addEventListener('visibilitychange', auRetour)
