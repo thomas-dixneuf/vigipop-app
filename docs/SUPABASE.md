@@ -15,7 +15,8 @@ fonctionne en mode démo local, avec un bouton « Démo » pour simuler la crise
    missions créées par la mairie), puis `0003_contact_demande.sql` (prénom et numéro de
    rappel dans les demandes), puis `0004_carte.sql` (position des lieux, zones à éviter,
    nombre de foyers d'hébergement solidaire), puis `0005_hebergement.sql` (mise en relation
-   hébergeur ↔ sinistré, points de secours permanents). Chaque nouveau fichier de `supabase/migrations/` se lance
+   hébergeur ↔ sinistré, points de secours permanents), puis `0006_hebergement_auto.sql`
+   (proposition automatique du foyer le plus proche). Chaque nouveau fichier de `supabase/migrations/` se lance
    une seule fois, dans l'ordre des numéros.
 
 ## 2. Autoriser les habitants sans mot de passe
@@ -69,8 +70,10 @@ compteur de volontaires confirmés.
 
 Hébergement : le volontaire active « Hébergement temporaire », indique ses places et son
 adresse, puis se rend disponible. Un habitant demande de l'aide en cochant « Hébergement ».
-Sur la demande, le coordinateur clique « Trouver un hébergement » puis « Proposer » : le
-volontaire reçoit la demande sur son accueil et répond. S'il accepte, chacun voit le prénom
+Le serveur propose aussitôt la demande au foyer disponible le plus proche : le volontaire
+la reçoit sur son accueil et répond ; s'il refuse, le foyer suivant est sollicité. Le
+panneau « Hébergement solidaire » de la mairie montre besoins et foyers face à face :
+« Changer de foyer », « Choisir un foyer » ou « Proposer au plus proche ». S'il accepte, chacun voit le prénom
 et le numéro de l'autre, et le sinistré voit l'adresse avec l'itinéraire. Rien avant l'accord.
 
 Utilise deux appareils, ou une fenêtre de navigation privée : dans un même navigateur, la
