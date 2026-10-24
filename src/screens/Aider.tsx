@@ -2,12 +2,12 @@ import { useNavigate } from 'react-router-dom'
 import ChampAdresse from '../components/ChampAdresse.tsx'
 import EnTeteRetour from '../components/EnTeteRetour.tsx'
 import Icone from '../components/Icone.tsx'
-import { commune, ressources } from '../data/fictif.ts'
+import { ressources } from '../data/fictif.ts'
 import { useAppState } from '../state/AppState.tsx'
 
 export default function Aider() {
   const navigate = useNavigate()
-  const { mode, ressources: actives, basculerRessource, seRendreDisponible, accueil, definirAccueil } = useAppState()
+  const { mode, ressources: actives, basculerRessource, seRendreDisponible, accueil, definirAccueil, communeAffichee: commune } = useAppState()
   const enCrise = mode === 'crise'
 
   const valider = () => {

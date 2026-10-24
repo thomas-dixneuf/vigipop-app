@@ -6,13 +6,13 @@ import { useAppState } from '../state/AppState.tsx'
 
 export default function Code() {
   const navigate = useNavigate()
-  const { connecter, mode } = useAppState()
+  const { connecter, modifierUtilisateur, mode } = useAppState()
   const etat = useLocation().state as EtatCode | null
   const [code, setCode] = useState('')
   const [renvoye, setRenvoye] = useState(false)
 
   if (!etat) return <Navigate to="/" replace />
-  const { nouveauCompte, suite: suiteDemandee, ...utilisateur } = etat
+  const { nouveauCompte, modification, suite: suiteDemandee, ...utilisateur } = etat
 
   const valide = /^\d{6}$/.test(code)
 
@@ -20,6 +20,11 @@ export default function Code() {
     e.preventDefault()
     if (!valide) return
     // Prototype : aucun SMS n'est envoyé, n'importe quel code à 6 chiffres est accepté
+    if (modification) {
+      modifierUtilisateur(utilisateur)
+      navigate('/profil/infos', { replace: true, state: { enregistre: true } })
+      return
+    }
     connecter(utilisateur, nouveauCompte)
     // Nouveau compte en veille : on explique d'abord pourquoi Vigipop compte, puis visite guidée.
     // En crise, la personne vient pour aider : on l'y emmène directement.
@@ -29,7 +34,7 @@ export default function Code() {
 
   return (
     <div className="ecran">
-      <EnTeteRetour retour={nouveauCompte ? '/inscription' : '/connexion'}>
+      <EnTeteRetour retour={modification ? '/profil/infos' : nouveauCompte ? '/inscription' : '/connexion'}>
         <h1 style={{ fontSize: 21, fontWeight: 800, color: 'var(--bleu-nuit)' }}>Code de vérification</h1>
         <span className="texte-doux">Envoyé par SMS au {utilisateur.telephone}</span>
       </EnTeteRetour>

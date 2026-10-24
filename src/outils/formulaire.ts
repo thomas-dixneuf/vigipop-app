@@ -22,6 +22,8 @@ export type EtatCode = {
   telephone: string
   commune: string
   nouveauCompte: boolean
+  // Changement de numéro depuis le profil : le code confirme le nouveau numéro
+  modification?: boolean
   // Écran où revenir une fois le compte créé (par défaut selon le mode)
   suite?: string
 }

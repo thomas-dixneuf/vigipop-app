@@ -3,7 +3,7 @@ import ChampTelephone from '../components/ChampTelephone.tsx'
 import { useNavigate } from 'react-router-dom'
 import EnTeteRetour from '../components/EnTeteRetour.tsx'
 import Icone from '../components/Icone.tsx'
-import { besoins, commune, situations, type BesoinId, type SituationId } from '../data/fictif.ts'
+import { besoins, situations, type BesoinId, type SituationId } from '../data/fictif.ts'
 import { champ, libelle } from '../outils/formulaire.ts'
 import { useAppState } from '../state/AppState.tsx'
 
@@ -22,7 +22,7 @@ function nouvelleReference() {
 
 export default function Signaler() {
   const navigate = useNavigate()
-  const { demande, enregistrerDemande, utilisateur, contact } = useAppState()
+  const { demande, enregistrerDemande, utilisateur, contact, communeAffichee: commune } = useAppState()
 
   // « Ma situation a changé » : on repart de la demande précédente
   const [situation, setSituation] = useState<SituationId | null>(demande?.situation ?? null)
