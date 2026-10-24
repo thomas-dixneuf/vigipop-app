@@ -177,7 +177,7 @@ export default function TableauDeBord({ coordinateur }: { coordinateur: Coordina
             <PanneauCrise crise={donnees.crise} communeId={commune} />
             <PanneauLieux lieux={donnees.lieux} communeId={commune} />
             <PanneauVolontaires volontaires={donnees.volontaires} enCrise={!!donnees.crise} />
-            <PanneauMissions missions={donnees.missions} reponses={donnees.reponses} communeId={commune} />
+            <PanneauMissions missions={donnees.missions} reponses={donnees.reponses} volontaires={donnees.volontaires} communeId={commune} />
             <PanneauJournal journal={donnees.journal} />
           </div>
         </main>
@@ -667,7 +667,12 @@ type PropsHebergement = { demandes: DemandeServeur[]; volontaires: Volontaire[];
 // la mairie supervise : elle peut changer de foyer ou relancer la recherche.
 function PanneauHebergement({ demandes, volontaires, hebergements, communeId }: PropsHebergement) {
   const besoins = demandes.filter((d) => d.statut !== 'close' && (d.besoins.includes('heb') || hebergements.some((h) => h.demande_id === d.id && actif(h))))
-  const foyers = volontaires.filter((v) => v.ressources.includes('heb'))
+  // Ceux qui accueillent déjà d'abord, puis ceux qui ont une réponse à donner, puis les disponibles
+  const rang = (v: Volontaire) => {
+    const siens = hebergements.filter((h) => h.hebergeur === v.auteur && actif(h))
+    return siens.some((h) => h.statut === 'acceptee') ? 0 : siens.length > 0 ? 1 : 2
+  }
+  const foyers = volontaires.filter((v) => v.ressources.includes('heb')).sort((a, b) => rang(a) - rang(b))
   const reference = (id: string) => demandes.find((d) => d.id === id)?.reference ?? '?'
   return (
     <section className="mairie-panneau" aria-labelledby="titre-hebergement">
@@ -707,8 +712,9 @@ function PanneauHebergement({ demandes, volontaires, hebergements, communeId }: 
                 </strong>
                 <span className="texte-doux">{v.adresse || 'Adresse non renseignée'}</span>
                 {accueils.map((h) => (
-                  <span key={h.id} style={{ fontSize: 14 }}>
-                    {reference(h.demande_id)} · {h.personnes} pers. · {h.statut === 'acceptee' ? <strong>accepté</strong> : 'en attente de réponse'}
+                  <span key={h.id} className={`mairie-etiquette ${h.statut === 'acceptee' ? 'mairie-etiquette--ok' : ''}`} style={{ alignSelf: 'flex-start' }}>
+                    {h.statut === 'acceptee' ? '✓ Accueille' : 'Sollicité pour'} {reference(h.demande_id)} · {h.personnes} pers.
+                    {h.statut === 'proposee' ? ' · réponse attendue' : ''}
                   </span>
                 ))}
                 {v.telephone && (
@@ -768,10 +774,12 @@ function HebergementDemande({ demande, volontaires, hebergements, communeId }: {
     const v = nom(enCours.hebergeur)
     return (
       <div style={{ fontSize: 14, display: 'flex', flexDirection: 'column', gap: 6, background: 'var(--bleu-voile)', borderRadius: 10, padding: '8px 10px' }}>
+        <span className={`mairie-etiquette ${enCours.statut === 'acceptee' ? 'mairie-etiquette--ok' : ''}`} style={{ alignSelf: 'flex-start' }}>
+          {enCours.statut === 'acceptee' ? `✓ Hébergé chez ${v?.prenom || 'un volontaire'}` : `En attente de la réponse de ${v?.prenom || 'un volontaire'}`}
+        </span>
         <span>
-          <strong>Hébergement :</strong> {v?.prenom || 'Volontaire'}
-          {v?.adresse ? ` · ${v.adresse}` : ''} ·{' '}
-          {enCours.statut === 'acceptee' ? <strong>accepté, coordonnées échangées</strong> : 'en attente de sa réponse'}
+          {v?.adresse || 'Adresse non renseignée'}
+          {enCours.statut === 'acceptee' ? ' · coordonnées échangées avec la personne' : ''}
         </span>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           {v?.telephone && (
@@ -880,22 +888,26 @@ const missionVide = {
   duree: '2 h',
   lieu: '',
   coordinateur: '',
-  ressource: "Main-d'œuvre",
+  categorie: 'mainoeuvre',
   equipe: '4 volontaires',
   consignes: "N'entrez jamais dans une zone inondée. Suivez uniquement les consignes du coordinateur.",
 }
 
-const champsMission: [keyof typeof missionVide, string][] = [
+// L'hébergement passe par la mise en relation automatique, pas par une mission
+const categoriesMission = listeRessources.filter((r) => r.id !== 'heb')
+
+const champsMission: [Exclude<keyof typeof missionVide, 'categorie'>, string][] = [
   ['titre', 'Mission'],
   ['rendez_vous', 'Heure de rendez-vous'],
   ['lieu', 'Point de rendez-vous'],
   ['coordinateur', 'Coordinateur sur place'],
-  ['ressource', 'Ressource demandée'],
   ['equipe', 'Besoin'],
   ['duree', 'Durée estimée'],
 ]
 
-function PanneauMissions({ missions, reponses, communeId }: { missions: MissionServeur[]; reponses: Reponse[]; communeId: string }) {
+type PropsMissions = { missions: MissionServeur[]; reponses: Reponse[]; volontaires: Volontaire[]; communeId: string }
+
+function PanneauMissions({ missions, reponses, volontaires, communeId }: PropsMissions) {
   const [ouvert, setOuvert] = useState(false)
   const [mission, setMission] = useState(missionVide)
   const [message, setMessage] = useState('')
@@ -903,12 +915,12 @@ function PanneauMissions({ missions, reponses, communeId }: { missions: MissionS
   const proposer = async (e: FormEvent) => {
     e.preventDefault()
     const propre = Object.fromEntries(Object.entries(mission).map(([k, v]) => [k, v.trim()]))
-    const { error } = await serveur!.from('missions').insert({ ...propre, commune_id: communeId })
+    const { error } = await serveur!.from('missions').insert({ ...propre, ressource: libelleRessource(mission.categorie), commune_id: communeId })
     if (error) {
       setMessage("Échec : la mission n'a pas été proposée.")
       return
     }
-    setMessage('Mission proposée aux volontaires disponibles.')
+    setMessage(`Mission proposée aux volontaires qui offrent : ${libelleRessource(mission.categorie)}.`)
     setMission(missionVide)
     setOuvert(false)
   }
@@ -925,7 +937,8 @@ function PanneauMissions({ missions, reponses, communeId }: { missions: MissionS
     <section className="mairie-panneau" aria-labelledby="titre-missions">
       <h2 id="titre-missions">Missions volontaires</h2>
       {missions.length === 0 && <p className="texte-doux">Aucune mission ouverte.</p>}
-      {missions.map((m, i) => {
+      {missions.map((m) => {
+        const concernes = volontaires.filter((v) => m.categorie === '' || v.ressources.includes(m.categorie)).length
         const acceptees = reponses.filter((r) => r.mission_id === m.id && r.reponse === 'acceptee')
         const refusees = reponses.filter((r) => r.mission_id === m.id && r.reponse === 'refusee').length
         return (
@@ -934,8 +947,9 @@ function PanneauMissions({ missions, reponses, communeId }: { missions: MissionS
             <span className="texte-doux">
               {m.rendez_vous} · {m.lieu} · besoin : {m.equipe}
             </span>
-            {/* L'app des volontaires n'affiche que la mission la plus récente */}
-            {i > 0 && <span className="texte-doux">Remplacée dans l'app par la mission plus récente.</span>}
+            <span className="texte-doux">
+              Pour : {m.categorie ? libelleRessource(m.categorie) : 'tous les volontaires'} · {concernes} volontaire{concernes > 1 ? 's' : ''} disponible{concernes > 1 ? 's' : ''} dans cette catégorie
+            </span>
             <span style={{ fontSize: 14 }}>
               <strong>{acceptees.length}</strong> volontaire{acceptees.length > 1 ? 's' : ''} confirmé{acceptees.length > 1 ? 's' : ''}
               {acceptees.length > 0 && ` : ${acceptees.map((r) => r.prenom || 'anonyme').join(', ')}`}
@@ -949,6 +963,17 @@ function PanneauMissions({ missions, reponses, communeId }: { missions: MissionS
       })}
       {ouvert ? (
         <form onSubmit={proposer} style={{ display: 'flex', flexDirection: 'column', gap: 10, borderTop: '1px solid var(--bordure)', paddingTop: 12 }}>
+          <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 14, fontWeight: 700 }}>
+            Type d'aide demandée
+            <select className="mairie-champ" value={mission.categorie} onChange={(e) => setMission({ ...mission, categorie: e.target.value })}>
+              {categoriesMission.map((r) => (
+                <option key={r.id} value={r.id}>
+                  {r.label}
+                </option>
+              ))}
+            </select>
+            <span className="texte-doux" style={{ fontWeight: 400 }}>Seuls les volontaires qui proposent ce type d'aide recevront la mission.</span>
+          </label>
           {champsMission.map(([cle, libelle]) => (
             <label key={cle} style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 14, fontWeight: 700 }}>
               {libelle}

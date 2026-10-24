@@ -7,7 +7,6 @@ import HebergementTrouve from '../components/HebergementTrouve.tsx'
 import Icone from '../components/Icone.tsx'
 import PropositionHebergement from '../components/PropositionHebergement.tsx'
 import { libelleLieu, lieuxDemo } from '../data/fictif.ts'
-import { serveur } from '../services/serveur.ts'
 import { useAppState } from '../state/AppState.tsx'
 
 const libelleStatut = {
@@ -69,7 +68,7 @@ export default function AccueilCrise() {
             <Icone nom="fleche" taille={20} />
           </Link>
         )}
-        {demande?.envoyee && <HebergementTrouve demande={demande.id} />}
+        {demande?.envoyee && <HebergementTrouve demande={demande.id} recherche={demande.besoins.includes('heb') && demande.statut !== 'close'} />}
         {!demande && (
           <h1 style={{ margin: '2px 0 0', fontSize: 22, fontWeight: 800, lineHeight: 1.2, color: 'var(--bleu-nuit)' }}>
             {enSecurite ? 'Merci, vous êtes en sécurité.' : 'Êtes-vous en sécurité ?'}
@@ -96,9 +95,9 @@ export default function AccueilCrise() {
               {mission === 'acceptee'
                 ? 'Acceptée · voir le rendez-vous'
                 : disponible
-                  ? missionServeur || !serveur
+                  ? missionServeur
                     ? 'Une mission vous est proposée'
-                    : 'Disponible · en attente d’une mission'
+                    : 'Disponible · en attente d’une sollicitation'
                   : 'Me rendre disponible pour une mission'}
             </span>
           </span>

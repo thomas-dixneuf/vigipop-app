@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react'
-import { ressourcesParDefaut, type BesoinId, type RessourceId, type SituationId } from '../data/fictif'
+import { missionsDemo, ressourcesParDefaut, type BesoinId, type RessourceId, type SituationId } from '../data/fictif'
 import {
   assurerSession,
   COMMUNE_ID,
@@ -46,7 +46,8 @@ export type Accueil = { places: number; adresse: string; lat: number | null; lng
 export type Alerte = { titre: string; consigne: string; heure: string }
 
 // Réponse du volontaire à la mission proposée par le coordinateur
-export type ReponseMission = 'en-attente' | 'acceptee' | 'refusee'
+export type ReponseMission = 'en-attente' | 'acceptee'
+type ReponseAEnvoyer = { mission: string; reponse: 'acceptee' | 'refusee' }
 
 type Etat = {
   mode: Mode
@@ -55,7 +56,8 @@ type Etat = {
   lieux: LieuServeur[] | null
   // Zones à éviter tracées par la mairie (null : pas encore chargées, mode démo)
   zones: ZoneServeur[] | null
-  missionServeur: MissionServeur | null
+  // Missions ouvertes par la mairie (toutes catégories)
+  missions: MissionServeur[]
   enSecurite: boolean
   demande: Demande | null
   utilisateur: Utilisateur | null
@@ -63,12 +65,13 @@ type Etat = {
   ressources: RessourceId[]
   accueil: Accueil
   disponible: boolean
-  mission: ReponseMission
-  // Mission à laquelle se rapporte la réponse : une nouvelle mission repart « en attente »
-  missionRepondue: string | null
-  // Faux tant que la mairie n'a pas reçu la disponibilité ou la réponse (pas de réseau)
+  missionAcceptee: string | null
+  // Missions déclinées : la suivante de ses catégories est proposée à la place
+  missionsRefusees: string[]
+  // Faux tant que la mairie n'a pas reçu la disponibilité (pas de réseau)
   disponibiliteEnvoyee: boolean
-  reponseEnvoyee: boolean
+  // Réponses aux missions en attente de réseau
+  reponsesAEnvoyer: ReponseAEnvoyer[]
   // Visite guidée de l'accueil, proposée une fois après l'inscription
   visiteAFaire: boolean
   // Compte connu sur ce téléphone, gardé après déconnexion pour simuler le serveur
@@ -76,6 +79,9 @@ type Etat = {
 }
 
 type AppStateValue = Etat & {
+  // Mission proposée à ce volontaire : la plus récente de ses catégories, hors refus
+  missionServeur: MissionServeur | null
+  mission: ReponseMission
   basculerMode: () => void
   declarerEnSecurite: () => void
   enregistrerDemande: (demande: Omit<Demande, 'id' | 'statut' | 'envoyee'> & { id?: string }) => void
@@ -96,7 +102,7 @@ const etatInitial: Etat = {
   alerte: null,
   lieux: null,
   zones: null,
-  missionServeur: null,
+  missions: [],
   enSecurite: false,
   demande: null,
   utilisateur: null,
@@ -104,10 +110,10 @@ const etatInitial: Etat = {
   ressources: ressourcesParDefaut,
   accueil: { places: 2, adresse: '', lat: null, lng: null },
   disponible: false,
-  mission: 'en-attente',
-  missionRepondue: null,
+  missionAcceptee: null,
+  missionsRefusees: [],
   disponibiliteEnvoyee: true,
-  reponseEnvoyee: true,
+  reponsesAEnvoyer: [],
   visiteAFaire: false,
   dernierUtilisateur: null,
 }
@@ -142,10 +148,9 @@ function finDeCrise(e: Etat): Etat {
     enSecurite: false,
     demande: null,
     disponible: false,
-    mission: 'en-attente',
-    missionRepondue: null,
+    missionAcceptee: null,
+    missionsRefusees: [],
     disponibiliteEnvoyee: true,
-    reponseEnvoyee: true,
   }
 }
 
@@ -179,18 +184,23 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     const [crise, lieux, mission, zones] = await Promise.all([
       serveur.from('crises').select('id, titre, consigne, active, declenchee_a').eq('commune_id', COMMUNE_ID).eq('active', true).maybeSingle(),
       serveur.from('lieux').select('id, type, nom, details, distance, places, ouvert, adresse, lat, lng').eq('commune_id', COMMUNE_ID).order('nom'),
-      serveur.from('missions').select('id, titre, rendez_vous, duree, lieu, coordinateur, ressource, equipe, consignes').eq('commune_id', COMMUNE_ID).eq('active', true).order('created_at', { ascending: false }).limit(1).maybeSingle(),
+      serveur.from('missions').select('id, titre, rendez_vous, duree, lieu, coordinateur, ressource, categorie, equipe, consignes').eq('commune_id', COMMUNE_ID).eq('active', true).order('created_at', { ascending: false }),
       serveur.from('zones_danger').select('id, nom, consigne, points').eq('commune_id', COMMUNE_ID).eq('active', true),
     ])
     // Sans réseau, on garde la dernière situation connue
     if (crise.error || lieux.error || mission.error || zones.error) return
     const active = crise.data as CriseServeur | null
-    const missionServeur = mission.data as MissionServeur | null
+    const missions = mission.data as MissionServeur[]
+    const ouvertes = new Set(missions.map((m) => m.id))
     setEtat((e) => {
-      const suite = { ...e, lieux: lieux.data as LieuServeur[], zones: zones.data as ZoneServeur[], missionServeur }
-      // La mairie a remplacé ou clos la mission : la réponse précédente ne vaut plus
-      if (e.missionRepondue && e.missionRepondue !== missionServeur?.id) {
-        Object.assign(suite, { mission: 'en-attente', missionRepondue: null, reponseEnvoyee: true })
+      const suite = {
+        ...e,
+        lieux: lieux.data as LieuServeur[],
+        zones: zones.data as ZoneServeur[],
+        missions,
+        // Missions closes par la mairie : on oublie les réponses qui s'y rapportaient
+        missionAcceptee: e.missionAcceptee && ouvertes.has(e.missionAcceptee) ? e.missionAcceptee : null,
+        missionsRefusees: e.missionsRefusees.filter((id) => ouvertes.has(id)),
       }
       if (active) {
         return { ...suite, mode: 'crise', alerte: { titre: active.titre, consigne: active.consigne, heure: heure(active.declenchee_a) } }
@@ -325,11 +335,18 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
   }, [disponibiliteEnvoyee, enLigne, utilisateur, disponible, ressources, accueil])
 
   // ─── Réponse à la mission proposée par la mairie ───
-  const { mission: reponse, missionRepondue, reponseEnvoyee } = etat
+  const { reponsesAEnvoyer } = etat
+  const aEnvoyer = reponsesAEnvoyer[0]
   useEffect(() => {
-    if (reponseEnvoyee || !enLigne || reponse === 'en-attente' || !missionRepondue) return
+    if (!aEnvoyer || !enLigne) return
     let annule = false
-    const marquer = () => !annule && setEtat((e) => ({ ...e, reponseEnvoyee: true }))
+    // Envoyées une par une, dans l'ordre : la suivante part dès que celle-ci est reçue
+    const marquer = () =>
+      !annule && setEtat((e) => ({ ...e, reponsesAEnvoyer: e.reponsesAEnvoyer.filter((r) => r !== aEnvoyer) }))
+    if (!serveur || aEnvoyer.mission.startsWith('demo')) {
+      marquer()
+      return
+    }
     if (!serveur) {
       marquer()
       return
@@ -340,7 +357,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
         const auteur = await assurerSession(client)
         const { error } = await client
           .from('reponses_mission')
-          .upsert({ mission_id: missionRepondue, auteur, prenom: utilisateur?.prenom ?? '', reponse })
+          .upsert({ mission_id: aEnvoyer.mission, auteur, prenom: utilisateur?.prenom ?? '', reponse: aEnvoyer.reponse })
         if (!error) marquer()
       } catch {
         // Nouvel essai au prochain retour en ligne
@@ -349,10 +366,17 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     return () => {
       annule = true
     }
-  }, [reponseEnvoyee, enLigne, reponse, missionRepondue, utilisateur])
+  }, [aEnvoyer, enLigne, utilisateur])
+
+  const proposables = (serveur ? etat.missions : missionsDemo).filter(
+    (m) => (m.categorie === '' || etat.ressources.includes(m.categorie as RessourceId)) && !etat.missionsRefusees.includes(m.id),
+  )
+  const missionServeur = proposables.find((m) => m.id === etat.missionAcceptee) ?? proposables[0] ?? null
 
   const value: AppStateValue = {
     ...etat,
+    missionServeur,
+    mission: missionServeur && missionServeur.id === etat.missionAcceptee ? 'acceptee' : 'en-attente',
     // Mode démo local uniquement : avec le serveur, c'est la mairie qui déclenche la crise
     basculerMode: () =>
       setEtat((e) => (e.mode === 'veille' ? { ...e, mode: 'crise', alerte: alerteDemo, enSecurite: false } : finDeCrise(e))),
@@ -379,16 +403,18 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     definirAccueil: (accueil) =>
       setEtat((e) => ({ ...e, disponibiliteEnvoyee: e.disponibiliteEnvoyee && !e.disponible, accueil: { ...e.accueil, ...accueil } })),
     seRendreDisponible: () =>
-      setEtat((e) => ({ ...e, disponible: true, disponibiliteEnvoyee: false, mission: 'en-attente', missionRepondue: null })),
-    repondreMission: (reponse) =>
+      setEtat((e) => ({ ...e, disponible: true, disponibiliteEnvoyee: false })),
+    // Un refus ne retire pas le volontaire : la mission suivante de ses catégories lui est proposée
+    repondreMission: (reponse) => {
+      if (!missionServeur) return
+      const id = missionServeur.id
       setEtat((e) => ({
         ...e,
-        mission: reponse,
-        missionRepondue: e.missionServeur?.id ?? 'demo',
-        reponseEnvoyee: false,
-        disponible: reponse === 'acceptee',
-        disponibiliteEnvoyee: reponse === 'acceptee' ? e.disponibiliteEnvoyee : false,
-      })),
+        missionAcceptee: reponse === 'acceptee' ? id : e.missionAcceptee === id ? null : e.missionAcceptee,
+        missionsRefusees: reponse === 'refusee' ? [...e.missionsRefusees.filter((m) => m !== id), id] : e.missionsRefusees.filter((m) => m !== id),
+        reponsesAEnvoyer: [...e.reponsesAEnvoyer, { mission: id, reponse }],
+      }))
+    },
     reinitialiser: () => setEtat(etatInitial),
   }
 

@@ -64,7 +64,7 @@ export default function Confirmation() {
           </p>
         </section>
 
-        {demande.envoyee && <HebergementTrouve demande={demande.id} />}
+        {demande.envoyee && <HebergementTrouve demande={demande.id} recherche={demande.besoins.includes('heb') && demande.statut !== 'close'} />}
 
         {centre && (
           <section className="carte" style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 10 }}>
