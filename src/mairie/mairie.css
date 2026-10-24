@@ -102,6 +102,7 @@ textarea.mairie-champ { resize: vertical; min-height: 72px; }
   background: var(--bleu-voile);
   color: var(--bleu-nuit);
 }
+.mairie-etiquette--ok { background: var(--bleu); color: var(--blanc); }
 .mairie-etiquette--urgent { background: var(--urgence-pale); color: var(--urgence-fonce); }
 
 @media (max-width: 900px) {

@@ -51,6 +51,8 @@ export type MissionServeur = {
   ressource: string
   equipe: string
   consignes: string
+  // Catégorie d'aide demandée (id de ressource) ; vide : ouverte à tous
+  categorie: string
 }
 
 export type DemandeServeur = {

@@ -1,4 +1,4 @@
-import type { LieuServeur, ZoneServeur } from '../services/serveur'
+import type { LieuServeur, MissionServeur, ZoneServeur } from '../services/serveur'
 
 // Données de démonstration : tout est fictif tant que la phase RGPD n'est pas validée.
 // Ne jamais remplacer par de vraies données d'habitants dans ce prototype.
@@ -77,14 +77,30 @@ export type RessourceId = (typeof ressources)[number]['id']
 
 export const ressourcesParDefaut: RessourceId[] = ['heb', 'vehicule', 'mainoeuvre', 'competences', 'temps']
 
-export const mission = {
-  titre: "Distribution d'eau aux habitants du quartier [NOM]",
-  coordinateur: '[PRÉNOM]',
-  rendezVous: '15:00',
-  duree: '2 h',
-  equipe: '4 volontaires',
-  ressource: 'Véhicule',
-  lieu: '[SALLE DES FÊTES]',
-  consignes:
-    "N'entrez jamais dans une zone inondée. Gilet fourni sur place. Suivez uniquement les consignes du coordinateur.",
-}
+// Missions de démonstration : chaque volontaire ne voit que celles de ses catégories d'aide
+export const missionsDemo: MissionServeur[] = [
+  {
+    id: 'demo-vehicule',
+    titre: "Distribution d'eau aux habitants du quartier [NOM]",
+    coordinateur: '[PRÉNOM]',
+    rendez_vous: '15:00',
+    duree: '2 h',
+    equipe: '4 volontaires',
+    ressource: 'Véhicule',
+    categorie: 'vehicule',
+    lieu: '[SALLE DES FÊTES]',
+    consignes: "N'entrez jamais dans une zone inondée. Gilet fourni sur place. Suivez uniquement les consignes du coordinateur.",
+  },
+  {
+    id: 'demo-mainoeuvre',
+    titre: 'Déblayer la cour de l’école [NOM]',
+    coordinateur: '[PRÉNOM]',
+    rendez_vous: '16:30',
+    duree: '3 h',
+    equipe: '6 volontaires',
+    ressource: "Main-d'œuvre",
+    categorie: 'mainoeuvre',
+    lieu: '[ÉCOLE]',
+    consignes: 'Gants et bottes obligatoires. Ne touchez à aucun câble électrique.',
+  },
+]

@@ -25,6 +25,9 @@ les secours et l'alerte officielle (FR-Alert), elle ne les remplace jamais.
   la carte des habitants : seulement un nombre de foyers. Le serveur propose automatiquement le
   foyer le plus proche, l'hébergeur accepte ou refuse, la mairie supervise et peut réattribuer.
   Zones à éviter tracées par la mairie, en rouge.
+- **Missions ciblées** : une mission a un type d'aide ; un volontaire ne reçoit que celles des
+  types qu'il propose. Après un refus, la suivante de ses types lui est proposée. L'hébergement
+  ne passe jamais par une mission (mise en relation dédiée).
 - Accessibilité : zones tactiles ≥ 44 px, vrais `<button>` et `<a>`, contrastes AA.
 
 ## Charte

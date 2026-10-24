@@ -16,7 +16,7 @@ function lireCache(demande: string): MonHebergementServeur | null {
 
 // Côté personne sinistrée : le foyer trouvé par la mairie, avec l'adresse une fois que l'hébergeur a accepté.
 // Gardé sur le téléphone pour rester lisible sans réseau.
-export default function HebergementTrouve({ demande }: { demande: string }) {
+export default function HebergementTrouve({ demande, recherche }: { demande: string; recherche: boolean }) {
   const [hebergement, setHebergement] = useState<MonHebergementServeur | null>(() => lireCache(demande))
 
   const charger = useCallback(async () => {
@@ -50,18 +50,22 @@ export default function HebergementTrouve({ demande }: { demande: string }) {
     }
   }, [demande, charger])
 
-  if (!hebergement) return null
-
-  if (hebergement.statut === 'proposee') {
+  if (!hebergement || hebergement.statut === 'proposee') {
+    // Hébergement demandé : on montre toujours où en est la recherche
+    if (!hebergement && !recherche) return null
     return (
-      <section role="status" className="carte" style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+      <section role="status" aria-label="Recherche d'hébergement" className="carte" style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
         <span style={{ color: 'var(--bleu)', flexShrink: 0 }}>
           <Icone nom="accueil" taille={24} />
         </span>
         <span style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-          <strong style={{ fontSize: 16, color: 'var(--bleu-nuit)' }}>Un foyer d'accueil a été contacté</strong>
+          <strong style={{ fontSize: 16, color: 'var(--bleu-nuit)' }}>
+            {hebergement ? 'Un foyer d’accueil a été contacté' : 'Recherche d’un foyer d’accueil en cours'}
+          </strong>
           <span className="texte-doux" style={{ lineHeight: 1.4 }}>
-            La mairie attend sa confirmation. Son adresse s'affichera ici dès qu'il aura accepté.
+            {hebergement
+              ? 'Il doit confirmer. Son adresse s’affichera ici dès qu’il aura accepté.'
+              : 'Dès qu’un habitant pourra vous accueillir, il sera sollicité. En attendant, les centres d’accueil ouverts sont sur la carte.'}
           </span>
         </span>
       </section>

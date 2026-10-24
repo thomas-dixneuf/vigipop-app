@@ -1,33 +1,27 @@
-import { Link, Navigate, useNavigate } from 'react-router-dom'
+import { Link, Navigate } from 'react-router-dom'
 import EnTeteRetour from '../components/EnTeteRetour.tsx'
 import Icone from '../components/Icone.tsx'
 import PropositionHebergement from '../components/PropositionHebergement.tsx'
-import { commune, mission as missionDemo } from '../data/fictif.ts'
-import { serveur } from '../services/serveur.ts'
+import { commune } from '../data/fictif.ts'
 import { useAppState } from '../state/AppState.tsx'
 
 const cellule = { padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 2 } as const
 const separateur = '1px solid var(--bleu-voile)'
 
 export default function Mission() {
-  const navigate = useNavigate()
-  const { mode, disponible, mission: reponse, repondreMission, missionServeur } = useAppState()
-  const mission = missionServeur
-    ? { ...missionServeur, rendezVous: missionServeur.rendez_vous }
-    : missionDemo
+  const { mode, disponible, mission: reponse, repondreMission, missionServeur, ressources } = useAppState()
 
   // Une mission n'existe qu'en crise, pour un volontaire qui s'est dit disponible
   if (mode !== 'crise' || !disponible) return <Navigate to="/accueil" replace />
 
-  // Avec le serveur, seule la mairie propose des missions : on attend la sienne
-  if (serveur && !missionServeur) return <EnAttenteDeMission />
+  // Aucune mission de ses catégories (ou toutes déclinées) : on attend la prochaine
+  if (!missionServeur) return <EnAttenteDeMission hebergeurSeul={ressources.length === 1 && ressources[0] === 'heb'} />
 
+  const mission = { ...missionServeur, rendezVous: missionServeur.rendez_vous }
   const acceptee = reponse === 'acceptee'
 
-  const refuser = () => {
-    repondreMission('refusee')
-    navigate('/accueil')
-  }
+  // La mission suivante de ses catégories s'affiche aussitôt, s'il y en a une
+  const refuser = () => repondreMission('refusee')
 
   return (
     <div className="ecran">
@@ -109,7 +103,7 @@ export default function Mission() {
   )
 }
 
-function EnAttenteDeMission() {
+function EnAttenteDeMission({ hebergeurSeul }: { hebergeurSeul: boolean }) {
   return (
     <div className="ecran">
       <EnTeteRetour retour="/accueil">
@@ -125,7 +119,9 @@ function EnAttenteDeMission() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
             <strong style={{ fontSize: 17, color: 'var(--bleu-nuit)' }}>La mairie a reçu votre disponibilité</strong>
             <span className="texte-doux">
-              Aucune mission n'est ouverte pour le moment. Elle s'affichera ici dès que le coordinateur en proposera une.
+              {hebergeurSeul
+                ? "Vous proposez un hébergement : une demande d'accueil s'affichera ici et sur votre accueil dès qu'une famille en aura besoin."
+                : "Aucune mission ne correspond à ce que vous proposez pour le moment. Elle s'affichera ici dès que le coordinateur en ouvrira une."}
             </span>
           </div>
         </section>

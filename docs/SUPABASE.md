@@ -16,7 +16,8 @@ fonctionne en mode démo local, avec un bouton « Démo » pour simuler la crise
    rappel dans les demandes), puis `0004_carte.sql` (position des lieux, zones à éviter,
    nombre de foyers d'hébergement solidaire), puis `0005_hebergement.sql` (mise en relation
    hébergeur ↔ sinistré, points de secours permanents), puis `0006_hebergement_auto.sql`
-   (proposition automatique du foyer le plus proche). Chaque nouveau fichier de `supabase/migrations/` se lance
+   (proposition automatique du foyer le plus proche), puis `0007_missions_ciblees.sql`
+   (missions par type d'aide, demande qui avance quand l'hébergeur accepte). Chaque nouveau fichier de `supabase/migrations/` se lance
    une seule fois, dans l'ordre des numéros.
 
 ## 2. Autoriser les habitants sans mot de passe
