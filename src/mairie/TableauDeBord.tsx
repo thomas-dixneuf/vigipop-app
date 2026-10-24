@@ -170,7 +170,8 @@ export default function TableauDeBord({ coordinateur }: { coordinateur: Coordina
           <div className="mairie-colonne">
             <Compteurs demandes={donnees.demandes} />
             <CarteMairie lieux={donnees.lieux} demandes={donnees.demandes} zones={donnees.zones} communeId={commune} />
-            <Demandes demandes={donnees.demandes} volontaires={donnees.volontaires} hebergements={donnees.hebergements} communeId={commune} />
+            <PanneauHebergement demandes={donnees.demandes} volontaires={donnees.volontaires} hebergements={donnees.hebergements} communeId={commune} />
+            <Demandes demandes={donnees.demandes} />
           </div>
           <div className="mairie-colonne">
             <PanneauCrise crise={donnees.crise} communeId={commune} />
@@ -208,9 +209,7 @@ function Compteurs({ demandes }: { demandes: DemandeServeur[] }) {
 
 type Filtre = 'a-traiter' | 'en-cours' | 'terminees'
 
-type PropsDemandes = { demandes: DemandeServeur[]; volontaires: Volontaire[]; hebergements: Hebergement[]; communeId: string }
-
-function Demandes({ demandes, volontaires, hebergements, communeId }: PropsDemandes) {
+function Demandes({ demandes }: { demandes: DemandeServeur[] }) {
   const [filtre, setFiltre] = useState<Filtre>('a-traiter')
   const visibles = demandes
     .filter((d) =>
@@ -291,9 +290,6 @@ function Demandes({ demandes, volontaires, hebergements, communeId }: PropsDeman
                 <span className="texte-doux">{d.prenom ? `${d.prenom} · ` : ''}aucun numéro laissé</span>
               )}
             </div>
-            {(d.besoins.includes('heb') || hebergements.some((h) => h.demande_id === d.id)) && d.statut !== 'close' && (
-              <HebergementDemande demande={d} volontaires={volontaires} hebergements={hebergements} communeId={communeId} />
-            )}
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
               {d.statut === 'transmise' && (
                 <button type="button" className="mairie-bouton mairie-bouton--principal" onClick={() => void changerStatut(d.id, 'prise_en_charge')}>
@@ -660,7 +656,76 @@ function PanneauLieux({ lieux, communeId }: { lieux: LieuServeur[]; communeId: s
 
 const actif = (h: Hebergement) => h.statut === 'proposee' || h.statut === 'acceptee'
 
-// Mise en relation encadrée : la mairie choisit un foyer, l'hébergeur accepte, puis chacun voit les coordonnées de l'autre
+// Places restantes : on retire les personnes déjà proposées ou accueillies chez ce foyer
+function placesRestantes(v: Volontaire, hebergements: Hebergement[]) {
+  return v.places_hebergement - hebergements.filter((h) => h.hebergeur === v.auteur && actif(h)).reduce((n, h) => n + h.personnes, 0)
+}
+
+type PropsHebergement = { demandes: DemandeServeur[]; volontaires: Volontaire[]; hebergements: Hebergement[]; communeId: string }
+
+// Besoins et foyers face à face. Le serveur propose seul le foyer le plus proche ;
+// la mairie supervise : elle peut changer de foyer ou relancer la recherche.
+function PanneauHebergement({ demandes, volontaires, hebergements, communeId }: PropsHebergement) {
+  const besoins = demandes.filter((d) => d.statut !== 'close' && (d.besoins.includes('heb') || hebergements.some((h) => h.demande_id === d.id && actif(h))))
+  const foyers = volontaires.filter((v) => v.ressources.includes('heb'))
+  const reference = (id: string) => demandes.find((d) => d.id === id)?.reference ?? '?'
+  return (
+    <section className="mairie-panneau" aria-labelledby="titre-hebergement">
+      <h2 id="titre-hebergement">Hébergement solidaire</h2>
+      <p className="texte-doux" style={{ marginTop: -4 }}>
+        Chaque demande est proposée automatiquement au foyer disponible le plus proche. L'hébergeur accepte ou refuse ; en cas de refus, le suivant est sollicité.
+      </p>
+      <div className="mairie-face-a-face">
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <h3 style={{ fontSize: 15 }}>
+            Besoins <span className="mairie-etiquette">{besoins.length}</span>
+          </h3>
+          {besoins.length === 0 && <p className="texte-doux">Aucune demande d'hébergement en cours.</p>}
+          {besoins.map((d) => (
+            <article key={d.id} className="mairie-demande" style={{ borderLeftColor: d.personne_vulnerable ? 'var(--urgence)' : 'var(--bleu)' }}>
+              <strong style={{ fontSize: 15 }}>
+                {d.reference} · {d.personnes} personne{d.personnes > 1 ? 's' : ''}
+                {d.prenom ? ` · ${d.prenom}` : ''}
+              </strong>
+              {d.personne_vulnerable && <span className="mairie-etiquette mairie-etiquette--urgent" style={{ alignSelf: 'flex-start' }}>Personne vulnérable</span>}
+              <HebergementDemande demande={d} volontaires={volontaires} hebergements={hebergements} communeId={communeId} />
+            </article>
+          ))}
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <h3 style={{ fontSize: 15 }}>
+            Foyers d'accueil <span className="mairie-etiquette">{foyers.length}</span>
+          </h3>
+          {foyers.length === 0 && <p className="texte-doux">Aucun volontaire ne propose d'hébergement pour l'instant.</p>}
+          {foyers.map((v) => {
+            const accueils = hebergements.filter((h) => h.hebergeur === v.auteur && actif(h))
+            const restantes = placesRestantes(v, hebergements)
+            return (
+              <article key={v.auteur} className="mairie-demande" style={{ borderLeftColor: restantes > 0 ? 'var(--bleu)' : 'var(--bordure)' }}>
+                <strong style={{ fontSize: 15 }}>
+                  {v.prenom || 'Volontaire'} · {restantes}/{v.places_hebergement} place{v.places_hebergement > 1 ? 's' : ''} libre{restantes > 1 ? 's' : ''}
+                </strong>
+                <span className="texte-doux">{v.adresse || 'Adresse non renseignée'}</span>
+                {accueils.map((h) => (
+                  <span key={h.id} style={{ fontSize: 14 }}>
+                    {reference(h.demande_id)} · {h.personnes} pers. · {h.statut === 'acceptee' ? <strong>accepté</strong> : 'en attente de réponse'}
+                  </span>
+                ))}
+                {v.telephone && (
+                  <a href={lienTelephone(v.telephone)} style={{ fontSize: 14, fontWeight: 700 }}>
+                    Appeler le {v.telephone}
+                  </a>
+                )}
+              </article>
+            )
+          })}
+        </div>
+      </div>
+    </section>
+  )
+}
+
+// Suivi d'une demande : foyer proposé ou accepté, changement de foyer, relance de la recherche
 function HebergementDemande({ demande, volontaires, hebergements, communeId }: { demande: DemandeServeur; volontaires: Volontaire[]; hebergements: Hebergement[]; communeId: string }) {
   const [ouvert, setOuvert] = useState(false)
   const [message, setMessage] = useState('')
@@ -670,9 +735,7 @@ function HebergementDemande({ demande, volontaires, hebergements, communeId }: {
   const position = coordonneesDemande(demande)
   const nom = (auteur: string) => volontaires.find((v) => v.auteur === auteur)
 
-  // Places restantes : on retire les personnes déjà proposées ou accueillies chez ce foyer
-  const restantes = (v: Volontaire) =>
-    v.places_hebergement - hebergements.filter((h) => h.hebergeur === v.auteur && actif(h)).reduce((n, h) => n + h.personnes, 0)
+  const restantes = (v: Volontaire) => placesRestantes(v, hebergements)
   const distance = (v: Volontaire) => (position && v.lat !== null && v.lng !== null ? distanceMetres(position, { lat: v.lat, lng: v.lng }) : null)
   const candidats = volontaires
     .filter((v) => v.ressources.includes('heb') && !refus.has(v.auteur) && restantes(v) >= demande.personnes)
@@ -687,9 +750,18 @@ function HebergementDemande({ demande, volontaires, hebergements, communeId }: {
     else setOuvert(false)
   }
 
-  const annuler = async (h: Hebergement) => {
-    if (!window.confirm("Annuler cette mise en relation ? L'hébergeur et la personne ne verront plus les coordonnées.")) return
+  // Annulée par la mairie : pas de relance automatique, elle choisit la suite
+  const changer = async (h: Hebergement) => {
+    if (!window.confirm("Retirer ce foyer ? L'hébergeur et la personne ne verront plus les coordonnées. Vous choisirez ensuite un autre foyer.")) return
     await serveur!.from('hebergements').update({ statut: 'annulee' }).eq('id', h.id)
+    setOuvert(true)
+  }
+
+  const relancer = async () => {
+    setMessage('')
+    const { error } = await serveur!.rpc('relancer_hebergement', { p_demande: demande.id })
+    if (error) setMessage("La relance n'a pas pu être envoyée. Réessayez.")
+    else setOuvert(false)
   }
 
   if (enCours) {
@@ -707,8 +779,8 @@ function HebergementDemande({ demande, volontaires, hebergements, communeId }: {
               Appeler l'hébergeur
             </a>
           )}
-          <button type="button" className="mairie-bouton" onClick={() => void annuler(enCours)}>
-            Annuler la mise en relation
+          <button type="button" className="mairie-bouton" onClick={() => void changer(enCours)}>
+            Changer de foyer
           </button>
         </div>
       </div>
@@ -722,9 +794,20 @@ function HebergementDemande({ demande, volontaires, hebergements, communeId }: {
           Refusé par : {[...refus].map((a) => nom(a)?.prenom || 'un volontaire').join(', ')}
         </span>
       )}
-      <button type="button" className="mairie-bouton" aria-expanded={ouvert} onClick={() => setOuvert(!ouvert)} style={{ alignSelf: 'flex-start' }}>
-        {ouvert ? 'Fermer' : 'Trouver un hébergement'}
-      </button>
+      <span>
+        <strong>Hébergement :</strong> {candidats.length === 0 ? 'aucun foyer disponible pour le moment, la recherche reprendra dès qu’un foyer se déclare' : 'aucun foyer sollicité'}
+      </span>
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+        {/* Comme le serveur : jamais deux fois le même foyer pour une demande */}
+        {candidats.some((v) => !lies.some((h) => h.hebergeur === v.auteur)) && (
+          <button type="button" className="mairie-bouton mairie-bouton--principal" onClick={() => void relancer()}>
+            Proposer au plus proche
+          </button>
+        )}
+        <button type="button" className="mairie-bouton" aria-expanded={ouvert} onClick={() => setOuvert(!ouvert)}>
+          {ouvert ? 'Fermer la liste' : 'Choisir un foyer'}
+        </button>
+      </div>
       {ouvert && (
         <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 6 }}>
           {candidats.length === 0 && (

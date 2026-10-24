@@ -22,7 +22,8 @@ les secours et l'alerte officielle (FR-Alert), elle ne les remplace jamais.
   après l'envoi ; le compte créé reste lié à la même demande.
 - **Carte** : fond OpenStreetMap (Leaflet), adresses officielles via la Base Adresse Nationale,
   « Itinéraire » ouvre Google Maps. Jamais d'adresse privée (hébergement chez l'habitant) sur
-  la carte des habitants : seulement un nombre de foyers ; la mairie fait la mise en relation.
+  la carte des habitants : seulement un nombre de foyers. Le serveur propose automatiquement le
+  foyer le plus proche, l'hébergeur accepte ou refuse, la mairie supervise et peut réattribuer.
   Zones à éviter tracées par la mairie, en rouge.
 - Accessibilité : zones tactiles ≥ 44 px, vrais `<button>` et `<a>`, contrastes AA.
 

@@ -108,3 +108,5 @@ textarea.mairie-champ { resize: vertical; min-height: 72px; }
   .mairie-contenu { grid-template-columns: minmax(0, 1fr); padding: 16px; }
   .mairie-compteurs { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
+.mairie-face-a-face { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; align-items: start; }
+@media (max-width: 700px) { .mairie-face-a-face { grid-template-columns: minmax(0, 1fr); } }
