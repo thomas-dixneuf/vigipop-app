@@ -69,13 +69,14 @@ export const ressources = [
   { id: 'materiel', label: 'Matériel', detail: 'Pompe, groupe électrogène, bâches' },
   // La main-d'œuvre fait partie des offres des volontaires (choix du 22/10/2026)
   { id: 'mainoeuvre', label: "Main-d'œuvre", detail: 'Déblayer, porter, nettoyer' },
-  { id: 'competences', label: 'Compétences', detail: 'Secourisme (PSC1)' },
+  { id: 'competences', label: 'Compétences', detail: 'Secourisme (PSC1, SST)' },
   { id: 'temps', label: 'Temps disponible', detail: 'Soirs et week-ends' },
 ] as const
 
 export type RessourceId = (typeof ressources)[number]['id']
 
-export const ressourcesParDefaut: RessourceId[] = ['heb', 'vehicule', 'mainoeuvre', 'competences', 'temps']
+// Rien de coché d'office : chacun choisit ce qu'il peut vraiment apporter
+export const ressourcesParDefaut: RessourceId[] = []
 
 // Missions de démonstration : chaque volontaire ne voit que celles de ses catégories d'aide
 export const missionsDemo: MissionServeur[] = [

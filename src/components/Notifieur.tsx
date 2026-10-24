@@ -47,7 +47,12 @@ export default function Notifieur() {
     } else if (mode === 'veille' && derniereCrise.current) {
       const fin = derniereCrise.current
       derniereCrise.current = null
-      annoncer.current({ cle: `fin:${fin.id}`, titre: 'Fin de la crise', texte: `La mairie a levé l'alerte : ${fin.titre}`, lien: '/accueil' })
+      annoncer.current({
+        cle: `fin:${fin.id}`,
+        titre: 'Fin de la crise',
+        texte: `La mairie a levé l'alerte : ${fin.titre}. Si vous avez encore besoin d'aide, mettez à jour votre situation.`,
+        lien: '/accueil',
+      })
     }
     // Seuls le mode et l'alerte comptent ; la liste des notifications sert de mémoire
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -57,8 +62,15 @@ export default function Notifieur() {
   useEffect(() => {
     if (!demande?.envoyee || !suiviDemande[demande.statut]) return
     const [titre, texte] = suiviDemande[demande.statut]
-    annoncer.current({ cle: `demande:${demande.id}:${demande.statut}`, titre, texte, lien: '/demande' })
-  }, [demande?.id, demande?.envoyee, demande?.statut])
+    // Le message de la mairie (« ce qui est prévu ») remplace le texte générique
+    const message = demande.reponseMairie?.trim()
+    annoncer.current({
+      cle: `demande:${demande.id}:${demande.statut}${message ? `:${message}` : ''}`,
+      titre,
+      texte: message || texte,
+      lien: '/demande',
+    })
+  }, [demande?.id, demande?.envoyee, demande?.statut, demande?.reponseMairie])
 
   // Mission proposée à un volontaire disponible
   useEffect(() => {

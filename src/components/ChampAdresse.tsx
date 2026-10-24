@@ -10,10 +10,13 @@ type Props = {
   valeurInitiale?: string
   verifieeInitialement?: boolean
   variante?: 'mairie' | 'app'
+  // Recherche d'une commune plutôt que d'une adresse précise
+  commune?: boolean
+  libelleChamp?: string
 }
 
 // Saisie d'adresse avec suggestions de la Base Adresse Nationale (adresses officielles à jour)
-export default function ChampAdresse({ onChoix, onTexte, valeurInitiale = '', verifieeInitialement = false, variante = 'mairie' }: Props) {
+export default function ChampAdresse({ onChoix, onTexte, valeurInitiale = '', verifieeInitialement = false, variante = 'mairie', commune = false, libelleChamp }: Props) {
   const [texte, setTexte] = useState(valeurInitiale)
   const [suggestions, setSuggestions] = useState<ResultatAdresse[]>([])
   const [choisie, setChoisie] = useState<string | null>(verifieeInitialement ? valeurInitiale : null)
@@ -23,7 +26,7 @@ export default function ChampAdresse({ onChoix, onTexte, valeurInitiale = '', ve
     if (choisie === texte) return
     let annule = false
     const minuteur = window.setTimeout(() => {
-      chercherAdresse(texte)
+      chercherAdresse(texte, commune ? 'municipality' : undefined)
         .then((r) => !annule && setSuggestions(r))
         .catch(() => !annule && setSuggestions([]))
     }, 250)
@@ -31,19 +34,19 @@ export default function ChampAdresse({ onChoix, onTexte, valeurInitiale = '', ve
       annule = true
       window.clearTimeout(minuteur)
     }
-  }, [texte, choisie])
+  }, [texte, choisie, commune])
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
       <label style={app ? libelle : { display: 'flex', flexDirection: 'column', gap: 4, fontSize: 14, fontWeight: 700 }}>
-        Adresse
+        {libelleChamp ?? (commune ? 'Commune' : 'Adresse')}
         <input
           className={app ? undefined : 'mairie-champ'}
           style={app ? champ : undefined}
           value={texte}
           maxLength={200}
-          placeholder="Commencez à taper l'adresse"
-          autoComplete={app ? 'street-address' : 'off'}
+          placeholder={commune ? 'Commencez à taper le nom de la commune' : "Commencez à taper l'adresse"}
+          autoComplete={app ? (commune ? 'address-level2' : 'street-address') : 'off'}
           onChange={(e) => {
             setTexte(e.target.value)
             setChoisie(null)
@@ -53,7 +56,7 @@ export default function ChampAdresse({ onChoix, onTexte, valeurInitiale = '', ve
         />
       </label>
       {choisie === null && suggestions.length > 0 && (
-        <ul role="listbox" aria-label="Adresses suggérées" style={{ margin: 0, padding: 0, listStyle: 'none', border: '1px solid var(--bordure)', borderRadius: 10, overflow: 'hidden', background: 'var(--blanc)' }}>
+        <ul role="listbox" aria-label={commune ? 'Communes suggérées' : 'Adresses suggérées'} style={{ margin: 0, padding: 0, listStyle: 'none', border: '1px solid var(--bordure)', borderRadius: 10, overflow: 'hidden', background: 'var(--blanc)' }}>
           {suggestions.map((s) => (
             <li key={`${s.libelle}-${s.lat}`}>
               <button
@@ -78,7 +81,11 @@ export default function ChampAdresse({ onChoix, onTexte, valeurInitiale = '', ve
           ))}
         </ul>
       )}
-      {choisie !== null && <span className="texte-doux" style={{ fontSize: 13 }}>Adresse vérifiée (Base Adresse Nationale)</span>}
+      {choisie !== null && (
+        <span className="texte-doux" style={{ fontSize: 13 }}>
+          {commune ? 'Commune vérifiée' : 'Adresse vérifiée'} (Base Adresse Nationale)
+        </span>
+      )}
     </div>
   )
 }

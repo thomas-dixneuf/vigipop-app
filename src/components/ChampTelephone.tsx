@@ -10,7 +10,7 @@ export default function ChampTelephone({ valeur, onChange }: { valeur: string; o
         inputMode="tel"
         value={valeur}
         onChange={(e) => onChange(e.target.value)}
-        placeholder="06 12 34 56 78"
+        placeholder="06 XX XX XX XX"
         autoComplete="tel"
         aria-invalid={invalide}
         style={champ}

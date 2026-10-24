@@ -7,7 +7,7 @@ import { useAppState } from '../state/AppState.tsx'
 
 export default function Aider() {
   const navigate = useNavigate()
-  const { mode, ressources: actives, basculerRessource, seRendreDisponible, accueil, definirAccueil, communeAffichee: commune } = useAppState()
+  const { mode, ressources: actives, basculerRessource, seRendreDisponible, seRendreIndisponible, enregistrerOffres, disponible, accueil, definirAccueil } = useAppState()
   const enCrise = mode === 'crise'
 
   const valider = () => {
@@ -15,6 +15,7 @@ export default function Aider() {
       seRendreDisponible()
       navigate('/mission')
     } else {
+      enregistrerOffres()
       navigate('/accueil')
     }
   }
@@ -27,31 +28,57 @@ export default function Aider() {
       </EnTeteRetour>
 
       <main className="contenu" style={{ paddingTop: 10 }}>
-        <section aria-label="Mes ressources" className="carte" style={{ padding: 0, borderRadius: 16 }}>
-          {ressources.map((r, i) => {
+        <p style={{ fontSize: 15, lineHeight: 1.45 }}>
+          Touchez les aides que vous pouvez apporter. Vous pouvez en choisir plusieurs et les changer à tout moment : la mairie ne vous
+          proposera que des missions de ces types.
+        </p>
+
+        <section aria-label="Mes types d'aide" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {ressources.map((r) => {
             const active = actives.includes(r.id)
             return (
-              <div
+              <button
                 key={r.id}
-                style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '14px 16px', borderBottom: i < ressources.length - 1 ? '1px solid var(--bleu-voile)' : 'none' }}
+                type="button"
+                aria-pressed={active}
+                onClick={() => basculerRessource(r.id)}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 12,
+                  minHeight: 64,
+                  padding: '12px 14px',
+                  borderRadius: 16,
+                  textAlign: 'left',
+                  border: `2px solid ${active ? 'var(--bleu)' : 'var(--bordure)'}`,
+                  background: active ? 'var(--bleu-voile)' : 'var(--blanc)',
+                  color: 'var(--texte)',
+                }}
               >
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 }}>
-                  <span style={{ fontSize: 15, fontWeight: 700 }}>{r.label}</span>
-                  <span className="texte-doux">
-                    {r.id === 'heb' ? `${accueil.places} place${accueil.places > 1 ? 's' : ''} · chez moi` : r.detail}
-                  </span>
-                </div>
-                <button
-                  type="button"
-                  role="switch"
-                  aria-checked={active}
-                  aria-label={r.label}
-                  onClick={() => basculerRessource(r.id)}
-                  style={{ flexShrink: 0, width: 52, height: 32, borderRadius: 16, border: 'none', padding: 3, display: 'flex', justifyContent: active ? 'flex-end' : 'flex-start', background: active ? 'var(--bleu)' : '#a9bcc5' }}
+                <span
+                  aria-hidden="true"
+                  style={{
+                    width: 28,
+                    height: 28,
+                    borderRadius: 8,
+                    flexShrink: 0,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    border: `2px solid ${active ? 'var(--bleu)' : '#8da3ae'}`,
+                    background: active ? 'var(--bleu)' : 'var(--blanc)',
+                    color: 'var(--blanc)',
+                  }}
                 >
-                  <span style={{ width: 26, height: 26, borderRadius: 13, background: 'var(--blanc)', display: 'block' }} />
-                </button>
-              </div>
+                  {active && <Icone nom="valide" taille={16} epaisseur={3} />}
+                </span>
+                <span style={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 }}>
+                  <span style={{ fontSize: 16, fontWeight: 700 }}>{r.label}</span>
+                  <span className="texte-doux">
+                    {r.id === 'heb' ? `${accueil.places} place${accueil.places > 1 ? 's' : ''} · chez moi` : `Par exemple : ${r.detail}`}
+                  </span>
+                </span>
+              </button>
             )
           })}
         </section>
@@ -84,6 +111,7 @@ export default function Aider() {
                 +
               </button>
             </div>
+            <span style={{ fontSize: 14, fontWeight: 700 }}>Adresse du logement où vous accueilleriez</span>
             <ChampAdresse
               variante="app"
               valeurInitiale={accueil.adresse}
@@ -92,24 +120,33 @@ export default function Aider() {
               onChoix={(r) => definirAccueil(r ? { adresse: r.libelle, lat: r.lat, lng: r.lng } : { lat: null, lng: null })}
             />
             <span className="texte-doux" style={{ lineHeight: 1.4 }}>
-              Seule la mairie voit votre adresse. Elle ne sera donnée à une personne sinistrée qu'après votre accord.
+              Elle ne sera donnée à une personne sinistrée qu'après votre accord.
             </span>
           </section>
         )}
-
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '0 4px', color: 'var(--bleu)' }}>
-          <Icone nom="bouclier" taille={20} epaisseur={2} />
-          <span style={{ fontSize: 14, color: 'var(--bleu-nuit)' }}>Profil vérifié par la mairie de {commune}</span>
-        </div>
       </main>
 
       <footer style={{ position: 'sticky', bottom: 0, padding: '12px 20px calc(18px + env(safe-area-inset-bottom))', background: 'var(--blanc)', borderTop: '1px solid var(--bordure)', display: 'flex', flexDirection: 'column', gap: 6 }}>
         <button type="button" className="bouton bouton--principal" style={{ fontSize: 18 }} onClick={valider} disabled={actives.length === 0}>
-          {enCrise ? 'Je suis disponible maintenant' : 'Enregistrer mes offres'}
+          {enCrise ? (disponible ? 'Enregistrer mes types d’aide' : 'Je suis disponible maintenant') : 'Enregistrer mes offres'}
         </button>
-        <span className="texte-doux" style={{ fontSize: 12, textAlign: 'center' }}>
-          Votre adresse n'est visible que par les coordinateurs.
-        </span>
+        {enCrise && disponible && (
+          <button
+            type="button"
+            className="bouton bouton--contour"
+            onClick={() => {
+              seRendreIndisponible()
+              navigate('/accueil')
+            }}
+          >
+            Je ne suis plus disponible
+          </button>
+        )}
+        {actives.length === 0 && (
+          <span className="texte-doux" style={{ fontSize: 12, textAlign: 'center' }}>
+            Choisissez au moins un type d'aide.
+          </span>
+        )}
       </footer>
     </div>
   )

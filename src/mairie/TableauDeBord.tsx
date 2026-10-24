@@ -24,6 +24,7 @@ type Reponse = { mission_id: string; prenom: string; reponse: 'acceptee' | 'refu
 type Volontaire = {
   auteur: string
   prenom: string
+  nom?: string
   telephone: string
   ressources: string[]
   places_hebergement: number
@@ -37,6 +38,7 @@ type Evenement = { id: number; action: string; details: Record<string, string>; 
 
 type Donnees = {
   crise: CriseServeur | null
+  risques: string[]
   demandes: DemandeServeur[]
   lieux: LieuServeur[]
   missions: MissionServeur[]
@@ -86,16 +88,17 @@ export default function TableauDeBord({ coordinateur }: { coordinateur: Coordina
   const [erreur, setErreur] = useState('')
 
   const charger = useCallback(async () => {
-    const [crise, demandes, lieux, missions, reponses, volontaires, hebergements, zones, journal] = await Promise.all([
+    const [crise, demandes, lieux, missions, reponses, volontaires, hebergements, zones, journal, communeLue] = await Promise.all([
       client.from('crises').select('id, titre, consigne, active, declenchee_a').eq('commune_id', commune).eq('active', true).maybeSingle(),
       client.from('demandes').select('*').eq('commune_id', commune).order('created_at', { ascending: false }).limit(300),
       client.from('lieux').select('*').eq('commune_id', commune).order('nom'),
       client.from('missions').select('*').eq('commune_id', commune).eq('active', true).order('created_at', { ascending: false }),
       client.from('reponses_mission').select('mission_id, prenom, reponse'),
-      client.from('volontaires').select('auteur, prenom, telephone, ressources, places_hebergement, adresse, lat, lng, updated_at').eq('commune_id', commune).eq('disponible', true).order('updated_at', { ascending: false }),
+      client.from('volontaires').select('*').eq('commune_id', commune).eq('disponible', true).order('updated_at', { ascending: false }),
       client.from('hebergements').select('id, demande_id, hebergeur, personnes, statut, updated_at').eq('commune_id', commune).order('created_at'),
       client.from('zones_danger').select('id, nom, consigne, points').eq('commune_id', commune).eq('active', true).order('created_at'),
       client.from('journal').select('id, action, details, created_at').eq('commune_id', commune).order('id', { ascending: false }).limit(12),
+      client.from('communes').select('*').eq('id', commune).maybeSingle(),
     ])
     const echec = [crise, demandes, lieux, missions, reponses, volontaires, hebergements, zones, journal].find((r) => r.error)
     if (echec) {
@@ -106,6 +109,7 @@ export default function TableauDeBord({ coordinateur }: { coordinateur: Coordina
     const criseActive = crise.data as CriseServeur | null
     setDonnees({
       crise: criseActive,
+      risques: (communeLue.data as { risques?: string[] } | null)?.risques ?? [],
       demandes: demandes.data as DemandeServeur[],
       lieux: lieux.data as LieuServeur[],
       missions: missions.data as MissionServeur[],
@@ -172,10 +176,11 @@ export default function TableauDeBord({ coordinateur }: { coordinateur: Coordina
             <Compteurs demandes={donnees.demandes} />
             <CarteMairie lieux={donnees.lieux} demandes={donnees.demandes} zones={donnees.zones} communeId={commune} />
             <PanneauHebergement demandes={donnees.demandes} volontaires={donnees.volontaires} hebergements={donnees.hebergements} communeId={commune} />
-            <Demandes demandes={donnees.demandes} />
+            <Demandes demandes={donnees.demandes} depuis={donnees.crise?.declenchee_a ?? null} />
           </div>
           <div className="mairie-colonne">
             <PanneauCrise crise={donnees.crise} communeId={commune} />
+            <PanneauRisques risques={donnees.risques} communeId={commune} onEnregistre={() => void charger()} />
             <PanneauLieux lieux={donnees.lieux} communeId={commune} />
             <PanneauVolontaires volontaires={donnees.volontaires} enCrise={!!donnees.crise} />
             <PanneauMissions missions={donnees.missions} reponses={donnees.reponses} volontaires={donnees.volontaires} communeId={commune} />
@@ -211,16 +216,36 @@ function Compteurs({ demandes }: { demandes: DemandeServeur[] }) {
 
 type Filtre = 'a-traiter' | 'en-cours' | 'terminees'
 
-function Demandes({ demandes }: { demandes: DemandeServeur[] }) {
+// Demandes terminées : celles de la crise en cours, ou des dernières 48 h hors crise.
+// À la fin d'une crise, le serveur clôt les demandes encore ouvertes (migration 0010).
+function Demandes({ demandes, depuis }: { demandes: DemandeServeur[]; depuis: string | null }) {
   const [filtre, setFiltre] = useState<Filtre>('a-traiter')
+  const [organisation, setOrganisation] = useState<{ id: string; texte: string } | null>(null)
+  const [ouverture] = useState(() => Date.now())
+  const limite = depuis ?? new Date(ouverture - 48 * 3600 * 1000).toISOString()
   const visibles = demandes
     .filter((d) =>
-      filtre === 'a-traiter' ? d.statut === 'transmise' : filtre === 'en-cours' ? d.statut === 'prise_en_charge' : ['aide_organisee', 'close'].includes(d.statut),
+      filtre === 'a-traiter'
+        ? d.statut === 'transmise'
+        : filtre === 'en-cours'
+          ? d.statut === 'prise_en_charge'
+          : ['aide_organisee', 'close'].includes(d.statut) && d.updated_at >= limite,
     )
     .sort((a, b) => priorite(a) - priorite(b) || a.created_at.localeCompare(b.created_at))
 
   const changerStatut = async (id: string, statut: StatutDemande) => {
     await serveur!.from('demandes').update({ statut }).eq('id', id)
+  }
+
+  // « Aide organisée » : la mairie dit à l'habitant ce qui est prévu ; il le lit dans l'app
+  const organiser = async (e: FormEvent) => {
+    e.preventDefault()
+    if (!organisation || organisation.texte.trim().length < 3) return
+    const { error } = await serveur!
+      .from('demandes')
+      .update({ statut: 'aide_organisee', reponse_mairie: organisation.texte.trim() })
+      .eq('id', organisation.id)
+    if (!error) setOrganisation(null)
   }
 
   return (
@@ -292,6 +317,34 @@ function Demandes({ demandes }: { demandes: DemandeServeur[] }) {
                 <span className="texte-doux">{d.prenom ? `${d.prenom} · ` : ''}aucun numéro laissé</span>
               )}
             </div>
+            {d.reponse_mairie && (
+              <div style={{ fontSize: 14, background: 'var(--bleu-voile)', borderRadius: 8, padding: '8px 10px' }}>
+                <strong>Message envoyé à l'habitant :</strong> {d.reponse_mairie}
+              </div>
+            )}
+            {organisation?.id === d.id ? (
+              <form onSubmit={(e) => void organiser(e)} style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 14, fontWeight: 700 }}>
+                  Ce qui est prévu (envoyé à l'habitant)
+                  <textarea
+                    className="mairie-champ"
+                    value={organisation.texte}
+                    maxLength={300}
+                    autoFocus
+                    placeholder="Ex. : un volontaire passe vous chercher à 15 h avec un véhicule. Restez joignable."
+                    onChange={(e) => setOrganisation({ id: d.id, texte: e.target.value })}
+                  />
+                </label>
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                  <button type="submit" className="mairie-bouton mairie-bouton--principal" disabled={organisation.texte.trim().length < 3}>
+                    Envoyer à l'habitant
+                  </button>
+                  <button type="button" className="mairie-bouton" onClick={() => setOrganisation(null)}>
+                    Annuler
+                  </button>
+                </div>
+              </form>
+            ) : (
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
               {d.statut === 'transmise' && (
                 <button type="button" className="mairie-bouton mairie-bouton--principal" onClick={() => void changerStatut(d.id, 'prise_en_charge')}>
@@ -299,13 +352,18 @@ function Demandes({ demandes }: { demandes: DemandeServeur[] }) {
                 </button>
               )}
               {d.statut === 'prise_en_charge' && (
-                <button type="button" className="mairie-bouton mairie-bouton--principal" onClick={() => void changerStatut(d.id, 'aide_organisee')}>
-                  Aide organisée
+                <button type="button" className="mairie-bouton mairie-bouton--principal" onClick={() => setOrganisation({ id: d.id, texte: d.reponse_mairie ?? '' })}>
+                  Aide organisée…
                 </button>
               )}
               {d.statut !== 'close' && (
                 <button type="button" className="mairie-bouton" onClick={() => void changerStatut(d.id, 'close')}>
                   Clore
+                </button>
+              )}
+              {d.statut === 'aide_organisee' && (
+                <button type="button" className="mairie-bouton" onClick={() => setOrganisation({ id: d.id, texte: d.reponse_mairie ?? '' })}>
+                  Modifier le message
                 </button>
               )}
               {d.statut === 'close' && (
@@ -314,6 +372,7 @@ function Demandes({ demandes }: { demandes: DemandeServeur[] }) {
                 </button>
               )}
             </div>
+            )}
           </article>
         )
       })}
@@ -342,7 +401,9 @@ function PanneauCrise({ crise, communeId }: { crise: CriseServeur | null; commun
   }
 
   const terminer = async () => {
-    if (!crise || !window.confirm('Terminer la crise ? Les habitants repasseront en mode veille.')) return
+    if (!crise || !window.confirm(
+        "Terminer la crise ? Les habitants repasseront en mode veille. Les demandes encore ouvertes seront closes et chaque habitant concerné sera invité à mettre à jour sa situation s'il a encore besoin d'aide.",
+      )) return
     const { error } = await serveur!.from('crises').update({ active: false, terminee_a: new Date().toISOString() }).eq('id', crise.id)
     setMessage(error ? 'Échec : la crise est toujours active.' : '')
   }
@@ -546,6 +607,79 @@ function Legende({ couleur, texte }: { couleur: string; texte: string }) {
   )
 }
 
+const risquesSuggeres = ['Inondation', 'Crue', 'Tempête', 'Canicule', 'Feu de forêt', 'Mouvement de terrain', 'Risque industriel', 'Séisme', 'Submersion marine', 'Neige et verglas']
+
+// Risques connus de la commune (DICRIM) : affichés aux habitants en veille, pour se préparer
+function PanneauRisques({ risques, communeId, onEnregistre }: { risques: string[]; communeId: string; onEnregistre: () => void }) {
+  const [saisie, setSaisie] = useState('')
+  const [message, setMessage] = useState('')
+  const enregistrer = async (liste: string[]) => {
+    const { error } = await serveur!.from('communes').update({ risques: liste }).eq('id', communeId)
+    setMessage(error ? "Échec : les risques n'ont pas été enregistrés." : '')
+    if (!error) onEnregistre()
+  }
+  const ajouter = (r: string) => {
+    const propre = r.trim().slice(0, 60)
+    if (propre.length < 2 || risques.some((x) => x.toLowerCase() === propre.toLowerCase()) || risques.length >= 12) return
+    void enregistrer([...risques, propre])
+    setSaisie('')
+  }
+  const suggestions = risquesSuggeres.filter((r) => !risques.some((x) => x.toLowerCase() === r.toLowerCase()))
+
+  return (
+    <section className="mairie-panneau" aria-labelledby="titre-risques">
+      <h2 id="titre-risques">Risques de la commune</h2>
+      <p className="texte-doux" style={{ margin: 0 }}>
+        Affichés aux habitants hors crise pour qu'ils se préparent. Reprenez ceux de votre DICRIM.
+      </p>
+      {risques.length === 0 && <p className="texte-doux">Aucun risque renseigné : la rubrique est masquée dans l'app.</p>}
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+        {risques.map((r) => (
+          <button
+            key={r}
+            type="button"
+            className="mairie-bouton mairie-bouton--principal"
+            aria-label={`Retirer ${r}`}
+            onClick={() => void enregistrer(risques.filter((x) => x !== r))}
+          >
+            {r} ×
+          </button>
+        ))}
+      </div>
+      <form
+        onSubmit={(e) => {
+          e.preventDefault()
+          ajouter(saisie)
+        }}
+        style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'flex-end' }}
+      >
+        <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 14, fontWeight: 700, flex: 1, minWidth: 180 }}>
+          Ajouter un risque
+          <input className="mairie-champ" value={saisie} maxLength={60} onChange={(e) => setSaisie(e.target.value)} />
+        </label>
+        <button type="submit" className="mairie-bouton" disabled={saisie.trim().length < 2 || risques.length >= 12}>
+          Ajouter
+        </button>
+      </form>
+      {suggestions.length > 0 && risques.length < 12 && (
+        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+          <span className="texte-doux">Suggestions :</span>
+          {suggestions.map((r) => (
+            <button key={r} type="button" className="mairie-bouton" onClick={() => ajouter(r)}>
+              + {r}
+            </button>
+          ))}
+        </div>
+      )}
+      {message && (
+        <p role="status" style={{ fontSize: 14 }}>
+          {message}
+        </p>
+      )}
+    </section>
+  )
+}
+
 const lieuVide = { nom: '', type: 'accueil' as LieuServeur['type'], details: '', places: '' }
 
 function PanneauLieux({ lieux, communeId }: { lieux: LieuServeur[]; communeId: string }) {
@@ -554,6 +688,11 @@ function PanneauLieux({ lieux, communeId }: { lieux: LieuServeur[]; communeId: s
   const [adresse, setAdresse] = useState<ResultatAdresse | null>(null)
   const [message, setMessage] = useState('')
   const basculer = (l: LieuServeur) => void serveur!.from('lieux').update({ ouvert: !l.ouvert }).eq('id', l.id)
+  const supprimer = async (l: LieuServeur) => {
+    if (!window.confirm(`Supprimer « ${l.nom} » ? Il disparaîtra de la carte des habitants.`)) return
+    const { error } = await serveur!.from('lieux').delete().eq('id', l.id)
+    setMessage(error ? "Échec : le lieu n'a pas été supprimé." : 'Lieu supprimé.')
+  }
 
   const ajouter = async (e: FormEvent) => {
     e.preventDefault()
@@ -584,10 +723,13 @@ function PanneauLieux({ lieux, communeId }: { lieux: LieuServeur[]; communeId: s
 
   return (
     <section className="mairie-panneau" aria-labelledby="titre-lieux">
-      <h2 id="titre-lieux">Lieux d'accueil et d'aide</h2>
+      <h2 id="titre-lieux">Lieux d'accueil, d'aide et de secours</h2>
+      <p className="texte-doux" style={{ margin: 0 }}>
+        Centres d'accueil, points de distribution, pompiers, postes médicaux : ils apparaissent sur la carte des habitants.
+      </p>
       {lieux.map((l) => (
         <div key={l.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10 }}>
-          <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0, flex: 1 }}>
             <strong style={{ fontSize: 15 }}>{l.nom}</strong>
             <span className="texte-doux">
               {libelleLieu[l.type]}
@@ -605,6 +747,9 @@ function PanneauLieux({ lieux, communeId }: { lieux: LieuServeur[]; communeId: s
             style={{ minWidth: 92 }}
           >
             {l.ouvert ? 'Ouvert' : 'Fermé'}
+          </button>
+          <button type="button" className="mairie-bouton" aria-label={`Supprimer ${l.nom}`} onClick={() => void supprimer(l)}>
+            Supprimer
           </button>
         </div>
       ))}
@@ -870,7 +1015,7 @@ function PanneauVolontaires({ volontaires, enCrise }: { volontaires: Volontaire[
         {volontaires.map((v) => (
           <li key={v.auteur} style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
             <strong style={{ fontSize: 15 }}>
-              {v.prenom || 'Volontaire'} <span className="texte-doux" style={{ fontWeight: 400 }}>· depuis {heure(v.updated_at)}</span>
+              {[v.prenom, v.nom].filter(Boolean).join(' ') || 'Volontaire'} <span className="texte-doux" style={{ fontWeight: 400 }}>· depuis {heure(v.updated_at)}</span>
             </strong>
             <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
               {v.ressources.map((r) => (
@@ -915,18 +1060,22 @@ type PropsMissions = { missions: MissionServeur[]; reponses: Reponse[]; volontai
 function PanneauMissions({ missions, reponses, volontaires, communeId }: PropsMissions) {
   const [ouvert, setOuvert] = useState(false)
   const [mission, setMission] = useState(missionVide)
+  const [adresse, setAdresse] = useState<ResultatAdresse | null>(null)
   const [message, setMessage] = useState('')
 
   const proposer = async (e: FormEvent) => {
     e.preventDefault()
     const propre = Object.fromEntries(Object.entries(mission).map(([k, v]) => [k, v.trim()]))
-    const { error } = await serveur!.from('missions').insert({ ...propre, ressource: libelleRessource(mission.categorie), commune_id: communeId })
+    // Adresse vérifiée : le volontaire voit le point de rendez-vous sur sa carte, avec l'itinéraire
+    const position = adresse ? { adresse: adresse.libelle, lat: adresse.lat, lng: adresse.lng } : {}
+    const { error } = await serveur!.from('missions').insert({ ...propre, ...position, ressource: libelleRessource(mission.categorie), commune_id: communeId })
     if (error) {
       setMessage("Échec : la mission n'a pas été proposée.")
       return
     }
     setMessage(`Mission proposée aux volontaires qui offrent : ${libelleRessource(mission.categorie)}.`)
     setMission(missionVide)
+    setAdresse(null)
     setOuvert(false)
   }
 
@@ -950,7 +1099,8 @@ function PanneauMissions({ missions, reponses, volontaires, communeId }: PropsMi
           <div key={m.id} style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
             <strong style={{ fontSize: 15 }}>{m.titre}</strong>
             <span className="texte-doux">
-              {m.rendez_vous} · {m.lieu} · besoin : {m.equipe}
+              {m.rendez_vous} · {m.lieu}
+              {m.adresse ? ` (${m.adresse})` : ' · pas sur la carte'} · besoin : {m.equipe}
             </span>
             <span className="texte-doux">
               Pour : {m.categorie ? libelleRessource(m.categorie) : 'tous les volontaires'} · {concernes} volontaire{concernes > 1 ? 's' : ''} disponible{concernes > 1 ? 's' : ''} dans cette catégorie
@@ -991,6 +1141,7 @@ function PanneauMissions({ missions, reponses, volontaires, communeId }: PropsMi
               />
             </label>
           ))}
+          <ChampAdresse onChoix={setAdresse} libelleChamp="Adresse du rendez-vous (pour la carte et l'itinéraire)" />
           <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 14, fontWeight: 700 }}>
             Consignes de sécurité
             <textarea className="mairie-champ" value={mission.consignes} maxLength={400} onChange={(e) => setMission({ ...mission, consignes: e.target.value })} />

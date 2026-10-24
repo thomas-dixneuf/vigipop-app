@@ -36,9 +36,10 @@ export function estPlace(l: LieuServeur): l is LieuServeur & Coordonnees {
 export type ResultatAdresse = { libelle: string; lat: number; lng: number }
 
 // Base Adresse Nationale (data.gouv.fr) : adresses officielles françaises, sans clé
-export async function chercherAdresse(texte: string): Promise<ResultatAdresse[]> {
+export async function chercherAdresse(texte: string, type?: 'municipality'): Promise<ResultatAdresse[]> {
   if (texte.trim().length < 3) return []
-  const reponse = await fetch(`https://api-adresse.data.gouv.fr/search/?q=${encodeURIComponent(texte)}&limit=5`)
+  const filtre = type ? `&type=${type}` : ''
+  const reponse = await fetch(`https://api-adresse.data.gouv.fr/search/?q=${encodeURIComponent(texte)}&limit=5${filtre}`)
   if (!reponse.ok) return []
   const donnees = (await reponse.json()) as {
     features: { properties: { label: string }; geometry: { coordinates: [number, number] } }[]
