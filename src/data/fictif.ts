@@ -1,4 +1,4 @@
-import type { LieuServeur } from '../services/serveur'
+import type { LieuServeur, ZoneServeur } from '../services/serveur'
 
 // Données de démonstration : tout est fictif tant que la phase RGPD n'est pas validée.
 // Ne jamais remplacer par de vraies données d'habitants dans ce prototype.
@@ -8,11 +8,34 @@ export const commune = '[VOTRE COMMUNE]'
 export const risques = ['Inondation', 'Tempête', '[AUTRE RISQUE]']
 
 // Lieux de démonstration, au même format que ceux du serveur
+// Coordonnées fictives autour du centre de la commune démo
+export const centreCommune: [number, number] = [47.0585, -0.88]
+
 export const lieuxDemo: LieuServeur[] = [
-  { id: 'gymnase', type: 'accueil', nom: '[NOM DU GYMNASE]', details: 'ouvert 24 h/24 · repas chauds', distance: '1,2 km', places: 80, ouvert: true },
-  { id: 'salle', type: 'accueil', nom: '[SALLE DES FÊTES]', details: 'lits de camp', distance: '2,4 km', places: 40, ouvert: false },
-  { id: 'eau', type: 'eau', nom: '[NOM DU LIEU]', details: 'eau potable en bouteilles', distance: '800 m', places: null, ouvert: true },
+  { id: 'gymnase', type: 'accueil', nom: '[NOM DU GYMNASE]', details: 'ouvert 24 h/24 · repas chauds', distance: '1,2 km', places: 80, ouvert: true, adresse: '[ADRESSE DU GYMNASE]', lat: 47.0612, lng: -0.8745 },
+  { id: 'salle', type: 'accueil', nom: '[SALLE DES FÊTES]', details: 'lits de camp', distance: '2,4 km', places: 40, ouvert: false, adresse: '[ADRESSE DE LA SALLE]', lat: 47.0538, lng: -0.8871 },
+  { id: 'eau', type: 'eau', nom: '[NOM DU LIEU]', details: 'eau potable en bouteilles', distance: '800 m', places: null, ouvert: true, adresse: "[ADRESSE DU POINT D'EAU]", lat: 47.0581, lng: -0.8802 },
+  { id: 'soins', type: 'soins', nom: '[POSTE DE SECOURS]', details: 'Croix-Rouge · premiers soins', distance: '1,5 km', places: null, ouvert: true, adresse: '[ADRESSE DU POSTE]', lat: 47.0634, lng: -0.8856 },
 ]
+
+// Zone à éviter fictive (bord de rivière inondé), affichée en mode crise de démo
+export const zonesDemo: ZoneServeur[] = [
+  {
+    id: 'zone-demo',
+    nom: 'Quartier [BORD DE RIVIÈRE] inondé',
+    consigne: 'Ne pas circuler, même à pied : courant fort.',
+    points: [
+      [47.0569, -0.8838],
+      [47.0592, -0.8829],
+      [47.0601, -0.8771],
+      [47.0583, -0.8752],
+      [47.0561, -0.8786],
+    ],
+  },
+]
+
+// Hébergement solidaire chez l'habitant : un nombre, jamais d'adresse privée
+export const hebergementsSolidairesDemo = 3
 
 export const libelleLieu: Record<LieuServeur['type'], string> = {
   accueil: "Centre d'accueil",

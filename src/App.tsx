@@ -12,6 +12,7 @@ import Mission from './screens/Mission.tsx'
 import Pourquoi from './screens/Pourquoi.tsx'
 import Profil from './screens/Profil.tsx'
 import AVenir from './screens/AVenir.tsx'
+import Carte from './screens/Carte.tsx'
 import Signaler from './screens/Signaler.tsx'
 
 export default function App() {
@@ -26,7 +27,7 @@ export default function App() {
       <Route path="/accueil" element={<AccesProtege><Accueil /></AccesProtege>} />
       <Route path="/signaler" element={<AccesProtege><Signaler /></AccesProtege>} />
       <Route path="/demande" element={<AccesProtege><Confirmation /></AccesProtege>} />
-      <Route path="/carte" element={<AccesProtege><AVenir titre="Carte" onglet="carte" /></AccesProtege>} />
+      <Route path="/carte" element={<AccesProtege><Carte /></AccesProtege>} />
       <Route path="/profil" element={<AccesProtege><Profil /></AccesProtege>} />
       <Route path="/notifications" element={<AccesProtege><AVenir titre="Notifications" /></AccesProtege>} />
       {/* Se proposer comme volontaire demande toujours un compte : la mairie doit savoir qui vient */}

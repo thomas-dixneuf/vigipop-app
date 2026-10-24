@@ -11,6 +11,22 @@ export default defineConfig({
     VitePWA({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.png', 'logo.png', 'logo-slogan.png'],
+      workbox: {
+        // Le prototype embarque Supabase et la carte : une seule archive, gardée hors ligne
+        maximumFileSizeToCacheInBytes: 4 * 1024 * 1024,
+        runtimeCaching: [
+          {
+            // Zones de carte déjà consultées : encore visibles si le réseau tombe pendant la crise
+            urlPattern: /^https:\/\/tile\.openstreetmap\.org\//,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'carte-tuiles',
+              expiration: { maxEntries: 600, maxAgeSeconds: 14 * 24 * 3600 },
+              cacheableResponse: { statuses: [0, 200] },
+            },
+          },
+        ],
+      },
       manifest: {
         name: 'Vigipop',
         short_name: 'Vigipop',

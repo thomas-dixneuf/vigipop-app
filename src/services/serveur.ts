@@ -29,6 +29,16 @@ export type LieuServeur = {
   distance: string
   places: number | null
   ouvert: boolean
+  adresse: string
+  lat: number | null
+  lng: number | null
+}
+
+export type ZoneServeur = {
+  id: string
+  nom: string
+  consigne: string
+  points: [number, number][]
 }
 
 export type MissionServeur = {
