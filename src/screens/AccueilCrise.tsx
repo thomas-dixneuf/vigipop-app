@@ -3,7 +3,9 @@ import Bandeau112 from '../components/Bandeau112.tsx'
 import BarreNav from '../components/BarreNav.tsx'
 import BoutonDemo from '../components/BoutonDemo.tsx'
 import EnTete from '../components/EnTete.tsx'
+import HebergementTrouve from '../components/HebergementTrouve.tsx'
 import Icone from '../components/Icone.tsx'
+import PropositionHebergement from '../components/PropositionHebergement.tsx'
 import { libelleLieu, lieuxDemo } from '../data/fictif.ts'
 import { serveur } from '../services/serveur.ts'
 import { useAppState } from '../state/AppState.tsx'
@@ -56,7 +58,9 @@ export default function AccueilCrise() {
           </div>
         </section>
 
-        {demande ? (
+        <PropositionHebergement />
+
+        {demande && (
           <Link to="/demande" className="carte" style={{ textDecoration: 'none', color: 'var(--texte)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, borderColor: 'var(--bleu)', borderWidth: 2 }}>
             <span style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
               <strong style={{ color: 'var(--bleu-nuit)' }}>Ma demande {demande.reference}</strong>
@@ -64,7 +68,9 @@ export default function AccueilCrise() {
             </span>
             <Icone nom="fleche" taille={20} />
           </Link>
-        ) : (
+        )}
+        {demande?.envoyee && <HebergementTrouve demande={demande.id} />}
+        {!demande && (
           <h1 style={{ margin: '2px 0 0', fontSize: 22, fontWeight: 800, lineHeight: 1.2, color: 'var(--bleu-nuit)' }}>
             {enSecurite ? 'Merci, vous êtes en sécurité.' : 'Êtes-vous en sécurité ?'}
           </h1>

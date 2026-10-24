@@ -1,4 +1,5 @@
 import { Link, Navigate } from 'react-router-dom'
+import HebergementTrouve from '../components/HebergementTrouve.tsx'
 import Icone from '../components/Icone.tsx'
 import { besoins, commune, lieuxDemo, situations } from '../data/fictif.ts'
 import { useAppState } from '../state/AppState.tsx'
@@ -62,6 +63,8 @@ export default function Confirmation() {
             {listeBesoins.length ? ` · ${listeBesoins.join(', ')}` : ''}
           </p>
         </section>
+
+        {demande.envoyee && <HebergementTrouve demande={demande.id} />}
 
         {centre && (
           <section className="carte" style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 10 }}>

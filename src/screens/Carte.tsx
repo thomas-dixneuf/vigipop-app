@@ -82,7 +82,7 @@ export default function Carte() {
       <header style={{ padding: '20px 20px 4px', display: 'flex', flexDirection: 'column', gap: 4 }}>
         <h1 style={{ fontSize: 22, fontWeight: 800, color: 'var(--bleu-nuit)' }}>Carte</h1>
         <span className="texte-doux">
-          {enCrise ? 'Lieux ouverts par la mairie, mis à jour en direct' : 'Lieux prévus par la mairie en cas de crise'}
+          {enCrise ? 'Secours et lieux ouverts par la mairie, en direct' : 'Secours et lieux prévus par la mairie en cas de crise'}
         </span>
       </header>
 

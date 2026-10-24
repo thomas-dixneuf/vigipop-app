@@ -15,7 +15,8 @@ les secours et l'alerte officielle (FR-Alert), elle ne les remplace jamais.
 - Connexion prévue par code SMS, sans mot de passe.
 - **Sans compte, l'app n'est accessible qu'en mode crise** (`src/components/AccesProtege.tsx`) :
   signalement, consignes, lieux ouverts. Se proposer comme volontaire exige toujours un compte.
-  Le 112 reste affiché sur l'écran de lancement, avec ou sans compte.
+  Le 112 reste affiché sur l'écran de lancement, avec ou sans compte. Exception : la **carte**
+  (`#/carte`) est consultable sans compte à tout moment, pour repérer les secours avant une crise.
 - **Compte express** : sans compte, la demande d'aide propose un prénom et un numéro de rappel
   facultatifs (jamais bloquants). Ces informations pré-remplissent l'inscription proposée
   après l'envoi ; le compte créé reste lié à la même demande.

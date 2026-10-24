@@ -40,6 +40,9 @@ export type Utilisateur = {
 // Ce qu'une personne sans compte a déjà saisi : repris pour pré-remplir l'inscription
 export type Contact = { prenom: string; telephone: string }
 
+// Logement proposé par un volontaire hébergeur : visible par la mairie seulement
+export type Accueil = { places: number; adresse: string; lat: number | null; lng: number | null }
+
 export type Alerte = { titre: string; consigne: string; heure: string }
 
 // Réponse du volontaire à la mission proposée par le coordinateur
@@ -58,6 +61,7 @@ type Etat = {
   utilisateur: Utilisateur | null
   contact: Contact | null
   ressources: RessourceId[]
+  accueil: Accueil
   disponible: boolean
   mission: ReponseMission
   // Mission à laquelle se rapporte la réponse : une nouvelle mission repart « en attente »
@@ -80,6 +84,7 @@ type AppStateValue = Etat & {
   terminerVisite: () => void
   deconnecter: () => void
   basculerRessource: (id: RessourceId) => void
+  definirAccueil: (accueil: Partial<Accueil>) => void
   seRendreDisponible: () => void
   repondreMission: (reponse: 'acceptee' | 'refusee') => void
   reinitialiser: () => void
@@ -97,6 +102,7 @@ const etatInitial: Etat = {
   utilisateur: null,
   contact: null,
   ressources: ressourcesParDefaut,
+  accueil: { places: 2, adresse: '', lat: null, lng: null },
   disponible: false,
   mission: 'en-attente',
   missionRepondue: null,
@@ -280,7 +286,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
   }, [idSuivi])
 
   // ─── Disponibilité du volontaire, transmise à la mairie (renvoyée au retour du réseau) ───
-  const { utilisateur, disponible, ressources, disponibiliteEnvoyee } = etat
+  const { utilisateur, disponible, ressources, accueil, disponibiliteEnvoyee } = etat
   useEffect(() => {
     if (disponibiliteEnvoyee || !enLigne || !utilisateur) return
     let annule = false
@@ -295,7 +301,19 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
         const auteur = await assurerSession(client)
         const { error } = await client
           .from('volontaires')
-          .upsert({ auteur, commune_id: COMMUNE_ID, prenom: utilisateur.prenom, ressources, disponible })
+          .upsert({
+            auteur,
+            commune_id: COMMUNE_ID,
+            prenom: utilisateur.prenom,
+            telephone: utilisateur.telephone,
+            ressources,
+            disponible,
+            // Le logement n'est transmis que si l'hébergement est proposé
+            places_hebergement: ressources.includes('heb') ? accueil.places : 0,
+            adresse: ressources.includes('heb') ? accueil.adresse : '',
+            lat: ressources.includes('heb') ? accueil.lat : null,
+            lng: ressources.includes('heb') ? accueil.lng : null,
+          })
         if (!error) marquer()
       } catch {
         // Nouvel essai au prochain retour en ligne
@@ -304,7 +322,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     return () => {
       annule = true
     }
-  }, [disponibiliteEnvoyee, enLigne, utilisateur, disponible, ressources])
+  }, [disponibiliteEnvoyee, enLigne, utilisateur, disponible, ressources, accueil])
 
   // ─── Réponse à la mission proposée par la mairie ───
   const { mission: reponse, missionRepondue, reponseEnvoyee } = etat
@@ -358,6 +376,8 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
         disponibiliteEnvoyee: e.disponibiliteEnvoyee && !e.disponible,
         ressources: e.ressources.includes(id) ? e.ressources.filter((r) => r !== id) : [...e.ressources, id],
       })),
+    definirAccueil: (accueil) =>
+      setEtat((e) => ({ ...e, disponibiliteEnvoyee: e.disponibiliteEnvoyee && !e.disponible, accueil: { ...e.accueil, ...accueil } })),
     seRendreDisponible: () =>
       setEtat((e) => ({ ...e, disponible: true, disponibiliteEnvoyee: false, mission: 'en-attente', missionRepondue: null })),
     repondreMission: (reponse) =>

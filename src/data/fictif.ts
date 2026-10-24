@@ -40,7 +40,7 @@ export const hebergementsSolidairesDemo = 3
 export const libelleLieu: Record<LieuServeur['type'], string> = {
   accueil: "Centre d'accueil",
   eau: "Distribution d'eau",
-  soins: 'Point de soins',
+  soins: 'Secours',
   autre: "Point d'aide",
 }
 

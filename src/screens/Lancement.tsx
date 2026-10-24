@@ -60,6 +60,9 @@ export default function Lancement() {
             <Link to="/connexion" style={lienClair}>
               J'ai déjà un compte
             </Link>
+            <Link to="/carte" style={lienClair}>
+              Voir la carte des secours
+            </Link>
           </>
         )}
 
