@@ -1,18 +1,18 @@
 import { Link } from 'react-router-dom'
-import { commune } from '../data/fictif.ts'
 import { useAppState } from '../state/AppState.tsx'
 import Icone from './Icone.tsx'
 import Logo from './Logo.tsx'
 
 export default function EnTete() {
-  const nonLues = useAppState().notifications.filter((n) => !n.lue).length
+  const { notifications, communeAffichee } = useAppState()
+  const nonLues = notifications.filter((n) => !n.lue).length
   return (
     <header style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '20px 20px 12px' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
         <Logo />
         <div style={{ display: 'flex', flexDirection: 'column' }}>
           <span className="texte-doux">Commune de</span>
-          <span style={{ fontSize: 16, fontWeight: 700 }}>{commune}</span>
+          <span style={{ fontSize: 16, fontWeight: 700 }}>{communeAffichee}</span>
         </div>
       </div>
       <Link

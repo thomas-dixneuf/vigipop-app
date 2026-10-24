@@ -11,6 +11,7 @@ import Inscription from './screens/Inscription.tsx'
 import Mission from './screens/Mission.tsx'
 import Pourquoi from './screens/Pourquoi.tsx'
 import Profil from './screens/Profil.tsx'
+import MesInfos from './screens/MesInfos.tsx'
 import Carte from './screens/Carte.tsx'
 import Notifications from './screens/Notifications.tsx'
 import Notifieur from './components/Notifieur.tsx'
@@ -33,6 +34,7 @@ export default function App() {
       {/* La carte des secours reste consultable sans compte, avant même une crise */}
       <Route path="/carte" element={<Carte />} />
       <Route path="/profil" element={<AccesProtege><Profil /></AccesProtege>} />
+      <Route path="/profil/infos" element={<AccesProtege compteObligatoire><MesInfos /></AccesProtege>} />
       <Route path="/notifications" element={<AccesProtege><Notifications /></AccesProtege>} />
       {/* Se proposer comme volontaire demande toujours un compte : la mairie doit savoir qui vient */}
       <Route path="/aider" element={<AccesProtege compteObligatoire><Aider /></AccesProtege>} />

@@ -1,7 +1,6 @@
 import { Link, useNavigate } from 'react-router-dom'
 import BarreNav from '../components/BarreNav.tsx'
 import Icone from '../components/Icone.tsx'
-import { commune as communeDemo } from '../data/fictif.ts'
 import { useAppState } from '../state/AppState.tsx'
 
 const ligne = {
@@ -24,7 +23,7 @@ const ligne = {
 // Version simple du profil : la page complète (offres et prêts) viendra ensuite
 export default function Profil() {
   const navigate = useNavigate()
-  const { utilisateur, mode, lancerVisite, deconnecter } = useAppState()
+  const { utilisateur, mode, lancerVisite, deconnecter, communeAffichee } = useAppState()
 
   const revoirVisite = () => {
     lancerVisite()
@@ -38,12 +37,21 @@ export default function Profil() {
       </header>
       <main className="contenu">
         {utilisateur ? (
-          <section className="carte" style={{ display: 'flex', flexDirection: 'column', gap: 2, padding: 16 }}>
-            <span style={{ fontSize: 18, fontWeight: 800 }}>{utilisateur.prenom || 'Mon compte'}</span>
-            <span className="texte-doux">
-              {utilisateur.telephone} · {utilisateur.commune || communeDemo}
+          <Link
+            to="/profil/infos"
+            className="carte"
+            aria-label={`Mes informations : ${utilisateur.prenom || 'Mon compte'}, ${utilisateur.telephone}. Voir et modifier`}
+            style={{ display: 'flex', alignItems: 'center', gap: 12, padding: 16, textDecoration: 'none', color: 'var(--texte)' }}
+          >
+            <span style={{ display: 'flex', flexDirection: 'column', gap: 2, flex: 1, minWidth: 0 }}>
+              <span style={{ fontSize: 18, fontWeight: 800 }}>{utilisateur.prenom || 'Mon compte'}</span>
+              <span className="texte-doux">
+                {utilisateur.telephone} · {utilisateur.commune || communeAffichee}
+              </span>
+              <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--bleu)', marginTop: 4 }}>Voir et modifier mes informations</span>
             </span>
-          </section>
+            <Icone nom="fleche" taille={18} />
+          </Link>
         ) : (
           <section className="carte" style={{ display: 'flex', flexDirection: 'column', gap: 12, padding: 16 }}>
             <span style={{ fontSize: 15, lineHeight: 1.4 }}>

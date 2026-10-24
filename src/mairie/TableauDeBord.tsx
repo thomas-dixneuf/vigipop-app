@@ -142,7 +142,7 @@ export default function TableauDeBord({ coordinateur }: { coordinateur: Coordina
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <Logo taille={40} />
           <div style={{ display: 'flex', flexDirection: 'column' }}>
-            <strong>Vigipop · {coordinateur.communeNom}</strong>
+            <NomCommune communeId={commune} nomInitial={coordinateur.communeNom} />
             <span style={{ fontSize: 13, color: 'var(--bleu-clair)' }}>Cellule de crise · {coordinateur.nom}</span>
           </div>
         </div>
@@ -1033,5 +1033,48 @@ function PanneauJournal({ journal }: { journal: Evenement[] }) {
         ))}
       </ul>
     </section>
+  )
+}
+
+// Nom de la commune, affiché en haut de l'app des habitants : la mairie le corrige ici
+function NomCommune({ communeId, nomInitial }: { communeId: string; nomInitial: string }) {
+  const [nom, setNom] = useState(nomInitial)
+  const [saisie, setSaisie] = useState<string | null>(null)
+  const [erreur, setErreur] = useState('')
+
+  const enregistrer = async (e: FormEvent) => {
+    e.preventDefault()
+    const nouveau = (saisie ?? '').trim()
+    if (!nouveau || nouveau === nom) return setSaisie(null)
+    const { data, error } = await serveur!.from('communes').update({ nom: nouveau }).eq('id', communeId).select('nom')
+    if (error || !data?.length) return setErreur('Nom non enregistré. Lancez d’abord la migration 0009 dans Supabase.')
+    setNom(nouveau)
+    setSaisie(null)
+    setErreur('')
+  }
+
+  if (saisie === null)
+    return (
+      <span style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+        <strong>Vigipop · {nom}</strong>
+        <button
+          type="button"
+          onClick={() => setSaisie(nom)}
+          style={{ minHeight: 44, padding: '0 8px', border: 'none', background: 'transparent', color: 'var(--cyan)', fontSize: 13, fontWeight: 700, textDecoration: 'underline' }}
+        >
+          Renommer
+        </button>
+      </span>
+    )
+  return (
+    <form onSubmit={(e) => void enregistrer(e)} style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+      <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontWeight: 700 }}>
+        Nom de la commune
+        <input className="mairie-champ" value={saisie} onChange={(e) => setSaisie(e.target.value)} maxLength={80} autoFocus style={{ width: 200, color: 'var(--texte)' }} />
+      </label>
+      <button type="submit" className="mairie-bouton mairie-bouton--principal">Enregistrer</button>
+      <button type="button" className="mairie-bouton" onClick={() => { setSaisie(null); setErreur('') }}>Annuler</button>
+      {erreur && <span role="alert" style={{ color: 'var(--cyan)', fontSize: 13, width: '100%' }}>{erreur}</span>}
+    </form>
   )
 }

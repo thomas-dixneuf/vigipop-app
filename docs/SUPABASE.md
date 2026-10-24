@@ -18,7 +18,8 @@ fonctionne en mode démo local, avec un bouton « Démo » pour simuler la crise
    hébergeur ↔ sinistré, points de secours permanents), puis `0006_hebergement_auto.sql`
    (proposition automatique du foyer le plus proche), puis `0007_missions_ciblees.sql`
    (missions par type d'aide, demande qui avance quand l'hébergeur accepte), puis
-   `0008_notifications.sql` (alertes push : suivre ensuite `docs/NOTIFICATIONS.md`). Chaque nouveau fichier de `supabase/migrations/` se lance
+   `0008_notifications.sql` (alertes push : suivre ensuite `docs/NOTIFICATIONS.md`), puis
+   `0009_nom_commune.sql` (la mairie renomme sa commune, affichée en haut de l'app). Chaque nouveau fichier de `supabase/migrations/` se lance
    une seule fois, dans l'ordre des numéros.
 
 ## 2. Autoriser les habitants sans mot de passe

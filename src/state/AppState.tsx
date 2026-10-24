@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react'
-import { missionsDemo, ressourcesParDefaut, type BesoinId, type RessourceId, type SituationId } from '../data/fictif'
+import { commune as communeDemo, missionsDemo, ressourcesParDefaut, type BesoinId, type RessourceId, type SituationId } from '../data/fictif'
 import {
   assurerSession,
   COMMUNE_ID,
@@ -83,12 +83,16 @@ type Etat = {
   visiteAFaire: boolean
   // Compte connu sur ce téléphone, gardé après déconnexion pour simuler le serveur
   dernierUtilisateur: Utilisateur | null
+  // Nom officiel de la commune, tel que la mairie l'a enregistré (gardé pour le hors-ligne)
+  nomCommune: string | null
 }
 
 type AppStateValue = Etat & {
   // Mission proposée à ce volontaire : la plus récente de ses catégories, hors refus
   missionServeur: MissionServeur | null
   mission: ReponseMission
+  // Nom affiché en haut de l'app : celui de la mairie, sinon celui du compte, sinon la démo
+  communeAffichee: string
   basculerMode: () => void
   declarerEnSecurite: () => void
   enregistrerDemande: (demande: Omit<Demande, 'id' | 'statut' | 'envoyee'> & { id?: string }) => void
@@ -96,6 +100,8 @@ type AppStateValue = Etat & {
   lancerVisite: () => void
   terminerVisite: () => void
   deconnecter: () => void
+  // Mise à jour des informations personnelles depuis le profil
+  modifierUtilisateur: (modifs: Partial<Utilisateur>) => void
   basculerRessource: (id: RessourceId) => void
   definirAccueil: (accueil: Partial<Accueil>) => void
   seRendreDisponible: () => void
@@ -130,6 +136,7 @@ const etatInitial: Etat = {
   notificationsEffacees: [],
   visiteAFaire: false,
   dernierUtilisateur: null,
+  nomCommune: null,
 }
 
 // Mode démo local : alerte fictive affichée quand on simule la crise
@@ -201,6 +208,16 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
   // ─── Ce que décide la mairie : crise, lieux ouverts, mission ───
   const chargerCommune = useCallback(async () => {
     if (!serveur) return
+    // Nom de la commune : à part, pour qu'un échec ne bloque jamais le reste
+    void serveur
+      .from('communes')
+      .select('nom')
+      .eq('id', COMMUNE_ID)
+      .maybeSingle()
+      .then(({ data }) => {
+        const nom = (data as { nom: string } | null)?.nom?.trim()
+        if (nom) setEtat((e) => (e.nomCommune === nom ? e : { ...e, nomCommune: nom }))
+      })
     const [crise, lieux, mission, zones] = await Promise.all([
       serveur.from('crises').select('id, titre, consigne, active, declenchee_a').eq('commune_id', COMMUNE_ID).eq('active', true).maybeSingle(),
       serveur.from('lieux').select('id, type, nom, details, distance, places, ouvert, adresse, lat, lng').eq('commune_id', COMMUNE_ID).order('nom'),
@@ -397,6 +414,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     ...etat,
     missionServeur,
     mission: missionServeur && missionServeur.id === etat.missionAcceptee ? 'acceptee' : 'en-attente',
+    communeAffichee: etat.nomCommune || etat.utilisateur?.commune || communeDemo,
     // Mode démo local uniquement : avec le serveur, c'est la mairie qui déclenche la crise
     basculerMode: () =>
       setEtat((e) => (e.mode === 'veille' ? { ...e, mode: 'crise', alerte: alerteDemo, enSecurite: false } : finDeCrise(e))),
@@ -414,6 +432,13 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     lancerVisite: () => setEtat((e) => ({ ...e, visiteAFaire: true })),
     terminerVisite: () => setEtat((e) => ({ ...e, visiteAFaire: false })),
     deconnecter: () => setEtat((e) => ({ ...e, utilisateur: null, visiteAFaire: false })),
+    modifierUtilisateur: (modifs) =>
+      setEtat((e) => {
+        if (!e.utilisateur) return e
+        const utilisateur = { ...e.utilisateur, ...modifs }
+        // Volontaire disponible : la mairie reçoit aussitôt le nouveau prénom ou numéro
+        return { ...e, utilisateur, dernierUtilisateur: utilisateur, disponibiliteEnvoyee: e.disponibiliteEnvoyee && !e.disponible }
+      }),
     basculerRessource: (id) =>
       setEtat((e) => ({
         ...e,

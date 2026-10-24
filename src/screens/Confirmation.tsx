@@ -1,12 +1,12 @@
 import { Link, Navigate } from 'react-router-dom'
 import HebergementTrouve from '../components/HebergementTrouve.tsx'
 import Icone from '../components/Icone.tsx'
-import { besoins, commune, lieuxDemo, situations } from '../data/fictif.ts'
+import { besoins, lieuxDemo, situations } from '../data/fictif.ts'
 import { useAppState } from '../state/AppState.tsx'
 
 export default function Confirmation() {
   // L'envoi différé (sans réseau) et le suivi du statut sont gérés dans AppState
-  const { demande, lieux, utilisateur } = useAppState()
+  const { demande, lieux, utilisateur, communeAffichee: commune } = useAppState()
 
   if (!demande) return <Navigate to="/accueil" replace />
 

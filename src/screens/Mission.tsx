@@ -2,14 +2,13 @@ import { Link, Navigate } from 'react-router-dom'
 import EnTeteRetour from '../components/EnTeteRetour.tsx'
 import Icone from '../components/Icone.tsx'
 import PropositionHebergement from '../components/PropositionHebergement.tsx'
-import { commune } from '../data/fictif.ts'
 import { useAppState } from '../state/AppState.tsx'
 
 const cellule = { padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 2 } as const
 const separateur = '1px solid var(--bleu-voile)'
 
 export default function Mission() {
-  const { mode, disponible, mission: reponse, repondreMission, missionServeur, ressources } = useAppState()
+  const { mode, disponible, mission: reponse, repondreMission, missionServeur, ressources, communeAffichee: commune } = useAppState()
 
   // Une mission n'existe qu'en crise, pour un volontaire qui s'est dit disponible
   if (mode !== 'crise' || !disponible) return <Navigate to="/accueil" replace />
@@ -104,6 +103,7 @@ export default function Mission() {
 }
 
 function EnAttenteDeMission({ hebergeurSeul }: { hebergeurSeul: boolean }) {
+  const { communeAffichee: commune } = useAppState()
   return (
     <div className="ecran">
       <EnTeteRetour retour="/accueil">
