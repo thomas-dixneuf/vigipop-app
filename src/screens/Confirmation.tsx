@@ -1,8 +1,9 @@
 import { Link, Navigate } from 'react-router-dom'
 import HebergementTrouve from '../components/HebergementTrouve.tsx'
+import AidantsTrouves from '../components/AidantsTrouves.tsx'
 import Icone from '../components/Icone.tsx'
 import { besoins, lieuxDemo, situations } from '../data/fictif.ts'
-import { serveur } from '../services/serveur.ts'
+import { serveur, type BesoinEntraide } from '../services/serveur.ts'
 import { useAppState } from '../state/AppState.tsx'
 
 export default function Confirmation() {
@@ -71,6 +72,9 @@ export default function Confirmation() {
         </section>
 
         {demande.envoyee && <HebergementTrouve demande={demande.id} recherche={demande.besoins.includes('heb') && demande.statut !== 'close'} />}
+        {demande.envoyee && demande.statut !== 'close' && (
+          <AidantsTrouves demande={demande.id} besoins={demande.besoins.filter((b): b is BesoinEntraide => b === 'transport' || b === 'materiel')} />
+        )}
 
         {centre && (
           <section className="carte" style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 10 }}>

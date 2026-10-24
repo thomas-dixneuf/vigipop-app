@@ -28,6 +28,10 @@ les secours et l'alerte officielle (FR-Alert), elle ne les remplace jamais.
 - **Missions ciblées** : une mission a un type d'aide ; un volontaire ne reçoit que celles des
   types qu'il propose. Après un refus, la suivante de ses types lui est proposée. L'hébergement
   ne passe jamais par une mission (mise en relation dédiée).
+- **Paires automatiques** : besoin « Transport » → volontaire avec véhicule, « Matériel » → volontaire
+  avec matériel, proposés au plus proche disponible (table `entraides`, une sollicitation à la fois par
+  volontaire). Coordonnées échangées seulement après l'accord. Les autres besoins (eau, médicaments,
+  animaux) passent par le tableau « Besoins et volontaires » de la mairie, qui crée une mission ciblée.
 - **Notifications** : centre de notifications dans l'app, alertes du téléphone, push app fermée
   (`docs/NOTIFICATIONS.md`). Clé privée VAPID uniquement dans les secrets Supabase, jamais dans
   le dépôt ni dans une conversation. Complète FR-Alert, ne le remplace jamais.

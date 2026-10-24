@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import Icone from './Icone.tsx'
 import { abonnerPush, afficherAlerte, etatAlertes } from '../outils/alertes.ts'
-import { COMMUNE_ID, serveur, type MonHebergementServeur, type PropositionHebergementServeur } from '../services/serveur.ts'
+import { COMMUNE_ID, serveur, type AidantServeur, type MonHebergementServeur, type PropositionHebergementServeur, type SollicitationServeur } from '../services/serveur.ts'
 import { useAppState, type NotificationApp } from '../state/AppState.tsx'
 
 type Evenement = Omit<NotificationApp, 'heure' | 'lue'>
@@ -127,6 +127,53 @@ export default function Notifieur() {
       window.clearInterval(minuteur)
     }
   }, [hebergeur, demandeHeb])
+
+  // Transport et matériel : sollicitations reçues (volontaire) et volontaire trouvé (personne aidée)
+  const aidant = !!serveur && !!utilisateur && disponible && (ressources.includes('vehicule') || ressources.includes('materiel'))
+  const demandeEntraide =
+    demande?.envoyee && demande.statut !== 'close' && (demande.besoins.includes('transport') || demande.besoins.includes('materiel')) ? demande.id : null
+  useEffect(() => {
+    if (!serveur || (!aidant && !demandeEntraide)) return
+    const client = serveur
+    const verifier = async () => {
+      if (aidant) {
+        const { data } = await client.rpc('mes_entraides')
+        for (const s of (data ?? []) as SollicitationServeur[]) {
+          if (s.statut === 'proposee')
+            annoncer.current({
+              cle: `entraide-proposee:${s.id}`,
+              titre: s.besoin === 'transport' ? "Un habitant a besoin d'être transporté" : 'Un habitant a besoin de matériel',
+              texte: 'Pouvez-vous aider ? Répondez dans Vigipop.',
+              lien: '/accueil',
+              urgente: true,
+            })
+        }
+      }
+      if (demandeEntraide) {
+        const { data } = await client.rpc('mes_aidants', { p_demande: demandeEntraide })
+        for (const a of (data ?? []) as AidantServeur[]) {
+          if (a.statut === 'acceptee')
+            annoncer.current({
+              cle: `entraide-trouvee:${demandeEntraide}:${a.besoin}`,
+              titre: a.besoin === 'transport' ? 'Un volontaire vient vous chercher' : 'Un volontaire apporte du matériel',
+              texte: `${a.prenom || 'Un volontaire'} a accepté : son numéro est dans Vigipop.`,
+              lien: '/demande',
+              urgente: true,
+            })
+        }
+      }
+    }
+    void verifier()
+    const canal = client
+      .channel(`notifieur-entraide-${demandeEntraide ?? 'aidant'}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'entraides' }, () => void verifier())
+      .subscribe()
+    const minuteur = window.setInterval(() => void verifier(), 60000)
+    return () => {
+      void client.removeChannel(canal)
+      window.clearInterval(minuteur)
+    }
+  }, [aidant, demandeEntraide])
 
   // Alertes déjà autorisées : on (ré)abonne ce téléphone au push à chaque ouverture
   useEffect(() => {
