@@ -28,6 +28,9 @@ les secours et l'alerte officielle (FR-Alert), elle ne les remplace jamais.
 - **Missions ciblées** : une mission a un type d'aide ; un volontaire ne reçoit que celles des
   types qu'il propose. Après un refus, la suivante de ses types lui est proposée. L'hébergement
   ne passe jamais par une mission (mise en relation dédiée).
+- **Notifications** : centre de notifications dans l'app, alertes du téléphone, push app fermée
+  (`docs/NOTIFICATIONS.md`). Clé privée VAPID uniquement dans les secrets Supabase, jamais dans
+  le dépôt ni dans une conversation. Complète FR-Alert, ne le remplace jamais.
 - Accessibilité : zones tactiles ≥ 44 px, vrais `<button>` et `<a>`, contrastes AA.
 
 ## Charte

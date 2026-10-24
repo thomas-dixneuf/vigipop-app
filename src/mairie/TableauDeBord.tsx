@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import CarteInteractive, { type Repere } from '../components/CarteInteractive.tsx'
 import Logo from '../components/Logo.tsx'
 import ChampAdresse from '../components/ChampAdresse.tsx'
+import PanneauPush from './PanneauPush.tsx'
 import { besoins as listeBesoins, centreCommune, libelleLieu, ressources as listeRessources, situations } from '../data/fictif.ts'
 import {
   heure,
@@ -179,6 +180,7 @@ export default function TableauDeBord({ coordinateur }: { coordinateur: Coordina
             <PanneauVolontaires volontaires={donnees.volontaires} enCrise={!!donnees.crise} />
             <PanneauMissions missions={donnees.missions} reponses={donnees.reponses} volontaires={donnees.volontaires} communeId={commune} />
             <PanneauJournal journal={donnees.journal} />
+            <PanneauPush />
           </div>
         </main>
       )}
