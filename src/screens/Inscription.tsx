@@ -40,7 +40,7 @@ export default function Inscription() {
         )}
         <label style={libelle}>
           Prénom
-          <input type="text" value={prenom} onChange={(e) => setPrenom(e.target.value)} placeholder="Camille" autoComplete="given-name" style={champ} />
+          <input type="text" value={prenom} onChange={(e) => setPrenom(e.target.value)} placeholder="Prénom" autoComplete="given-name" style={champ} />
         </label>
         <ChampTelephone valeur={telephone} onChange={setTelephone} />
         <label style={libelle}>

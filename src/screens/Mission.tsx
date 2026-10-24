@@ -1,4 +1,4 @@
-import { Link, Navigate } from 'react-router-dom'
+import { Link, Navigate, useNavigate } from 'react-router-dom'
 import EnTeteRetour from '../components/EnTeteRetour.tsx'
 import Icone from '../components/Icone.tsx'
 import PropositionHebergement from '../components/PropositionHebergement.tsx'
@@ -8,6 +8,7 @@ const cellule = { padding: '14px 16px', display: 'flex', flexDirection: 'column'
 const separateur = '1px solid var(--bleu-voile)'
 
 export default function Mission() {
+  const navigate = useNavigate()
   const { mode, disponible, mission: reponse, repondreMission, missionServeur, ressources, communeAffichee: commune } = useAppState()
 
   // Une mission n'existe qu'en crise, pour un volontaire qui s'est dit disponible
@@ -69,6 +70,7 @@ export default function Mission() {
           </div>
           <Link
             to="/carte"
+            state={{ mission: mission.id }}
             aria-label="Itinéraire vers le point de rendez-vous"
             style={{ width: 48, height: 48, borderRadius: 12, background: 'var(--bleu-clair)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--bleu-nuit)', flexShrink: 0 }}
           >
@@ -80,19 +82,40 @@ export default function Mission() {
           <span style={{ fontSize: 14, fontWeight: 800, color: 'var(--consigne)' }}>Consignes de sécurité</span>
           <span style={{ fontSize: 14, lineHeight: 1.45, color: 'var(--bleu-voile)' }}>{mission.consignes}</span>
         </section>
+
+        {!acceptee && (
+          <p className="texte-doux" style={{ lineHeight: 1.4 }}>
+            Refuser cette mission ne vous retire pas : la suivante de vos types d'aide vous sera proposée. Pour ne plus être sollicité,{' '}
+            <Link to="/aider">changez vos types d'aide ou indiquez que vous n'êtes plus disponible</Link>.
+          </p>
+        )}
       </main>
 
       <footer style={{ position: 'sticky', bottom: 0, padding: '12px 20px calc(18px + env(safe-area-inset-bottom))', background: 'var(--blanc)', borderTop: '1px solid var(--bordure)', display: 'flex', gap: 10 }}>
         {acceptee ? (
-          <button type="button" className="bouton bouton--contour" style={{ flex: 1 }} onClick={refuser}>
-            Je ne peux plus venir
-          </button>
+          <>
+            <button type="button" className="bouton bouton--contour" style={{ flex: 1 }} onClick={refuser}>
+              Me désister
+            </button>
+            <Link to="/carte" state={{ mission: mission.id }} className="bouton bouton--principal" style={{ flex: 1.4 }}>
+              <Icone nom="itineraire" taille={18} /> Itinéraire
+            </Link>
+          </>
         ) : (
           <>
             <button type="button" className="bouton" style={{ flex: 1, border: '2px solid var(--bordure)', background: 'var(--blanc)', color: 'var(--texte)', fontWeight: 700, fontSize: 16 }} onClick={refuser}>
-              Pas disponible
+              Refuser cette mission
             </button>
-            <button type="button" className="bouton bouton--principal" style={{ flex: 1.4 }} onClick={() => repondreMission('acceptee')}>
+            <button
+              type="button"
+              className="bouton bouton--principal"
+              style={{ flex: 1.4 }}
+              onClick={() => {
+                repondreMission('acceptee')
+                // Direction le point de rendez-vous, mission rappelée sous la carte
+                navigate('/carte', { state: { mission: mission.id } })
+              }}
+            >
               J'accepte
             </button>
           </>
@@ -103,7 +126,7 @@ export default function Mission() {
 }
 
 function EnAttenteDeMission({ hebergeurSeul }: { hebergeurSeul: boolean }) {
-  const { communeAffichee: commune } = useAppState()
+  const { communeAffichee: commune, seRendreIndisponible } = useAppState()
   return (
     <div className="ecran">
       <EnTeteRetour retour="/accueil">
@@ -125,7 +148,13 @@ function EnAttenteDeMission({ hebergeurSeul }: { hebergeurSeul: boolean }) {
             </span>
           </div>
         </section>
-        <Link to="/accueil" className="bouton bouton--contour">
+        <Link to="/aider" className="bouton bouton--clair">
+          Modifier mes types d'aide
+        </Link>
+        <button type="button" className="bouton bouton--contour" onClick={seRendreIndisponible}>
+          Je ne suis plus disponible
+        </button>
+        <Link to="/accueil" style={{ textAlign: 'center', fontWeight: 700, padding: 12, minHeight: 44 }}>
           Retour à l'accueil
         </Link>
       </main>

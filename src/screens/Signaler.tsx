@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import ChampTelephone from '../components/ChampTelephone.tsx'
-import { useNavigate } from 'react-router-dom'
+import { Navigate, useNavigate } from 'react-router-dom'
 import EnTeteRetour from '../components/EnTeteRetour.tsx'
 import Icone from '../components/Icone.tsx'
 import { besoins, situations, type BesoinId, type SituationId } from '../data/fictif.ts'
@@ -22,9 +22,11 @@ function nouvelleReference() {
 
 export default function Signaler() {
   const navigate = useNavigate()
-  const { demande, enregistrerDemande, utilisateur, contact, communeAffichee: commune } = useAppState()
+  const { mode, apresCrise, demande, enregistrerDemande, utilisateur, contact, communeAffichee: commune } = useAppState()
 
-  // « Ma situation a changé » : on repart de la demande précédente
+  // Mise à jour de la situation : on repart de la demande précédente.
+  // Une demande close (fin de crise) n'est plus suivie : on en ouvre une nouvelle.
+  const enCours = demande && demande.statut !== 'close' ? demande : null
   const [situation, setSituation] = useState<SituationId | null>(demande?.situation ?? null)
   const [choix, setChoix] = useState<BesoinId[]>(demande?.besoins ?? [])
   const [personnes, setPersonnes] = useState(demande?.personnes ?? 1)
@@ -51,6 +53,10 @@ export default function Signaler() {
     )
   }, [])
 
+  // Hors crise, on ne signale pas (le 112 reste affiché) ; sauf juste après une crise, pour dire
+  // à la mairie qu'on a encore besoin d'aide
+  if (mode === 'veille' && !apresCrise && !demande) return <Navigate to="/accueil" replace />
+
   const basculerBesoin = (id: BesoinId) =>
     setChoix((liste) => (liste.includes(id) ? liste.filter((b) => b !== id) : [...liste, id]))
 
@@ -62,8 +68,8 @@ export default function Signaler() {
   const envoyer = () => {
     if (!peutEnvoyer) return
     enregistrerDemande({
-      id: demande?.id,
-      reference: demande?.reference ?? nouvelleReference(),
+      id: enCours?.id,
+      reference: enCours?.reference ?? nouvelleReference(),
       situation,
       besoins: choix,
       personnes,
@@ -79,7 +85,7 @@ export default function Signaler() {
   return (
     <div className="ecran">
       <EnTeteRetour retour="/accueil">
-        <h1 style={{ fontSize: 21, fontWeight: 800, color: 'var(--bleu-nuit)' }}>J'ai besoin d'aide</h1>
+        <h1 style={{ fontSize: 21, fontWeight: 800, color: 'var(--bleu-nuit)' }}>{enCours ? 'Mettre à jour ma situation' : "J'ai besoin d'aide"}</h1>
         <span className="texte-doux">3 questions · transmis à la cellule de crise de {commune}</span>
       </EnTeteRetour>
 
@@ -147,7 +153,7 @@ export default function Signaler() {
             ))}
           </div>
           <div className="carte" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 6px 6px 14px', marginTop: 4 }}>
-            <span style={{ fontSize: 15 }}>Personnes avec moi (moi compris)</span>
+            <span style={{ fontSize: 15 }}>Nombre de personnes</span>
             <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
               <button type="button" aria-label="Retirer une personne" onClick={() => setPersonnes((n) => Math.max(1, n - 1))} style={compteur}>
                 −
@@ -179,7 +185,7 @@ export default function Signaler() {
             <div className="carte" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               <label style={libelle}>
                 Prénom
-                <input type="text" value={prenom} onChange={(e) => setPrenom(e.target.value)} placeholder="Camille" autoComplete="given-name" maxLength={60} style={champ} />
+                <input type="text" value={prenom} onChange={(e) => setPrenom(e.target.value)} placeholder="Prénom" autoComplete="given-name" maxLength={60} style={champ} />
               </label>
               <ChampTelephone valeur={telephone} onChange={setTelephone} />
             </div>
@@ -189,7 +195,7 @@ export default function Signaler() {
 
       <footer style={{ position: 'sticky', bottom: 0, padding: '12px 20px calc(18px + env(safe-area-inset-bottom))', background: 'var(--blanc)', borderTop: '1px solid var(--bordure)', display: 'flex', flexDirection: 'column', gap: 6 }}>
         <button type="button" className="bouton bouton--urgence" style={{ fontSize: 18 }} onClick={envoyer} disabled={!peutEnvoyer}>
-          Envoyer ma demande
+          {enCours ? 'Envoyer la mise à jour' : 'Envoyer ma demande'}
         </button>
         <span className="texte-doux" style={{ fontSize: 12, textAlign: 'center' }}>
           {situation === null

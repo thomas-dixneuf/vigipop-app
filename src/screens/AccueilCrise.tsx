@@ -7,6 +7,7 @@ import HebergementTrouve from '../components/HebergementTrouve.tsx'
 import Icone from '../components/Icone.tsx'
 import PropositionHebergement from '../components/PropositionHebergement.tsx'
 import { libelleLieu, lieuxDemo } from '../data/fictif.ts'
+import { serveur } from '../services/serveur.ts'
 import { useAppState } from '../state/AppState.tsx'
 
 const libelleStatut = {
@@ -37,7 +38,8 @@ const pastille = {
 
 export default function AccueilCrise() {
   const { demande, enSecurite, declarerEnSecurite, disponible, mission, missionServeur, alerte, lieux } = useAppState()
-  const ouverts = (lieux ?? lieuxDemo).filter((l) => l.ouvert)
+  const demandeOuverte = !!demande && demande.statut !== 'close'
+  const ouverts = (lieux ?? (serveur ? [] : lieuxDemo)).filter((l) => l.ouvert)
 
   return (
     <div className="ecran">
@@ -80,8 +82,10 @@ export default function AccueilCrise() {
             <Icone nom="sos" taille={24} />
           </span>
           <span style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-            <span style={{ fontSize: 20, fontWeight: 800 }}>J'ai besoin d'aide</span>
-            <span style={{ fontSize: 14, color: 'var(--urgence-pale)' }}>Signaler ma situation en 30 secondes</span>
+            <span style={{ fontSize: 20, fontWeight: 800 }}>{demandeOuverte ? 'Mettre à jour ma situation' : "J'ai besoin d'aide"}</span>
+            <span style={{ fontSize: 14, color: 'var(--urgence-pale)' }}>
+              {demandeOuverte ? 'Situation ou besoins qui évoluent' : 'Signaler ma situation en 30 secondes'}
+            </span>
           </span>
         </Link>
 

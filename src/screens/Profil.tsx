@@ -44,7 +44,7 @@ export default function Profil() {
             style={{ display: 'flex', alignItems: 'center', gap: 12, padding: 16, textDecoration: 'none', color: 'var(--texte)' }}
           >
             <span style={{ display: 'flex', flexDirection: 'column', gap: 2, flex: 1, minWidth: 0 }}>
-              <span style={{ fontSize: 18, fontWeight: 800 }}>{utilisateur.prenom || 'Mon compte'}</span>
+              <span style={{ fontSize: 18, fontWeight: 800 }}>{[utilisateur.prenom, utilisateur.nom].filter(Boolean).join(' ') || 'Mon compte'}</span>
               <span className="texte-doux">
                 {utilisateur.telephone} · {utilisateur.commune || communeAffichee}
               </span>
@@ -67,20 +67,16 @@ export default function Profil() {
         )}
 
         <section className="carte" style={{ padding: 0, borderRadius: 16 }}>
-          <Link to="/aider" style={{ ...ligne, borderBottom: '1px solid var(--bleu-voile)' }}>
-            Ce que je peux offrir
+          <Link to="/aider" style={{ ...ligne, borderBottom: mode === 'veille' ? '1px solid var(--bleu-voile)' : 'none' }}>
+            Mes types d'aide (ce que je peux offrir)
             <Icone nom="fleche" taille={18} />
           </Link>
           {mode === 'veille' && (
-            <button type="button" onClick={revoirVisite} style={{ ...ligne, borderBottom: '1px solid var(--bleu-voile)' }}>
+            <button type="button" onClick={revoirVisite} style={ligne}>
               Revoir la visite guidée
               <Icone nom="fleche" taille={18} />
             </button>
           )}
-          <Link to="/pourquoi/1" style={ligne}>
-            Pourquoi Vigipop ?
-            <Icone nom="fleche" taille={18} />
-          </Link>
         </section>
 
         {utilisateur && (

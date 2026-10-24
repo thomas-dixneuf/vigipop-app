@@ -53,6 +53,10 @@ export type MissionServeur = {
   consignes: string
   // Catégorie d'aide demandée (id de ressource) ; vide : ouverte à tous
   categorie: string
+  // Point de rendez-vous placé sur la carte (missions créées depuis la migration 0010)
+  adresse?: string
+  lat?: number | null
+  lng?: number | null
 }
 
 export type DemandeServeur = {
@@ -66,6 +70,8 @@ export type DemandeServeur = {
   prenom: string
   telephone: string
   statut: StatutDemande
+  // Ce que la mairie a prévu, lu par l'habitant (migration 0010)
+  reponse_mairie?: string
   created_at: string
   updated_at: string
 }

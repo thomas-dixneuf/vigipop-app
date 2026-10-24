@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { Link, useLocation } from 'react-router-dom'
 import Bandeau112 from '../components/Bandeau112.tsx'
 import BarreNav from '../components/BarreNav.tsx'
 import CarteInteractive, { type Repere } from '../components/CarteInteractive.tsx'
 import Icone from '../components/Icone.tsx'
-import { centreCommune, hebergementsSolidairesDemo, libelleLieu, lieuxDemo, zonesDemo } from '../data/fictif.ts'
+import { centreCommune, hebergementsSolidairesDemo, libelleLieu, lieuxDemo, missionsDemo, zonesDemo } from '../data/fictif.ts'
 import { couleurLieu, dansZone, distanceLisible, distanceMetres, estPlace, lienItineraire, type Coordonnees } from '../outils/carte.ts'
 import { COMMUNE_ID, serveur, type LieuServeur } from '../services/serveur.ts'
 import { useAppState } from '../state/AppState.tsx'
@@ -17,13 +18,18 @@ const filtres: [Filtre, string][] = [
   ['eau', 'Eau'],
 ]
 
+const aucunLieu: LieuServeur[] = []
+
 export default function Carte() {
-  const { mode, lieux, zones: zonesServeur } = useAppState()
+  const { mode, lieux, zones: zonesServeur, missions, communeAffichee } = useAppState()
+  // Arrivée depuis une mission acceptée : son point de rendez-vous est mis en avant
+  const idMission = (useLocation().state as { mission?: string } | null)?.mission
+  const mission = idMission ? (serveur ? missions : missionsDemo).find((m) => m.id === idMission) ?? null : null
   const enCrise = mode === 'crise'
   // Démo locale : une zone fictive apparaît quand la crise est simulée
   const zones = zonesServeur ?? (enCrise && !serveur ? zonesDemo : [])
   const [filtre, setFiltre] = useState<Filtre>('tous')
-  const [selection, setSelection] = useState<string | null>(null)
+  const [selection, setSelection] = useState<string | null>(mission ? 'mission' : null)
   const [position, setPosition] = useState<Coordonnees | null>(null)
   const [solidaires, setSolidaires] = useState<number | null>(serveur ? null : hebergementsSolidairesDemo)
 
@@ -49,7 +55,7 @@ export default function Carte() {
     return () => window.clearInterval(minuteur)
   }, [enCrise])
 
-  const tous = lieux ?? lieuxDemo
+  const tous = lieux ?? (serveur ? aucunLieu : lieuxDemo)
   // En veille, on montre où se trouveront les lieux ; en crise, ouverts d'abord
   const visibles = useMemo(() => {
     const liste = tous.filter((l) => filtre === 'tous' || l.type === filtre)
@@ -57,9 +63,23 @@ export default function Carte() {
     return [...liste].sort((a, b) => Number(b.ouvert) - Number(a.ouvert) || distance(a) - distance(b))
   }, [tous, filtre, position])
 
+  // Rendez-vous : adresse placée par la mairie, sinon un lieu de la carte du même nom
+  const rendezVous = useMemo(() => {
+    if (!mission) return null
+    if (mission.lat != null && mission.lng != null) return { lat: mission.lat, lng: mission.lng }
+    const lieu = tous.find((l) => estPlace(l) && l.nom.trim().toLowerCase() === mission.lieu.trim().toLowerCase())
+    return lieu && estPlace(lieu) ? { lat: lieu.lat, lng: lieu.lng } : null
+  }, [mission, tous])
+  const itineraireMission = mission
+    ? rendezVous
+      ? lienItineraire(rendezVous)
+      : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${mission.adresse || mission.lieu}, ${communeAffichee}`)}`
+    : null
+
   const reperes: Repere[] = useMemo(
-    () =>
-      visibles.filter(estPlace).map((l) => ({
+    () => [
+      ...(mission && rendezVous ? [{ id: 'mission', ...rendezVous, couleur: '#0e3a52', titre: `Rendez-vous mission · ${mission.lieu}` }] : []),
+      ...visibles.filter(estPlace).map((l) => ({
         id: l.id,
         lat: l.lat,
         lng: l.lng,
@@ -67,7 +87,8 @@ export default function Carte() {
         titre: `${l.nom} · ${enCrise ? (l.ouvert ? 'ouvert' : 'fermé') : libelleLieu[l.type]}`,
         attenue: enCrise && !l.ouvert,
       })),
-    [visibles, enCrise],
+    ],
+    [visibles, enCrise, mission, rendezVous],
   )
 
   const zoneActuelle = position ? zones.find((z) => dansZone(position, z.points)) : undefined
@@ -111,6 +132,23 @@ export default function Carte() {
           onSelection={choisir}
           hauteur="42vh"
         />
+
+        {mission && itineraireMission && (
+          <section aria-label="Ma mission" className="carte" style={{ display: 'flex', flexDirection: 'column', gap: 8, borderColor: 'var(--bleu)', borderWidth: 2 }}>
+            <span style={{ fontSize: 12, fontWeight: 800, color: 'var(--bleu)', textTransform: 'uppercase', letterSpacing: 0.8 }}>Ma mission · rendez-vous {mission.rendez_vous}</span>
+            <strong style={{ fontSize: 17, color: 'var(--bleu-nuit)', lineHeight: 1.3 }}>{mission.titre}</strong>
+            <span style={{ fontSize: 14 }}>
+              {mission.lieu}
+              {mission.adresse ? ` · ${mission.adresse}` : ''}
+            </span>
+            <a href={itineraireMission} target="_blank" rel="noreferrer" className="bouton bouton--principal" style={{ minHeight: 48, fontSize: 16 }}>
+              <Icone nom="itineraire" taille={18} /> Itinéraire vers le rendez-vous
+            </a>
+            <Link to="/mission" style={{ textAlign: 'center', fontWeight: 700, minHeight: 44, padding: 10 }}>
+              Voir le détail de la mission
+            </Link>
+          </section>
+        )}
 
         {zones.length > 0 && (
           <section aria-label="Zones à éviter" style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>

@@ -2,6 +2,7 @@ import { Link, Navigate } from 'react-router-dom'
 import HebergementTrouve from '../components/HebergementTrouve.tsx'
 import Icone from '../components/Icone.tsx'
 import { besoins, lieuxDemo, situations } from '../data/fictif.ts'
+import { serveur } from '../services/serveur.ts'
 import { useAppState } from '../state/AppState.tsx'
 
 export default function Confirmation() {
@@ -10,7 +11,7 @@ export default function Confirmation() {
 
   if (!demande) return <Navigate to="/accueil" replace />
 
-  const centre = (lieux ?? lieuxDemo).find((l) => l.type === 'accueil' && l.ouvert)
+  const centre = (lieux ?? (serveur ? [] : lieuxDemo)).find((l) => l.type === 'accueil' && l.ouvert)
   const rang = { transmise: 1, prise_en_charge: 2, aide_organisee: 3, close: 3 }[demande.statut]
   // Étape faite si atteinte, « en cours » pour la suivante
   const etatEtape = (n: number) => {
@@ -43,7 +44,7 @@ export default function Confirmation() {
         </h1>
         <p style={{ fontSize: 15, lineHeight: 1.45, color: 'var(--bleu-voile)' }}>
           {demande.envoyee
-            ? `Reçue par la cellule de crise de ${commune} à ${demande.envoyeeA}. Restez joignable sur ce téléphone.`
+            ? `Reçue par la cellule de crise de ${commune} à ${demande.envoyeeA}.${utilisateur ? ' Restez joignable sur ce téléphone.' : ''}`
             : "Pas de réseau pour l'instant. Elle partira automatiquement dès que le téléphone en retrouve."}
         </p>
       </header>
@@ -57,6 +58,11 @@ export default function Confirmation() {
           <Etape etat={demande.envoyee ? 'fait' : 'en-cours'} titre="Transmise" detail={demande.envoyee ? demande.envoyeeA : 'en attente de réseau'} />
           <Etape etat={etatEtape(2)} titre="Prise en charge" detail={demande.envoyee && rang === 1 ? 'en cours' : undefined} />
           <Etape etat={etatEtape(3)} titre="Aide organisée" />
+          {demande.reponseMairie && (
+            <p role="status" style={{ background: 'var(--bleu-voile)', color: 'var(--bleu-nuit)', borderRadius: 12, padding: '10px 12px', fontSize: 15, lineHeight: 1.45 }}>
+              <strong>Message de la mairie :</strong> {demande.reponseMairie}
+            </p>
+          )}
           <p className="texte-doux" style={{ borderTop: '1px solid var(--bordure)', paddingTop: 10, lineHeight: 1.4 }}>
             {situation} · {demande.personnes} personne{demande.personnes > 1 ? 's' : ''}
             {demande.personneVulnerable ? ' dont une vulnérable' : ''}
@@ -90,7 +96,7 @@ export default function Confirmation() {
 
         {!utilisateur && (
           <section className="carte" style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 10 }}>
-            <span style={{ fontSize: 16, fontWeight: 800, color: 'var(--bleu-nuit)' }}>Gardez le suivi de votre demande</span>
+            <span style={{ fontSize: 16, fontWeight: 800, color: 'var(--bleu-nuit)' }}>Pour que les autorités puissent vous recontacter</span>
             <span className="texte-doux" style={{ lineHeight: 1.4 }}>
               Créez votre compte en une étape : vos informations sont déjà remplies.
             </span>
@@ -106,7 +112,7 @@ export default function Confirmation() {
         </button>
 
         <Link to="/signaler" style={{ textAlign: 'center', fontSize: 15, fontWeight: 700, padding: 12, minHeight: 44 }}>
-          Ma situation a changé
+          Mettez à jour votre situation et vos besoins en cas d'évolution
         </Link>
         <Link to="/accueil" style={{ textAlign: 'center', fontSize: 15, fontWeight: 700, padding: 4, minHeight: 44 }}>
           Retour à l'accueil

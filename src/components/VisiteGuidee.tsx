@@ -10,8 +10,8 @@ const etapes = [
   },
   {
     cible: 'signaler',
-    titre: "Besoin d'aide ? C'est ici.",
-    texte: 'En cas de sinistre, signalez votre situation et votre position en 30 secondes. En danger immédiat, appelez toujours le 112.',
+    titre: "En cas d'urgence",
+    texte: "Hors crise, appelez le 112. Quand la mairie déclenche une crise, un bouton « J'ai besoin d'aide » apparaît sur l'accueil pour signaler votre situation en 30 secondes.",
   },
   {
     cible: 'preparation',

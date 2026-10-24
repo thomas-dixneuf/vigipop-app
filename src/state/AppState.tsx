@@ -29,10 +29,14 @@ export type Demande = {
   // Faux tant que la demande n'a pas pu partir (pas de réseau)
   envoyee: boolean
   statut: StatutDemande
+  // Ce que la mairie a prévu (« aide organisée »)
+  reponseMairie?: string
 }
 
 export type Utilisateur = {
   prenom: string
+  // Nom de famille : facultatif, complété dans « Mes informations »
+  nom?: string
   telephone: string
   commune: string
 }
@@ -85,6 +89,14 @@ type Etat = {
   dernierUtilisateur: Utilisateur | null
   // Nom officiel de la commune, tel que la mairie l'a enregistré (gardé pour le hors-ligne)
   nomCommune: string | null
+  // Risques de la commune saisis par la mairie (null : pas encore chargés)
+  risques: string[] | null
+  // Visite guidée déjà vue sur ce téléphone : jamais reproposée d'office
+  visiteFaite: boolean
+  // « Ce que je peux offrir » enregistré au moins une fois
+  offresEnregistrees: boolean
+  // Crise terminée alors qu'une demande était en cours : on demande si l'aide est toujours nécessaire
+  apresCrise: boolean
 }
 
 type AppStateValue = Etat & {
@@ -105,6 +117,10 @@ type AppStateValue = Etat & {
   basculerRessource: (id: RessourceId) => void
   definirAccueil: (accueil: Partial<Accueil>) => void
   seRendreDisponible: () => void
+  seRendreIndisponible: () => void
+  enregistrerOffres: () => void
+  // Fin de crise : « tout va bien » (false) ou « j'ai encore besoin d'aide » (true)
+  repondreApresCrise: (besoinAide: boolean) => void
   repondreMission: (reponse: 'acceptee' | 'refusee') => void
   reinitialiser: () => void
   // Ajoute une notification si son événement n'a pas déjà été annoncé ; vrai si elle est nouvelle
@@ -137,6 +153,10 @@ const etatInitial: Etat = {
   visiteAFaire: false,
   dernierUtilisateur: null,
   nomCommune: null,
+  risques: null,
+  visiteFaite: false,
+  offresEnregistrees: false,
+  apresCrise: false,
 }
 
 // Mode démo local : alerte fictive affichée quand on simule la crise
@@ -147,7 +167,8 @@ const alerteDemo: Alerte = {
   heure: '14:05',
 }
 
-function lireEtat(): Etat {
+// ouverture : premier chargement de l'app (et non simple synchronisation avec un autre onglet)
+function lireEtat(ouverture = true): Etat {
   try {
     const brut = localStorage.getItem(CLE_STOCKAGE)
     if (!brut) return etatInitial
@@ -157,7 +178,7 @@ function lireEtat(): Etat {
     if (etat.demande) etat.demande = { ...etat.demande, prenom: etat.demande.prenom ?? '', telephone: etat.demande.telephone ?? '' }
     // Volontaire disponible : on renvoie sa fiche à chaque ouverture, pour que la mairie ait
     // toujours ses offres à jour (places d'hébergement ajoutées par une version plus récente)
-    if (etat.disponible) etat.disponibiliteEnvoyee = false
+    if (ouverture && etat.disponible) etat.disponibiliteEnvoyee = false
     return etat
   } catch {
     return etatInitial
@@ -172,6 +193,8 @@ function finDeCrise(e: Etat): Etat {
     alerte: null,
     enSecurite: false,
     demande: null,
+    // Une demande encore ouverte : l'accueil demandera si l'aide reste nécessaire
+    apresCrise: !!e.demande && e.demande.statut !== 'close',
     disponible: false,
     missionAcceptee: null,
     missionsRefusees: [],
@@ -182,7 +205,7 @@ function finDeCrise(e: Etat): Etat {
 const AppStateContext = createContext<AppStateValue | null>(null)
 
 export function AppStateProvider({ children }: { children: ReactNode }) {
-  const [etat, setEtat] = useState<Etat>(lireEtat)
+  const [etat, setEtat] = useState<Etat>(() => lireEtat())
   const [enLigne, setEnLigne] = useState(navigator.onLine)
   // Clés déjà annoncées, lues de façon synchrone pour ne jamais notifier deux fois
   const dejaAnnoncees = useRef(new Set([...etat.notifications.map((n) => n.cle), ...etat.notificationsEffacees]))
@@ -194,6 +217,16 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
       // Stockage indisponible (navigation privée) : l'app reste utilisable
     }
   }, [etat])
+
+  // Autre onglet ou app installée sur le même téléphone (ex. espace mairie ouvert à côté) :
+  // on reprend son état, sinon il écraserait le nôtre et déconnecterait l'habitant
+  useEffect(() => {
+    const synchroniser = (ev: StorageEvent) => {
+      if (ev.key === CLE_STOCKAGE && ev.newValue) setEtat(lireEtat(false))
+    }
+    window.addEventListener('storage', synchroniser)
+    return () => window.removeEventListener('storage', synchroniser)
+  }, [])
 
   useEffect(() => {
     const maj = () => setEnLigne(navigator.onLine)
@@ -211,17 +244,22 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     // Nom de la commune : à part, pour qu'un échec ne bloque jamais le reste
     void serveur
       .from('communes')
-      .select('nom')
+      .select('*')
       .eq('id', COMMUNE_ID)
       .maybeSingle()
       .then(({ data }) => {
-        const nom = (data as { nom: string } | null)?.nom?.trim()
-        if (nom) setEtat((e) => (e.nomCommune === nom ? e : { ...e, nomCommune: nom }))
+        const commune = data as { nom: string; risques?: string[] } | null
+        if (!commune) return
+        const nom = commune.nom?.trim() || null
+        const risques = commune.risques ?? []
+        setEtat((e) =>
+          e.nomCommune === nom && JSON.stringify(e.risques) === JSON.stringify(risques) ? e : { ...e, nomCommune: nom, risques },
+        )
       })
     const [crise, lieux, mission, zones] = await Promise.all([
       serveur.from('crises').select('id, titre, consigne, active, declenchee_a').eq('commune_id', COMMUNE_ID).eq('active', true).maybeSingle(),
       serveur.from('lieux').select('id, type, nom, details, distance, places, ouvert, adresse, lat, lng').eq('commune_id', COMMUNE_ID).order('nom'),
-      serveur.from('missions').select('id, titre, rendez_vous, duree, lieu, coordinateur, ressource, categorie, equipe, consignes').eq('commune_id', COMMUNE_ID).eq('active', true).order('created_at', { ascending: false }),
+      serveur.from('missions').select('*').eq('commune_id', COMMUNE_ID).eq('active', true).order('created_at', { ascending: false }),
       serveur.from('zones_danger').select('id, nom, consigne, points').eq('commune_id', COMMUNE_ID).eq('active', true),
     ])
     // Sans réseau, on garde la dernière situation connue
@@ -313,18 +351,19 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!serveur || !idSuivi) return
     const client = serveur
-    const appliquer = (statut: StatutDemande) =>
-      setEtat((e) => (e.demande?.id === idSuivi ? { ...e, demande: { ...e.demande, statut } } : e))
+    type Suivi = { statut: StatutDemande; reponse_mairie?: string }
+    const appliquer = ({ statut, reponse_mairie }: Suivi) =>
+      setEtat((e) => (e.demande?.id === idSuivi ? { ...e, demande: { ...e.demande, statut, reponseMairie: reponse_mairie ?? '' } } : e))
     void client
       .from('demandes')
-      .select('statut')
+      .select('*')
       .eq('id', idSuivi)
       .maybeSingle()
-      .then(({ data }) => data && appliquer(data.statut as StatutDemande))
+      .then(({ data }) => data && appliquer(data as Suivi))
     const canal = client
       .channel(`demande-${idSuivi}`)
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'demandes', filter: `id=eq.${idSuivi}` }, (p) =>
-        appliquer((p.new as { statut: StatutDemande }).statut),
+        appliquer(p.new as Suivi),
       )
       .subscribe()
     return () => {
@@ -352,6 +391,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
             auteur,
             commune_id: COMMUNE_ID,
             prenom: utilisateur.prenom,
+            nom: utilisateur.nom ?? '',
             telephone: utilisateur.telephone,
             ressources,
             disponible,
@@ -423,14 +463,16 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
       setEtat((e) => ({
         ...e,
         enSecurite: false,
+        apresCrise: false,
         contact: e.utilisateur || (!demande.prenom && !demande.telephone) ? e.contact : { prenom: demande.prenom, telephone: demande.telephone },
         // « Ma situation a changé » : même demande, mise à jour côté mairie
         demande: { ...demande, id: id ?? crypto.randomUUID(), statut: id && e.demande?.id === id ? e.demande.statut : 'transmise', envoyee: false },
       })),
+    // La visite guidée n'est proposée d'office qu'une fois par téléphone
     connecter: (utilisateur, nouveauCompte) =>
-      setEtat((e) => ({ ...e, utilisateur, dernierUtilisateur: utilisateur, contact: null, visiteAFaire: nouveauCompte })),
+      setEtat((e) => ({ ...e, utilisateur, dernierUtilisateur: utilisateur, contact: null, visiteAFaire: nouveauCompte && !e.visiteFaite })),
     lancerVisite: () => setEtat((e) => ({ ...e, visiteAFaire: true })),
-    terminerVisite: () => setEtat((e) => ({ ...e, visiteAFaire: false })),
+    terminerVisite: () => setEtat((e) => ({ ...e, visiteAFaire: false, visiteFaite: true })),
     deconnecter: () => setEtat((e) => ({ ...e, utilisateur: null, visiteAFaire: false })),
     modifierUtilisateur: (modifs) =>
       setEtat((e) => {
@@ -448,7 +490,18 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     definirAccueil: (accueil) =>
       setEtat((e) => ({ ...e, disponibiliteEnvoyee: e.disponibiliteEnvoyee && !e.disponible, accueil: { ...e.accueil, ...accueil } })),
     seRendreDisponible: () =>
-      setEtat((e) => ({ ...e, disponible: true, disponibiliteEnvoyee: false })),
+      setEtat((e) => ({ ...e, disponible: true, disponibiliteEnvoyee: false, offresEnregistrees: true })),
+    // Retrait volontaire : la mairie ne le compte plus, sa mission acceptée est libérée
+    seRendreIndisponible: () =>
+      setEtat((e) => ({
+        ...e,
+        disponible: false,
+        disponibiliteEnvoyee: false,
+        missionAcceptee: null,
+        reponsesAEnvoyer: e.missionAcceptee ? [...e.reponsesAEnvoyer, { mission: e.missionAcceptee, reponse: 'refusee' }] : e.reponsesAEnvoyer,
+      })),
+    enregistrerOffres: () => setEtat((e) => ({ ...e, offresEnregistrees: true })),
+    repondreApresCrise: () => setEtat((e) => ({ ...e, apresCrise: false })),
     // Un refus ne retire pas le volontaire : la mission suivante de ses catégories lui est proposée
     repondreMission: (reponse) => {
       if (!missionServeur) return

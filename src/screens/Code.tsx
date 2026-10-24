@@ -6,7 +6,7 @@ import { useAppState } from '../state/AppState.tsx'
 
 export default function Code() {
   const navigate = useNavigate()
-  const { connecter, modifierUtilisateur, mode } = useAppState()
+  const { connecter, modifierUtilisateur, mode, visiteFaite } = useAppState()
   const etat = useLocation().state as EtatCode | null
   const [code, setCode] = useState('')
   const [renvoye, setRenvoye] = useState(false)
@@ -28,7 +28,7 @@ export default function Code() {
     connecter(utilisateur, nouveauCompte)
     // Nouveau compte en veille : on explique d'abord pourquoi Vigipop compte, puis visite guidée.
     // En crise, la personne vient pour aider : on l'y emmène directement.
-    const suite = suiteDemandee ?? (!nouveauCompte ? '/accueil' : mode === 'crise' ? '/aider' : '/pourquoi/1')
+    const suite = suiteDemandee ?? (!nouveauCompte || visiteFaite ? '/accueil' : mode === 'crise' ? '/aider' : '/pourquoi/1')
     navigate(suite, { replace: true })
   }
 
