@@ -77,6 +77,8 @@ type Etat = {
   reponsesAEnvoyer: ReponseAEnvoyer[]
   // Centre de notifications, les plus récentes d'abord
   notifications: NotificationApp[]
+  // Notifications effacées par l'habitant : jamais réannoncées
+  notificationsEffacees: string[]
   // Visite guidée de l'accueil, proposée une fois après l'inscription
   visiteAFaire: boolean
   // Compte connu sur ce téléphone, gardé après déconnexion pour simuler le serveur
@@ -102,6 +104,8 @@ type AppStateValue = Etat & {
   // Ajoute une notification si son événement n'a pas déjà été annoncé ; vrai si elle est nouvelle
   ajouterNotification: (n: Omit<NotificationApp, 'heure' | 'lue'>) => boolean
   marquerNotificationsLues: () => void
+  // cle absente : tout effacer
+  effacerNotifications: (cle?: string) => void
 }
 
 const CLE_STOCKAGE = 'vigipop-demo'
@@ -123,6 +127,7 @@ const etatInitial: Etat = {
   disponibiliteEnvoyee: true,
   reponsesAEnvoyer: [],
   notifications: [],
+  notificationsEffacees: [],
   visiteAFaire: false,
   dernierUtilisateur: null,
 }
@@ -173,7 +178,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
   const [etat, setEtat] = useState<Etat>(lireEtat)
   const [enLigne, setEnLigne] = useState(navigator.onLine)
   // Clés déjà annoncées, lues de façon synchrone pour ne jamais notifier deux fois
-  const dejaAnnoncees = useRef(new Set(etat.notifications.map((n) => n.cle)))
+  const dejaAnnoncees = useRef(new Set([...etat.notifications.map((n) => n.cle), ...etat.notificationsEffacees]))
 
   useEffect(() => {
     try {
@@ -443,6 +448,15 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     },
     marquerNotificationsLues: () =>
       setEtat((e) => (e.notifications.some((n) => !n.lue) ? { ...e, notifications: e.notifications.map((n) => ({ ...n, lue: true })) } : e)),
+    effacerNotifications: (cle) =>
+      setEtat((e) => {
+        const effacees = e.notifications.filter((n) => cle === undefined || n.cle === cle).map((n) => n.cle)
+        return {
+          ...e,
+          notifications: e.notifications.filter((n) => !effacees.includes(n.cle)),
+          notificationsEffacees: [...effacees, ...e.notificationsEffacees].slice(0, 200),
+        }
+      }),
   }
 
   return <AppStateContext.Provider value={value}>{children}</AppStateContext.Provider>
