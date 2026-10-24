@@ -133,6 +133,9 @@ function lireEtat(): Etat {
     // Demandes enregistrées par une version précédente du prototype
     if (etat.demande && !etat.demande.id) etat.demande = { ...etat.demande, id: crypto.randomUUID(), statut: 'transmise' }
     if (etat.demande) etat.demande = { ...etat.demande, prenom: etat.demande.prenom ?? '', telephone: etat.demande.telephone ?? '' }
+    // Volontaire disponible : on renvoie sa fiche à chaque ouverture, pour que la mairie ait
+    // toujours ses offres à jour (places d'hébergement ajoutées par une version plus récente)
+    if (etat.disponible) etat.disponibiliteEnvoyee = false
     return etat
   } catch {
     return etatInitial
