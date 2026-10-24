@@ -80,3 +80,31 @@ export async function assurerSession(client: SupabaseClient) {
 export function heure(iso: string) {
   return new Date(iso).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
 }
+
+export type StatutHebergement = 'proposee' | 'acceptee' | 'refusee' | 'annulee'
+
+// Proposition vue par l'hébergeur : coordonnées de la personne seulement après son accord
+export type PropositionHebergementServeur = {
+  id: string
+  statut: StatutHebergement
+  personnes: number
+  personne_vulnerable: boolean
+  besoins: string[]
+  prenom: string
+  telephone: string
+  created_at: string
+}
+
+// Hébergement vu par la personne sinistrée : adresse seulement après l'accord de l'hébergeur
+export type MonHebergementServeur = {
+  statut: StatutHebergement
+  prenom: string
+  telephone: string
+  adresse: string
+  lat: number | null
+  lng: number | null
+}
+
+export function lienTelephone(numero: string) {
+  return `tel:${numero.replace(/[\s.-]/g, '')}`
+}

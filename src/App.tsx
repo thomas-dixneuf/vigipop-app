@@ -27,7 +27,8 @@ export default function App() {
       <Route path="/accueil" element={<AccesProtege><Accueil /></AccesProtege>} />
       <Route path="/signaler" element={<AccesProtege><Signaler /></AccesProtege>} />
       <Route path="/demande" element={<AccesProtege><Confirmation /></AccesProtege>} />
-      <Route path="/carte" element={<AccesProtege><Carte /></AccesProtege>} />
+      {/* La carte des secours reste consultable sans compte, avant même une crise */}
+      <Route path="/carte" element={<Carte />} />
       <Route path="/profil" element={<AccesProtege><Profil /></AccesProtege>} />
       <Route path="/notifications" element={<AccesProtege><AVenir titre="Notifications" /></AccesProtege>} />
       {/* Se proposer comme volontaire demande toujours un compte : la mairie doit savoir qui vient */}

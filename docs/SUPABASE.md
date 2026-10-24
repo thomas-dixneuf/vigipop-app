@@ -14,7 +14,8 @@ fonctionne en mode démo local, avec un bouton « Démo » pour simuler la crise
 3. Fais de même avec `supabase/migrations/0002_volontaires.sql` (volontaires disponibles,
    missions créées par la mairie), puis `0003_contact_demande.sql` (prénom et numéro de
    rappel dans les demandes), puis `0004_carte.sql` (position des lieux, zones à éviter,
-   nombre de foyers d'hébergement solidaire). Chaque nouveau fichier de `supabase/migrations/` se lance
+   nombre de foyers d'hébergement solidaire), puis `0005_hebergement.sql` (mise en relation
+   hébergeur ↔ sinistré, points de secours permanents). Chaque nouveau fichier de `supabase/migrations/` se lance
    une seule fois, dans l'ordre des numéros.
 
 ## 2. Autoriser les habitants sans mot de passe
@@ -65,6 +66,12 @@ Côté volontaire (avec un compte) : « Je veux aider » → « Je suis disponib
 Le volontaire apparaît dans « Volontaires disponibles ». Le coordinateur crée une mission
 (« Nouvelle mission ») : elle s'affiche sur le téléphone, et « J'accepte » fait monter le
 compteur de volontaires confirmés.
+
+Hébergement : le volontaire active « Hébergement temporaire », indique ses places et son
+adresse, puis se rend disponible. Un habitant demande de l'aide en cochant « Hébergement ».
+Sur la demande, le coordinateur clique « Trouver un hébergement » puis « Proposer » : le
+volontaire reçoit la demande sur son accueil et répond. S'il accepte, chacun voit le prénom
+et le numéro de l'autre, et le sinistré voit l'adresse avec l'itinéraire. Rien avant l'accord.
 
 Utilise deux appareils, ou une fenêtre de navigation privée : dans un même navigateur, la
 session mairie remplace la session de l'habitant.

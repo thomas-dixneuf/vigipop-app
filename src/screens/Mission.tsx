@@ -1,6 +1,7 @@
 import { Link, Navigate, useNavigate } from 'react-router-dom'
 import EnTeteRetour from '../components/EnTeteRetour.tsx'
 import Icone from '../components/Icone.tsx'
+import PropositionHebergement from '../components/PropositionHebergement.tsx'
 import { commune, mission as missionDemo } from '../data/fictif.ts'
 import { serveur } from '../services/serveur.ts'
 import { useAppState } from '../state/AppState.tsx'
@@ -38,6 +39,7 @@ export default function Mission() {
       </EnTeteRetour>
 
       <main className="contenu" style={{ paddingTop: 10 }}>
+        <PropositionHebergement />
         <h1 style={{ fontSize: 25, fontWeight: 800, lineHeight: 1.2, color: 'var(--bleu-nuit)' }}>{mission.titre}</h1>
 
         {acceptee && (
@@ -117,6 +119,7 @@ function EnAttenteDeMission() {
         <span style={{ fontSize: 14, color: 'var(--texte-doux)' }}>Coordinateur · Mairie de {commune}</span>
       </EnTeteRetour>
       <main className="contenu" style={{ paddingTop: 10 }}>
+        <PropositionHebergement />
         <section role="status" className="carte" style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
           <Icone nom="valide" taille={24} couleur="var(--bleu)" epaisseur={2.4} />
           <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>

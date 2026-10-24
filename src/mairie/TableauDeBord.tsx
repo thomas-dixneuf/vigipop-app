@@ -1,24 +1,37 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import CarteInteractive, { type Repere } from '../components/CarteInteractive.tsx'
 import Logo from '../components/Logo.tsx'
-import ChampAdresse from './ChampAdresse.tsx'
+import ChampAdresse from '../components/ChampAdresse.tsx'
 import { besoins as listeBesoins, centreCommune, libelleLieu, ressources as listeRessources, situations } from '../data/fictif.ts'
 import {
   heure,
+  lienTelephone,
   serveur,
   type CriseServeur,
   type DemandeServeur,
   type LieuServeur,
   type MissionServeur,
   type StatutDemande,
+  type StatutHebergement,
   type ZoneServeur,
 } from '../services/serveur.ts'
-import { couleurLieu, estPlace, type ResultatAdresse } from '../outils/carte.ts'
+import { couleurLieu, distanceLisible, distanceMetres, estPlace, type ResultatAdresse } from '../outils/carte.ts'
 
 export type Coordinateur = { nom: string; communeId: string; communeNom: string }
 
 type Reponse = { mission_id: string; prenom: string; reponse: 'acceptee' | 'refusee' }
-type Volontaire = { auteur: string; prenom: string; ressources: string[]; updated_at: string }
+type Volontaire = {
+  auteur: string
+  prenom: string
+  telephone: string
+  ressources: string[]
+  places_hebergement: number
+  adresse: string
+  lat: number | null
+  lng: number | null
+  updated_at: string
+}
+type Hebergement = { id: string; demande_id: string; hebergeur: string; personnes: number; statut: StatutHebergement; updated_at: string }
 type Evenement = { id: number; action: string; details: Record<string, string>; created_at: string }
 
 type Donnees = {
@@ -28,6 +41,7 @@ type Donnees = {
   missions: MissionServeur[]
   reponses: Reponse[]
   volontaires: Volontaire[]
+  hebergements: Hebergement[]
   zones: ZoneServeur[]
   journal: Evenement[]
 }
@@ -58,6 +72,10 @@ const libelleAction: Record<string, string> = {
   statut_demande: 'Statut de demande',
   mission_creee: 'Mission proposée',
   mission_close: 'Mission close',
+  hebergement_proposee: 'Hébergement proposé',
+  hebergement_acceptee: 'Hébergement accepté',
+  hebergement_refusee: 'Hébergement refusé',
+  hebergement_annulee: 'Hébergement annulé',
 }
 
 export default function TableauDeBord({ coordinateur }: { coordinateur: Coordinateur }) {
@@ -67,17 +85,18 @@ export default function TableauDeBord({ coordinateur }: { coordinateur: Coordina
   const [erreur, setErreur] = useState('')
 
   const charger = useCallback(async () => {
-    const [crise, demandes, lieux, missions, reponses, volontaires, zones, journal] = await Promise.all([
+    const [crise, demandes, lieux, missions, reponses, volontaires, hebergements, zones, journal] = await Promise.all([
       client.from('crises').select('id, titre, consigne, active, declenchee_a').eq('commune_id', commune).eq('active', true).maybeSingle(),
       client.from('demandes').select('*').eq('commune_id', commune).order('created_at', { ascending: false }).limit(300),
       client.from('lieux').select('*').eq('commune_id', commune).order('nom'),
       client.from('missions').select('*').eq('commune_id', commune).eq('active', true).order('created_at', { ascending: false }),
       client.from('reponses_mission').select('mission_id, prenom, reponse'),
-      client.from('volontaires').select('auteur, prenom, ressources, updated_at').eq('commune_id', commune).eq('disponible', true).order('updated_at', { ascending: false }),
+      client.from('volontaires').select('auteur, prenom, telephone, ressources, places_hebergement, adresse, lat, lng, updated_at').eq('commune_id', commune).eq('disponible', true).order('updated_at', { ascending: false }),
+      client.from('hebergements').select('id, demande_id, hebergeur, personnes, statut, updated_at').eq('commune_id', commune).order('created_at'),
       client.from('zones_danger').select('id, nom, consigne, points').eq('commune_id', commune).eq('active', true).order('created_at'),
       client.from('journal').select('id, action, details, created_at').eq('commune_id', commune).order('id', { ascending: false }).limit(12),
     ])
-    const echec = [crise, demandes, lieux, missions, reponses, volontaires, zones, journal].find((r) => r.error)
+    const echec = [crise, demandes, lieux, missions, reponses, volontaires, hebergements, zones, journal].find((r) => r.error)
     if (echec) {
       setErreur('Connexion au serveur perdue. Nouvel essai automatique.')
       return
@@ -91,6 +110,7 @@ export default function TableauDeBord({ coordinateur }: { coordinateur: Coordina
       missions: missions.data as MissionServeur[],
       reponses: reponses.data as Reponse[],
       zones: zones.data as ZoneServeur[],
+      hebergements: hebergements.data as Hebergement[],
       // Seules comptent les disponibilités données pendant la crise en cours
       volontaires: criseActive ? (volontaires.data as Volontaire[]).filter((v) => v.updated_at >= criseActive.declenchee_a) : [],
       journal: journal.data as Evenement[],
@@ -103,7 +123,7 @@ export default function TableauDeBord({ coordinateur }: { coordinateur: Coordina
     void charger()
     const filtre = `commune_id=eq.${commune}`
     const canal = client.channel(`mairie-${commune}`)
-    for (const table of ['crises', 'demandes', 'lieux', 'missions', 'volontaires', 'zones_danger']) {
+    for (const table of ['crises', 'demandes', 'lieux', 'missions', 'volontaires', 'hebergements', 'zones_danger']) {
       canal.on('postgres_changes', { event: '*', schema: 'public', table, filter: filtre }, () => void charger())
     }
     canal.on('postgres_changes', { event: '*', schema: 'public', table: 'reponses_mission' }, () => void charger())
@@ -150,7 +170,7 @@ export default function TableauDeBord({ coordinateur }: { coordinateur: Coordina
           <div className="mairie-colonne">
             <Compteurs demandes={donnees.demandes} />
             <CarteMairie lieux={donnees.lieux} demandes={donnees.demandes} zones={donnees.zones} communeId={commune} />
-            <Demandes demandes={donnees.demandes} />
+            <Demandes demandes={donnees.demandes} volontaires={donnees.volontaires} hebergements={donnees.hebergements} communeId={commune} />
           </div>
           <div className="mairie-colonne">
             <PanneauCrise crise={donnees.crise} communeId={commune} />
@@ -188,7 +208,9 @@ function Compteurs({ demandes }: { demandes: DemandeServeur[] }) {
 
 type Filtre = 'a-traiter' | 'en-cours' | 'terminees'
 
-function Demandes({ demandes }: { demandes: DemandeServeur[] }) {
+type PropsDemandes = { demandes: DemandeServeur[]; volontaires: Volontaire[]; hebergements: Hebergement[]; communeId: string }
+
+function Demandes({ demandes, volontaires, hebergements, communeId }: PropsDemandes) {
   const [filtre, setFiltre] = useState<Filtre>('a-traiter')
   const visibles = demandes
     .filter((d) =>
@@ -269,6 +291,9 @@ function Demandes({ demandes }: { demandes: DemandeServeur[] }) {
                 <span className="texte-doux">{d.prenom ? `${d.prenom} · ` : ''}aucun numéro laissé</span>
               )}
             </div>
+            {(d.besoins.includes('heb') || hebergements.some((h) => h.demande_id === d.id)) && d.statut !== 'close' && (
+              <HebergementDemande demande={d} volontaires={volontaires} hebergements={hebergements} communeId={communeId} />
+            )}
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
               {d.statut === 'transmise' && (
                 <button type="button" className="mairie-bouton mairie-bouton--principal" onClick={() => void changerStatut(d.id, 'prise_en_charge')}>
@@ -544,13 +569,14 @@ function PanneauLieux({ lieux, communeId }: { lieux: LieuServeur[]; communeId: s
       adresse: adresse.libelle,
       lat: adresse.lat,
       lng: adresse.lng,
-      ouvert: false,
+      // Les secours (pompiers, poste médical) sont permanents ; les autres lieux s'ouvrent en crise
+      ouvert: lieu.type === 'soins',
     })
     if (error) {
       setMessage("Échec : le lieu n'a pas été ajouté.")
       return
     }
-    setMessage('Lieu ajouté, fermé par défaut : ouvrez-le quand il est prêt.')
+    setMessage(lieu.type === 'soins' ? 'Point de secours ajouté, visible tout de suite par les habitants.' : 'Lieu ajouté, fermé par défaut : ouvrez-le quand il est prêt.')
     setLieu(lieuVide)
     setAdresse(null)
     setOuvert(false)
@@ -632,6 +658,103 @@ function PanneauLieux({ lieux, communeId }: { lieux: LieuServeur[]; communeId: s
   )
 }
 
+const actif = (h: Hebergement) => h.statut === 'proposee' || h.statut === 'acceptee'
+
+// Mise en relation encadrée : la mairie choisit un foyer, l'hébergeur accepte, puis chacun voit les coordonnées de l'autre
+function HebergementDemande({ demande, volontaires, hebergements, communeId }: { demande: DemandeServeur; volontaires: Volontaire[]; hebergements: Hebergement[]; communeId: string }) {
+  const [ouvert, setOuvert] = useState(false)
+  const [message, setMessage] = useState('')
+  const lies = hebergements.filter((h) => h.demande_id === demande.id)
+  const enCours = lies.find(actif)
+  const refus = new Set(lies.filter((h) => h.statut === 'refusee').map((h) => h.hebergeur))
+  const position = coordonneesDemande(demande)
+  const nom = (auteur: string) => volontaires.find((v) => v.auteur === auteur)
+
+  // Places restantes : on retire les personnes déjà proposées ou accueillies chez ce foyer
+  const restantes = (v: Volontaire) =>
+    v.places_hebergement - hebergements.filter((h) => h.hebergeur === v.auteur && actif(h)).reduce((n, h) => n + h.personnes, 0)
+  const distance = (v: Volontaire) => (position && v.lat !== null && v.lng !== null ? distanceMetres(position, { lat: v.lat, lng: v.lng }) : null)
+  const candidats = volontaires
+    .filter((v) => v.ressources.includes('heb') && !refus.has(v.auteur) && restantes(v) >= demande.personnes)
+    .sort((a, b) => (distance(a) ?? Infinity) - (distance(b) ?? Infinity))
+
+  const proposer = async (v: Volontaire) => {
+    setMessage('')
+    const { error } = await serveur!
+      .from('hebergements')
+      .insert({ commune_id: communeId, demande_id: demande.id, hebergeur: v.auteur, personnes: Math.min(demande.personnes, 20) })
+    if (error) setMessage("La proposition n'a pas pu être envoyée. Réessayez.")
+    else setOuvert(false)
+  }
+
+  const annuler = async (h: Hebergement) => {
+    if (!window.confirm("Annuler cette mise en relation ? L'hébergeur et la personne ne verront plus les coordonnées.")) return
+    await serveur!.from('hebergements').update({ statut: 'annulee' }).eq('id', h.id)
+  }
+
+  if (enCours) {
+    const v = nom(enCours.hebergeur)
+    return (
+      <div style={{ fontSize: 14, display: 'flex', flexDirection: 'column', gap: 6, background: 'var(--bleu-voile)', borderRadius: 10, padding: '8px 10px' }}>
+        <span>
+          <strong>Hébergement :</strong> {v?.prenom || 'Volontaire'}
+          {v?.adresse ? ` · ${v.adresse}` : ''} ·{' '}
+          {enCours.statut === 'acceptee' ? <strong>accepté, coordonnées échangées</strong> : 'en attente de sa réponse'}
+        </span>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          {v?.telephone && (
+            <a href={lienTelephone(v.telephone)} className="mairie-bouton" style={{ textDecoration: 'none' }}>
+              Appeler l'hébergeur
+            </a>
+          )}
+          <button type="button" className="mairie-bouton" onClick={() => void annuler(enCours)}>
+            Annuler la mise en relation
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div style={{ fontSize: 14, display: 'flex', flexDirection: 'column', gap: 6 }}>
+      {refus.size > 0 && (
+        <span className="texte-doux">
+          Refusé par : {[...refus].map((a) => nom(a)?.prenom || 'un volontaire').join(', ')}
+        </span>
+      )}
+      <button type="button" className="mairie-bouton" aria-expanded={ouvert} onClick={() => setOuvert(!ouvert)} style={{ alignSelf: 'flex-start' }}>
+        {ouvert ? 'Fermer' : 'Trouver un hébergement'}
+      </button>
+      {ouvert && (
+        <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 6 }}>
+          {candidats.length === 0 && (
+            <li className="texte-doux">
+              Aucun foyer disponible avec {demande.personnes} place{demande.personnes > 1 ? 's' : ''}. Orientez vers un centre d'accueil.
+            </li>
+          )}
+          {candidats.map((v) => {
+            const m = distance(v)
+            return (
+              <li key={v.auteur} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, flexWrap: 'wrap', border: '1px solid var(--bordure)', borderRadius: 10, padding: '6px 10px' }}>
+                <span>
+                  <strong>{v.prenom || 'Volontaire'}</strong> · {restantes(v)} place{restantes(v) > 1 ? 's' : ''}
+                  {m !== null ? ` · ${distanceLisible(m)}` : ''}
+                  <br />
+                  <span className="texte-doux">{v.adresse || 'Adresse non renseignée'}</span>
+                </span>
+                <button type="button" className="mairie-bouton mairie-bouton--principal" onClick={() => void proposer(v)}>
+                  Proposer
+                </button>
+              </li>
+            )
+          })}
+        </ul>
+      )}
+      {message && <span role="alert" style={{ color: 'var(--urgence-fonce)', fontWeight: 700 }}>{message}</span>}
+    </div>
+  )
+}
+
 function libelleRessource(id: string) {
   return listeRessources.find((r) => r.id === id)?.label ?? id
 }
@@ -657,6 +780,7 @@ function PanneauVolontaires({ volontaires, enCrise }: { volontaires: Volontaire[
               {v.ressources.map((r) => (
                 <span key={r} className="mairie-etiquette">
                   {libelleRessource(r)}
+                  {r === 'heb' && v.places_hebergement > 0 ? ` · ${v.places_hebergement} places` : ''}
                 </span>
               ))}
             </div>

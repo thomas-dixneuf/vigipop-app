@@ -1,4 +1,5 @@
 import { useNavigate } from 'react-router-dom'
+import ChampAdresse from '../components/ChampAdresse.tsx'
 import EnTeteRetour from '../components/EnTeteRetour.tsx'
 import Icone from '../components/Icone.tsx'
 import { commune, ressources } from '../data/fictif.ts'
@@ -6,7 +7,7 @@ import { useAppState } from '../state/AppState.tsx'
 
 export default function Aider() {
   const navigate = useNavigate()
-  const { mode, ressources: actives, basculerRessource, seRendreDisponible } = useAppState()
+  const { mode, ressources: actives, basculerRessource, seRendreDisponible, accueil, definirAccueil } = useAppState()
   const enCrise = mode === 'crise'
 
   const valider = () => {
@@ -36,7 +37,9 @@ export default function Aider() {
               >
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 }}>
                   <span style={{ fontSize: 15, fontWeight: 700 }}>{r.label}</span>
-                  <span className="texte-doux">{r.detail}</span>
+                  <span className="texte-doux">
+                    {r.id === 'heb' ? `${accueil.places} place${accueil.places > 1 ? 's' : ''} · chez moi` : r.detail}
+                  </span>
                 </div>
                 <button
                   type="button"
@@ -52,6 +55,47 @@ export default function Aider() {
             )
           })}
         </section>
+
+        {actives.includes('heb') && (
+          <section aria-label="Mon offre d'hébergement" className="carte" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <strong style={{ fontSize: 15, color: 'var(--bleu-nuit)' }}>Hébergement : combien de personnes pouvez-vous accueillir ?</strong>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <button
+                type="button"
+                className="bouton bouton--clair"
+                style={{ width: 52, minHeight: 52, padding: 0, fontSize: 24 }}
+                aria-label="Une place de moins"
+                disabled={accueil.places <= 1}
+                onClick={() => definirAccueil({ places: accueil.places - 1 })}
+              >
+                −
+              </button>
+              <span aria-live="polite" style={{ fontSize: 18, fontWeight: 800, minWidth: 90, textAlign: 'center' }}>
+                {accueil.places} place{accueil.places > 1 ? 's' : ''}
+              </span>
+              <button
+                type="button"
+                className="bouton bouton--clair"
+                style={{ width: 52, minHeight: 52, padding: 0, fontSize: 24 }}
+                aria-label="Une place de plus"
+                disabled={accueil.places >= 20}
+                onClick={() => definirAccueil({ places: accueil.places + 1 })}
+              >
+                +
+              </button>
+            </div>
+            <ChampAdresse
+              variante="app"
+              valeurInitiale={accueil.adresse}
+              verifieeInitialement={accueil.lat !== null}
+              onTexte={(adresse) => definirAccueil({ adresse })}
+              onChoix={(r) => definirAccueil(r ? { adresse: r.libelle, lat: r.lat, lng: r.lng } : { lat: null, lng: null })}
+            />
+            <span className="texte-doux" style={{ lineHeight: 1.4 }}>
+              Seule la mairie voit votre adresse. Elle ne sera donnée à une personne sinistrée qu'après votre accord.
+            </span>
+          </section>
+        )}
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '0 4px', color: 'var(--bleu)' }}>
           <Icone nom="bouclier" taille={20} epaisseur={2} />
