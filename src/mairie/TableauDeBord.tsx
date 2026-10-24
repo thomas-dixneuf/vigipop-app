@@ -12,6 +12,7 @@ import {
   type DemandeServeur,
   type LieuServeur,
   type MissionServeur,
+  type BesoinEntraide,
   type StatutDemande,
   type StatutHebergement,
   type ZoneServeur,
@@ -34,6 +35,7 @@ type Volontaire = {
   updated_at: string
 }
 type Hebergement = { id: string; demande_id: string; hebergeur: string; personnes: number; statut: StatutHebergement; updated_at: string }
+type Entraide = { id: string; demande_id: string; besoin: BesoinEntraide; aidant: string; statut: StatutHebergement; updated_at: string }
 type Evenement = { id: number; action: string; details: Record<string, string>; created_at: string }
 
 type Donnees = {
@@ -45,6 +47,7 @@ type Donnees = {
   reponses: Reponse[]
   volontaires: Volontaire[]
   hebergements: Hebergement[]
+  entraides: Entraide[]
   zones: ZoneServeur[]
   journal: Evenement[]
 }
@@ -79,6 +82,10 @@ const libelleAction: Record<string, string> = {
   hebergement_acceptee: 'Hébergement accepté',
   hebergement_refusee: 'Hébergement refusé',
   hebergement_annulee: 'Hébergement annulé',
+  entraide_proposee: 'Volontaire sollicité',
+  entraide_acceptee: 'Aide acceptée',
+  entraide_refusee: 'Aide refusée',
+  entraide_annulee: 'Aide annulée',
 }
 
 export default function TableauDeBord({ coordinateur }: { coordinateur: Coordinateur }) {
@@ -86,9 +93,11 @@ export default function TableauDeBord({ coordinateur }: { coordinateur: Coordina
   const commune = coordinateur.communeId
   const [donnees, setDonnees] = useState<Donnees | null>(null)
   const [erreur, setErreur] = useState('')
+  // Mission pré-remplie depuis le tableau des besoins
+  const [modeleMission, setModeleMission] = useState<ModeleMission | null>(null)
 
   const charger = useCallback(async () => {
-    const [crise, demandes, lieux, missions, reponses, volontaires, hebergements, zones, journal, communeLue] = await Promise.all([
+    const [crise, demandes, lieux, missions, reponses, volontaires, hebergements, zones, journal, communeLue, entraides] = await Promise.all([
       client.from('crises').select('id, titre, consigne, active, declenchee_a').eq('commune_id', commune).eq('active', true).maybeSingle(),
       client.from('demandes').select('*').eq('commune_id', commune).order('created_at', { ascending: false }).limit(300),
       client.from('lieux').select('*').eq('commune_id', commune).order('nom'),
@@ -99,6 +108,8 @@ export default function TableauDeBord({ coordinateur }: { coordinateur: Coordina
       client.from('zones_danger').select('id, nom, consigne, points').eq('commune_id', commune).eq('active', true).order('created_at'),
       client.from('journal').select('id, action, details, created_at').eq('commune_id', commune).order('id', { ascending: false }).limit(12),
       client.from('communes').select('*').eq('id', commune).maybeSingle(),
+      // Absente tant que la migration 0011 n'est pas lancée : le tableau reste utilisable
+      client.from('entraides').select('id, demande_id, besoin, aidant, statut, updated_at').eq('commune_id', commune).order('created_at'),
     ])
     const echec = [crise, demandes, lieux, missions, reponses, volontaires, hebergements, zones, journal].find((r) => r.error)
     if (echec) {
@@ -116,6 +127,7 @@ export default function TableauDeBord({ coordinateur }: { coordinateur: Coordina
       reponses: reponses.data as Reponse[],
       zones: zones.data as ZoneServeur[],
       hebergements: hebergements.data as Hebergement[],
+      entraides: (entraides.data as Entraide[] | null) ?? [],
       // Seules comptent les disponibilités données pendant la crise en cours
       volontaires: criseActive ? (volontaires.data as Volontaire[]).filter((v) => v.updated_at >= criseActive.declenchee_a) : [],
       journal: journal.data as Evenement[],
@@ -128,7 +140,7 @@ export default function TableauDeBord({ coordinateur }: { coordinateur: Coordina
     void charger()
     const filtre = `commune_id=eq.${commune}`
     const canal = client.channel(`mairie-${commune}`)
-    for (const table of ['crises', 'demandes', 'lieux', 'missions', 'volontaires', 'hebergements', 'zones_danger']) {
+    for (const table of ['crises', 'demandes', 'lieux', 'missions', 'volontaires', 'hebergements', 'entraides', 'zones_danger']) {
       canal.on('postgres_changes', { event: '*', schema: 'public', table, filter: filtre }, () => void charger())
     }
     canal.on('postgres_changes', { event: '*', schema: 'public', table: 'reponses_mission' }, () => void charger())
@@ -175,7 +187,16 @@ export default function TableauDeBord({ coordinateur }: { coordinateur: Coordina
           <div className="mairie-colonne">
             <Compteurs demandes={donnees.demandes} />
             <CarteMairie lieux={donnees.lieux} demandes={donnees.demandes} zones={donnees.zones} communeId={commune} />
+            <PanneauBesoins
+              demandes={donnees.demandes}
+              volontaires={donnees.volontaires}
+              onMission={(m) => {
+                setModeleMission({ ...m, numero: Date.now() })
+                window.setTimeout(() => document.getElementById('titre-missions')?.scrollIntoView({ behavior: 'smooth' }), 50)
+              }}
+            />
             <PanneauHebergement demandes={donnees.demandes} volontaires={donnees.volontaires} hebergements={donnees.hebergements} communeId={commune} />
+            <PanneauEntraides demandes={donnees.demandes} volontaires={donnees.volontaires} entraides={donnees.entraides} communeId={commune} />
             <Demandes demandes={donnees.demandes} depuis={donnees.crise?.declenchee_a ?? null} />
           </div>
           <div className="mairie-colonne">
@@ -183,7 +204,14 @@ export default function TableauDeBord({ coordinateur }: { coordinateur: Coordina
             <PanneauRisques risques={donnees.risques} communeId={commune} onEnregistre={() => void charger()} />
             <PanneauLieux lieux={donnees.lieux} communeId={commune} />
             <PanneauVolontaires volontaires={donnees.volontaires} enCrise={!!donnees.crise} />
-            <PanneauMissions missions={donnees.missions} reponses={donnees.reponses} volontaires={donnees.volontaires} communeId={commune} />
+            <PanneauMissions
+              key={modeleMission?.numero ?? 0}
+              modele={modeleMission}
+              missions={donnees.missions}
+              reponses={donnees.reponses}
+              volontaires={donnees.volontaires}
+              communeId={commune}
+            />
             <PanneauJournal journal={donnees.journal} />
             <PanneauPush />
           </div>
@@ -801,6 +829,176 @@ function PanneauLieux({ lieux, communeId }: { lieux: LieuServeur[]; communeId: s
   )
 }
 
+// Besoins sans mise en relation automatique : la mairie compare demandes et volontaires
+// et lance une mission ciblée. Transport et matériel sont proposés automatiquement (0011).
+const besoinsSuivis: { id: string; aides: string[]; auto?: string; mission?: { titre: string; categorie: string } }[] = [
+  { id: 'heb', aides: ['heb'], auto: 'Proposé automatiquement (Hébergement solidaire)' },
+  { id: 'transport', aides: ['vehicule'], auto: 'Proposé automatiquement au plus proche' },
+  { id: 'materiel', aides: ['materiel'], auto: 'Proposé automatiquement au plus proche' },
+  { id: 'eau', aides: ['mainoeuvre', 'vehicule'], mission: { titre: "Distribution d'eau et de repas", categorie: 'mainoeuvre' } },
+  { id: 'med', aides: ['vehicule', 'competences'], mission: { titre: 'Livraison de médicaments', categorie: 'vehicule' } },
+  { id: 'animaux', aides: ['temps', 'vehicule'], mission: { titre: "Prise en charge d'animaux", categorie: 'temps' } },
+]
+
+type PropsBesoins = { demandes: DemandeServeur[]; volontaires: Volontaire[]; onMission: (m: { titre: string; categorie: string }) => void }
+
+function PanneauBesoins({ demandes, volontaires, onMission }: PropsBesoins) {
+  const ouvertes = demandes.filter((d) => d.statut !== 'close')
+  return (
+    <section className="mairie-panneau" aria-labelledby="titre-besoins">
+      <h2 id="titre-besoins">Besoins et volontaires</h2>
+      <p className="texte-doux" style={{ marginTop: -4 }}>
+        Demandes ouvertes par besoin, face aux volontaires disponibles qui peuvent y répondre.
+      </p>
+      <div style={{ overflowX: 'auto' }}>
+        <table className="mairie-tableau" style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
+          <thead>
+            <tr style={{ textAlign: 'left' }}>
+              <th scope="col">Besoin</th>
+              <th scope="col">Demandes</th>
+              <th scope="col">Personnes</th>
+              <th scope="col">Volontaires</th>
+              <th scope="col">Réponse</th>
+            </tr>
+          </thead>
+          <tbody>
+            {besoinsSuivis.map((b) => {
+              const concernees = ouvertes.filter((d) => d.besoins.includes(b.id))
+              const personnes = concernees.reduce((n, d) => n + d.personnes, 0)
+              const aidants = volontaires.filter((v) => b.aides.some((r) => v.ressources.includes(r))).length
+              const manque = concernees.length > 0 && aidants === 0
+              return (
+                <tr key={b.id} style={{ borderTop: '1px solid var(--bordure)' }}>
+                  <th scope="row" style={{ padding: '8px 6px 8px 0', textAlign: 'left' }}>
+                    {listeBesoins.find((x) => x.id === b.id)?.label ?? b.id}
+                  </th>
+                  <td style={{ padding: 6, fontWeight: concernees.length ? 800 : 400 }}>{concernees.length}</td>
+                  <td style={{ padding: 6 }}>{personnes}</td>
+                  <td style={{ padding: 6, color: manque ? 'var(--urgence-fonce)' : undefined, fontWeight: manque ? 800 : 400 }}>
+                    {aidants}
+                    <span className="texte-doux" style={{ fontWeight: 400 }}> ({b.aides.map(libelleRessource).join(', ')})</span>
+                  </td>
+                  <td style={{ padding: 6 }}>
+                    {b.auto ? (
+                      <span className="texte-doux">{b.auto}</span>
+                    ) : (
+                      <button type="button" className="mairie-bouton" disabled={concernees.length === 0} onClick={() => b.mission && onMission(b.mission)}>
+                        Créer une mission
+                      </button>
+                    )}
+                  </td>
+                </tr>
+              )
+            })}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  )
+}
+
+const libelleEntraide: Record<BesoinEntraide, { titre: string; aide: string; ressource: string }> = {
+  transport: { titre: 'Transport', aide: 'véhicule', ressource: 'vehicule' },
+  materiel: { titre: 'Matériel', aide: 'matériel', ressource: 'materiel' },
+}
+
+type PropsEntraides = { demandes: DemandeServeur[]; volontaires: Volontaire[]; entraides: Entraide[]; communeId: string }
+
+// Transport et matériel : suivi des sollicitations automatiques, annulation, relance ou choix d'un volontaire
+function PanneauEntraides({ demandes, volontaires, entraides, communeId }: PropsEntraides) {
+  const [message, setMessage] = useState('')
+  const lignes = demandes
+    .filter((d) => d.statut !== 'close')
+    .flatMap((d) => (['transport', 'materiel'] as BesoinEntraide[]).filter((b) => d.besoins.includes(b)).map((b) => ({ d, b })))
+  const enCours = (e: Entraide) => e.statut === 'proposee' || e.statut === 'acceptee'
+  const nom = (id: string) => {
+    const v = volontaires.find((x) => x.auteur === id)
+    return v ? [v.prenom, v.nom].filter(Boolean).join(' ') || 'Volontaire' : 'Volontaire'
+  }
+
+  const annuler = async (e: Entraide) => {
+    if (!window.confirm('Annuler cette mise en relation ? Le volontaire sera prévenu dans son app.')) return
+    const { error } = await serveur!.from('entraides').update({ statut: 'annulee' }).eq('id', e.id)
+    setMessage(error ? "Échec : la mise en relation n'a pas été annulée." : 'Annulée. Relancez la recherche ou choisissez un volontaire.')
+  }
+  const relancer = async (demande: string) => {
+    const { error } = await serveur!.rpc('relancer_entraides', { p_demande: demande })
+    setMessage(error ? 'Échec de la relance.' : 'Recherche relancée.')
+  }
+  const proposer = async (demande: string, besoin: BesoinEntraide, aidant: string) => {
+    if (!aidant) return
+    const { error } = await serveur!.from('entraides').insert({ commune_id: communeId, demande_id: demande, besoin, aidant })
+    setMessage(error ? 'Échec : une sollicitation est peut-être déjà en cours.' : 'Volontaire sollicité.')
+  }
+
+  return (
+    <section className="mairie-panneau" aria-labelledby="titre-entraides">
+      <h2 id="titre-entraides">Transport et matériel</h2>
+      <p className="texte-doux" style={{ marginTop: -4 }}>
+        Chaque besoin est proposé automatiquement au volontaire disponible le plus proche. En cas de refus, le suivant est sollicité.
+      </p>
+      {lignes.length === 0 && <p className="texte-doux">Aucune demande de transport ou de matériel en cours.</p>}
+      {lignes.map(({ d, b }) => {
+        const e = entraides.find((x) => x.demande_id === d.id && x.besoin === b && enCours(x))
+        const refus = entraides.filter((x) => x.demande_id === d.id && x.besoin === b && x.statut === 'refusee').length
+        const deja = new Set(entraides.filter((x) => x.demande_id === d.id && x.besoin === b).map((x) => x.aidant))
+        const candidats = volontaires.filter((v) => v.ressources.includes(libelleEntraide[b].ressource) && !deja.has(v.auteur))
+        return (
+          <article key={`${d.id}-${b}`} className="mairie-demande" style={{ borderLeftColor: d.personne_vulnerable ? 'var(--urgence)' : 'var(--bleu)' }}>
+            <strong style={{ fontSize: 15 }}>
+              {libelleEntraide[b].titre} · {d.reference} · {d.personnes} pers.{d.prenom ? ` · ${d.prenom}` : ''}
+            </strong>
+            {e ? (
+              <span className={`mairie-etiquette ${e.statut === 'acceptee' ? 'mairie-etiquette--ok' : ''}`} style={{ alignSelf: 'flex-start' }}>
+                {e.statut === 'acceptee' ? `✓ Accepté par ${nom(e.aidant)}` : `Proposé à ${nom(e.aidant)} · réponse attendue`}
+              </span>
+            ) : (
+              <span className="texte-doux">
+                {candidats.length === 0 ? `Aucun volontaire disponible avec ${libelleEntraide[b].aide}` : 'En attente d’un volontaire'}
+                {refus > 0 ? ` · ${refus} refus` : ''}
+              </span>
+            )}
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+              {e ? (
+                <button type="button" className="mairie-bouton" onClick={() => void annuler(e)}>
+                  Annuler
+                </button>
+              ) : (
+                <>
+                  <button type="button" className="mairie-bouton" onClick={() => void relancer(d.id)}>
+                    Relancer la recherche
+                  </button>
+                  {candidats.length > 0 && (
+                    <select
+                      className="mairie-champ"
+                      aria-label={`Choisir un volontaire pour ${d.reference}`}
+                      value=""
+                      onChange={(ev) => void proposer(d.id, b, ev.target.value)}
+                      style={{ maxWidth: 240 }}
+                    >
+                      <option value="">Choisir un volontaire…</option>
+                      {candidats.map((v) => (
+                        <option key={v.auteur} value={v.auteur}>
+                          {nom(v.auteur)}
+                        </option>
+                      ))}
+                    </select>
+                  )}
+                </>
+              )}
+            </div>
+          </article>
+        )
+      })}
+      {message && (
+        <p role="status" style={{ fontSize: 14 }}>
+          {message}
+        </p>
+      )}
+    </section>
+  )
+}
+
 const actif = (h: Hebergement) => h.statut === 'proposee' || h.statut === 'acceptee'
 
 // Places restantes : on retire les personnes déjà proposées ou accueillies chez ce foyer
@@ -1055,11 +1253,12 @@ const champsMission: [Exclude<keyof typeof missionVide, 'categorie'>, string][] 
   ['duree', 'Durée estimée'],
 ]
 
-type PropsMissions = { missions: MissionServeur[]; reponses: Reponse[]; volontaires: Volontaire[]; communeId: string }
+type ModeleMission = { titre: string; categorie: string; numero: number }
+type PropsMissions = { missions: MissionServeur[]; reponses: Reponse[]; volontaires: Volontaire[]; communeId: string; modele: ModeleMission | null }
 
-function PanneauMissions({ missions, reponses, volontaires, communeId }: PropsMissions) {
-  const [ouvert, setOuvert] = useState(false)
-  const [mission, setMission] = useState(missionVide)
+function PanneauMissions({ missions, reponses, volontaires, communeId, modele }: PropsMissions) {
+  const [ouvert, setOuvert] = useState(!!modele)
+  const [mission, setMission] = useState(modele ? { ...missionVide, titre: modele.titre, categorie: modele.categorie } : missionVide)
   const [adresse, setAdresse] = useState<ResultatAdresse | null>(null)
   const [message, setMessage] = useState('')
 

@@ -113,6 +113,31 @@ export type MonHebergementServeur = {
   lng: number | null
 }
 
+// Transport et matériel : sollicitation automatique du volontaire le plus proche (migration 0011)
+export type BesoinEntraide = 'transport' | 'materiel'
+
+// Sollicitation vue par le volontaire : distance arrondie avant l'accord, coordonnées après
+export type SollicitationServeur = {
+  id: string
+  besoin: BesoinEntraide
+  statut: StatutHebergement
+  personnes: number
+  personne_vulnerable: boolean
+  distance_km: number | null
+  prenom: string
+  telephone: string
+  lieu: string
+  created_at: string
+}
+
+// Volontaire vu par la personne aidée : prénom et numéro seulement après son accord
+export type AidantServeur = {
+  besoin: BesoinEntraide
+  statut: StatutHebergement
+  prenom: string
+  telephone: string
+}
+
 export function lienTelephone(numero: string) {
   return `tel:${numero.replace(/[\s.-]/g, '')}`
 }

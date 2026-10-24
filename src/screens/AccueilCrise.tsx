@@ -6,8 +6,10 @@ import EnTete from '../components/EnTete.tsx'
 import HebergementTrouve from '../components/HebergementTrouve.tsx'
 import Icone from '../components/Icone.tsx'
 import PropositionHebergement from '../components/PropositionHebergement.tsx'
+import SollicitationEntraide from '../components/SollicitationEntraide.tsx'
+import AidantsTrouves from '../components/AidantsTrouves.tsx'
 import { libelleLieu, lieuxDemo } from '../data/fictif.ts'
-import { serveur } from '../services/serveur.ts'
+import { serveur, type BesoinEntraide } from '../services/serveur.ts'
 import { useAppState } from '../state/AppState.tsx'
 
 const libelleStatut = {
@@ -60,6 +62,7 @@ export default function AccueilCrise() {
         </section>
 
         <PropositionHebergement />
+        <SollicitationEntraide />
 
         {demande && (
           <Link to="/demande" className="carte" style={{ textDecoration: 'none', color: 'var(--texte)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, borderColor: 'var(--bleu)', borderWidth: 2 }}>
@@ -71,6 +74,9 @@ export default function AccueilCrise() {
           </Link>
         )}
         {demande?.envoyee && <HebergementTrouve demande={demande.id} recherche={demande.besoins.includes('heb') && demande.statut !== 'close'} />}
+        {demande?.envoyee && demande.statut !== 'close' && (
+          <AidantsTrouves demande={demande.id} besoins={demande.besoins.filter((b): b is BesoinEntraide => b === 'transport' || b === 'materiel')} />
+        )}
         {!demande && (
           <h1 style={{ margin: '2px 0 0', fontSize: 22, fontWeight: 800, lineHeight: 1.2, color: 'var(--bleu-nuit)' }}>
             {enSecurite ? 'Merci, vous êtes en sécurité.' : 'Êtes-vous en sécurité ?'}

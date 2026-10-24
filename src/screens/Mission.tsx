@@ -2,6 +2,7 @@ import { Link, Navigate, useNavigate } from 'react-router-dom'
 import EnTeteRetour from '../components/EnTeteRetour.tsx'
 import Icone from '../components/Icone.tsx'
 import PropositionHebergement from '../components/PropositionHebergement.tsx'
+import SollicitationEntraide from '../components/SollicitationEntraide.tsx'
 import { useAppState } from '../state/AppState.tsx'
 
 const cellule = { padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 2 } as const
@@ -34,6 +35,7 @@ export default function Mission() {
 
       <main className="contenu" style={{ paddingTop: 10 }}>
         <PropositionHebergement />
+        <SollicitationEntraide />
         <h1 style={{ fontSize: 25, fontWeight: 800, lineHeight: 1.2, color: 'var(--bleu-nuit)' }}>{mission.titre}</h1>
 
         {acceptee && (
@@ -137,6 +139,7 @@ function EnAttenteDeMission({ hebergeurSeul }: { hebergeurSeul: boolean }) {
       </EnTeteRetour>
       <main className="contenu" style={{ paddingTop: 10 }}>
         <PropositionHebergement />
+        <SollicitationEntraide />
         <section role="status" className="carte" style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
           <Icone nom="valide" taille={24} couleur="var(--bleu)" epaisseur={2.4} />
           <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
