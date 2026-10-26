@@ -1,0 +1,47 @@
+name: Vérification
+
+# À chaque PR : l'app compile, le lint passe, et les migrations s'appliquent sur une base vide
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  app:
+    name: Build et lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - run: npm run lint
+
+  migrations:
+    name: Migrations Supabase
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      PGHOST: localhost
+      PGUSER: postgres
+      PGPASSWORD: postgres
+    steps:
+      - uses: actions/checkout@v4
+      - name: Appliquer toutes les migrations dans l'ordre
+        run: cat supabase/tests/imitation_supabase.sql supabase/migrations/0*.sql | psql -q -v ON_ERROR_STOP=1
+      - name: Toutes les tables ont la RLS activée
+        run: |
+          sans_rls=$(psql -tA -c "select string_agg(tablename, ', ') from pg_tables where schemaname = 'public' and not rowsecurity")
+          if [ -n "$sans_rls" ]; then echo "::error::Tables sans RLS : $sans_rls"; exit 1; fi

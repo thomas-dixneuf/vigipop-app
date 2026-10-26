@@ -22,3 +22,7 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Captures pour les stores (npm run captures)
+dist-captures
+captures-stores

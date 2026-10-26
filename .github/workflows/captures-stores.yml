@@ -1,0 +1,25 @@
+name: Captures des stores
+
+# Lancement à la main (onglet Actions) : captures iPhone et Android en mode démo, à télécharger
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  captures:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm run captures
+      - uses: actions/upload-artifact@v4
+        with:
+          name: captures-stores
+          path: captures-stores/
