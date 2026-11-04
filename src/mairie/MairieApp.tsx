@@ -4,6 +4,7 @@ import type { Session } from '@supabase/supabase-js'
 import Logo from '../components/Logo.tsx'
 import { serveur } from '../services/serveur.ts'
 import TableauDeBord, { type Coordinateur } from './TableauDeBord.tsx'
+import { ecrireCache, effacerCacheMairie, lireCache } from './cache.ts'
 import './mairie.css'
 
 // Point d'entrée de l'espace mairie (#/mairie) : connexion coordinateur, puis tableau de bord
@@ -32,11 +33,16 @@ export default function MairieApp() {
       .select('nom, commune_id, communes(nom)')
       .eq('user_id', session.user.id)
       .maybeSingle()
-      .then(({ data }) => {
+      .then(({ data, error }) => {
         if (annule) return
+        const cle = `coordinateur-${session.user.id}`
+        // Serveur injoignable : on reprend le rattachement connu, pour ouvrir la dernière liste reçue
+        if (error) return setCoordinateur(lireCache<Coordinateur>(cle)?.valeur ?? null)
         if (!data) return setCoordinateur('refuse')
         const commune = data.communes as unknown as { nom: string } | null
-        setCoordinateur({ nom: data.nom, communeId: data.commune_id, communeNom: commune?.nom ?? '' })
+        const lu = { nom: data.nom, communeId: data.commune_id, communeNom: commune?.nom ?? '' }
+        ecrireCache(cle, lu)
+        setCoordinateur(lu)
       })
     return () => {
       annule = true
@@ -63,7 +69,14 @@ export default function MairieApp() {
       <Cadre>
         <h1 style={{ fontSize: 22, fontWeight: 800, color: 'var(--bleu-nuit)' }}>Accès réservé aux coordinateurs</h1>
         <p style={{ lineHeight: 1.5 }}>Ce compte n'est rattaché à aucune commune. Demandez à l'équipe Vigipop de l'ajouter.</p>
-        <button type="button" className="mairie-bouton" onClick={() => void serveur!.auth.signOut()}>
+        <button
+          type="button"
+          className="mairie-bouton"
+          onClick={() => {
+            effacerCacheMairie()
+            void serveur!.auth.signOut()
+          }}
+        >
           Se déconnecter
         </button>
       </Cadre>

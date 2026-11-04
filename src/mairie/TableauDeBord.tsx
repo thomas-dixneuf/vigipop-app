@@ -3,6 +3,8 @@ import CarteInteractive, { type Repere } from '../components/CarteInteractive.ts
 import Logo from '../components/Logo.tsx'
 import ChampAdresse from '../components/ChampAdresse.tsx'
 import PanneauPush from './PanneauPush.tsx'
+import { ActionsListe, PanneauBilan } from './Rapports.tsx'
+import { ecrireCache, effacerCacheMairie, lireCache } from './cache.ts'
 import { besoins as listeBesoins, centreCommune, libelleLieu, ressources as listeRessources, situations } from '../data/fictif.ts'
 import {
   heure,
@@ -93,7 +95,9 @@ const libelleAction: Record<string, string> = {
 export default function TableauDeBord({ coordinateur }: { coordinateur: Coordinateur }) {
   const client = serveur!
   const commune = coordinateur.communeId
-  const [donnees, setDonnees] = useState<Donnees | null>(null)
+  // Dernière liste reçue, gardée sur l'ordinateur : affichée tout de suite, et si le serveur ne répond plus
+  const [donnees, setDonnees] = useState<Donnees | null>(() => lireCache<Donnees>(`tableau-${commune}`)?.valeur ?? null)
+  const [copieDu, setCopieDu] = useState<string | null>(() => lireCache<Donnees>(`tableau-${commune}`)?.a ?? null)
   const [erreur, setErreur] = useState('')
   // Mission pré-remplie depuis le tableau des besoins
   const [modeleMission, setModeleMission] = useState<ModeleMission | null>(null)
@@ -117,12 +121,14 @@ export default function TableauDeBord({ coordinateur }: { coordinateur: Coordina
     ])
     const echec = [crise, demandes, lieux, missions, reponses, volontaires, hebergements, zones, journal].find((r) => r.error)
     if (echec) {
-      setErreur('Connexion au serveur perdue. Nouvel essai automatique.')
+      setErreur(navigator.onLine ? 'Connexion au serveur perdue.' : 'Vous êtes hors ligne.')
+      setCopieDu(lireCache(`tableau-${commune}`)?.a ?? null)
       return
     }
     setErreur('')
+    setCopieDu(null)
     const criseActive = crise.data as CriseServeur | null
-    setDonnees({
+    const lues: Donnees = {
       crise: criseActive,
       risques: (communeLue.data as { risques?: string[] } | null)?.risques ?? [],
       demandes: demandes.data as DemandeServeur[],
@@ -136,7 +142,9 @@ export default function TableauDeBord({ coordinateur }: { coordinateur: Coordina
       // Seules comptent les disponibilités données pendant la crise en cours
       volontaires: criseActive ? (volontaires.data as Volontaire[]).filter((v) => v.updated_at >= criseActive.declenchee_a) : [],
       journal: journal.data as Evenement[],
-    })
+    }
+    setDonnees(lues)
+    ecrireCache(`tableau-${commune}`, lues)
   }, [client, commune])
 
   // Tout changement (habitant ou autre coordinateur) recharge le tableau en direct
@@ -151,9 +159,13 @@ export default function TableauDeBord({ coordinateur }: { coordinateur: Coordina
     canal.on('postgres_changes', { event: '*', schema: 'public', table: 'reponses_mission' }, () => void charger())
     canal.subscribe()
     const minuteur = window.setInterval(() => void charger(), 30000)
+    // Retour du réseau : mise à jour immédiate, sans attendre les 30 s
+    const enLigne = () => void charger()
+    window.addEventListener('online', enLigne)
     return () => {
       void client.removeChannel(canal)
       window.clearInterval(minuteur)
+      window.removeEventListener('online', enLigne)
     }
   }, [client, commune, charger])
 
@@ -173,7 +185,14 @@ export default function TableauDeBord({ coordinateur }: { coordinateur: Coordina
           ) : (
             <span className="mairie-etiquette">Veille</span>
           )}
-          <button type="button" className="mairie-bouton" onClick={() => void client.auth.signOut()}>
+          <button
+            type="button"
+            className="mairie-bouton"
+            onClick={() => {
+              effacerCacheMairie()
+              void client.auth.signOut()
+            }}
+          >
             Se déconnecter
           </button>
         </div>
@@ -181,7 +200,12 @@ export default function TableauDeBord({ coordinateur }: { coordinateur: Coordina
 
       {erreur && (
         <p role="alert" style={{ background: 'var(--urgence-pale)', color: 'var(--urgence-fonce)', padding: '10px 24px', fontWeight: 700 }}>
-          {erreur}
+          {erreur}{' '}
+          {donnees && copieDu
+            ? `Vous voyez la liste enregistrée sur cet ordinateur à ${heure(copieDu)} : imprimez-la si la coupure dure. Les changements reprendront au retour du réseau.`
+            : donnees
+              ? 'Vous voyez la dernière liste reçue : imprimez-la si la coupure dure. Nouvel essai automatique.'
+              : 'Nouvel essai automatique.'}
         </p>
       )}
 
@@ -209,7 +233,7 @@ export default function TableauDeBord({ coordinateur }: { coordinateur: Coordina
             />
             <PanneauHebergement demandes={donnees.demandes} volontaires={donnees.volontaires} hebergements={donnees.hebergements} communeId={commune} />
             <PanneauEntraides demandes={donnees.demandes} volontaires={donnees.volontaires} entraides={donnees.entraides} communeId={commune} />
-            <Demandes demandes={donnees.demandes} depuis={donnees.crise?.declenchee_a ?? null} />
+            <Demandes demandes={donnees.demandes} depuis={donnees.crise?.declenchee_a ?? null} communeNom={coordinateur.communeNom} />
           </div>
           <div className="mairie-colonne">
             <PanneauCrise crise={donnees.crise} communeId={commune} />
@@ -224,6 +248,7 @@ export default function TableauDeBord({ coordinateur }: { coordinateur: Coordina
               volontaires={donnees.volontaires}
               communeId={commune}
             />
+            <PanneauBilan communeId={commune} communeNom={coordinateur.communeNom} />
             <PanneauJournal journal={donnees.journal} />
             <PanneauPush />
           </div>
@@ -258,7 +283,7 @@ type Filtre = 'a-traiter' | 'en-cours' | 'terminees'
 
 // Demandes terminées : celles de la crise en cours, ou des dernières 48 h hors crise.
 // À la fin d'une crise, le serveur clôt les demandes encore ouvertes (migration 0010).
-function Demandes({ demandes, depuis }: { demandes: DemandeServeur[]; depuis: string | null }) {
+function Demandes({ demandes, depuis, communeNom }: { demandes: DemandeServeur[]; depuis: string | null; communeNom: string }) {
   const [filtre, setFiltre] = useState<Filtre>('a-traiter')
   const [organisation, setOrganisation] = useState<{ id: string; texte: string } | null>(null)
   const [ouverture] = useState(() => Date.now())
@@ -306,6 +331,7 @@ function Demandes({ demandes, depuis }: { demandes: DemandeServeur[]; depuis: st
           ))}
         </div>
       </div>
+      <ActionsListe demandes={demandes} communeNom={communeNom} />
 
       {visibles.length === 0 && <p className="texte-doux">Aucune demande dans cette catégorie.</p>}
 
