@@ -905,7 +905,11 @@ function PanneauLieux({ lieux, communeId }: { lieux: LieuServeur[]; communeId: s
   const [lieu, setLieu] = useState(lieuVide)
   const [adresse, setAdresse] = useState<ResultatAdresse | null>(null)
   const [message, setMessage] = useState('')
-  const basculer = (l: LieuServeur) => void serveur!.from('lieux').update({ ouvert: !l.ouvert }).eq('id', l.id)
+  // La requête Supabase ne part qu'une fois attendue : sans await, rien n'était envoyé
+  const basculer = async (l: LieuServeur) => {
+    const { error } = await serveur!.from('lieux').update({ ouvert: !l.ouvert }).eq('id', l.id)
+    setMessage(error ? "Échec : le lieu n'a pas changé d'état." : '')
+  }
   const supprimer = async (l: LieuServeur) => {
     if (!window.confirm(`Supprimer « ${l.nom} » ? Il disparaîtra de la carte des habitants.`)) return
     const { error } = await serveur!.from('lieux').delete().eq('id', l.id)
@@ -960,7 +964,7 @@ function PanneauLieux({ lieux, communeId }: { lieux: LieuServeur[]; communeId: s
             role="switch"
             aria-checked={l.ouvert}
             aria-label={`${l.nom} ouvert`}
-            onClick={() => basculer(l)}
+            onClick={() => void basculer(l)}
             className={`mairie-bouton${l.ouvert ? ' mairie-bouton--principal' : ''}`}
             style={{ minWidth: 92 }}
           >
