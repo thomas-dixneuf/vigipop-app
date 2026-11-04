@@ -9,7 +9,10 @@ import { commune } from './data/fictif.ts'
 import { serveurLocal } from './services/serveur.ts'
 
 // Présentation hors ligne : app habitant et espace mairie reliés (côte à côte ou au choix)
-const coteACote = serveurLocal && import.meta.env.VITE_PRESENTATION === '1' && !location.hash.startsWith('#/mairie')
+// VITE_VUE=habitant ou mairie : une seule des deux interfaces (lien séparé pour chacune)
+const vue = import.meta.env.VITE_VUE as 'habitant' | 'mairie' | undefined
+if (vue === 'mairie' && !location.hash.startsWith('#/mairie')) location.replace('#/mairie')
+const coteACote = serveurLocal && import.meta.env.VITE_PRESENTATION === '1' && !vue && !location.hash.startsWith('#/mairie')
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
