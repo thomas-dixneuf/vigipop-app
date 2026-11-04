@@ -55,6 +55,14 @@ function baseInitiale(): Base {
       updated_at: cree,
       ...v,
     })),
+    // Rôles déjà déclarés et vérifiés (protection civile, entreprises sous convention), et un à vérifier
+    habilitations: [
+      { prenom: 'Sylvie', nom: 'M.', type: 'protection_civile', details: { numero: 'PC49-0142' }, statut: 'verifiee' },
+      { prenom: 'Thierry', nom: 'B.', type: 'protection_civile', details: { numero: 'PC49-0187' }, statut: 'verifiee' },
+      { prenom: 'Claire', nom: 'D.', type: 'entreprise', statut: 'verifiee', details: { entreprise: 'Entreprise partenaire A', siret: '00000000000001', materiel: '4 pompes de relevage, 2 groupes électrogènes 20 kVA' } },
+      { prenom: 'Olivier', nom: 'R.', type: 'entreprise', statut: 'verifiee', details: { entreprise: 'Entreprise partenaire B', siret: '00000000000002', materiel: 'Mini-pelle avec chauffeur, 2 bennes, barrières de chantier' } },
+      { prenom: 'Marc', nom: 'L.', type: 'protection_civile', details: { numero: 'PC49-0203' }, statut: 'a_verifier' },
+    ].map((h, i) => ({ ...h, id: `habilitation-${i + 1}`, auteur: `habitant-${i + 1}`, commune_id: c, telephone: '06 00 00 01 0' + i, created_at: cree, updated_at: cree })),
     crises: [],
     demandes: [],
     reponses_mission: [],

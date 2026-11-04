@@ -23,7 +23,9 @@ const ligne = {
 // Version simple du profil : la page complète (offres et prêts) viendra ensuite
 export default function Profil() {
   const navigate = useNavigate()
-  const { utilisateur, mode, lancerVisite, deconnecter, communeAffichee } = useAppState()
+  const { utilisateur, mode, lancerVisite, deconnecter, communeAffichee, habilitations } = useAppState()
+  const verifies = habilitations.filter((h) => h.statut === 'verifiee').length
+  const enAttente = habilitations.filter((h) => h.statut === 'a_verifier').length
 
   const revoirVisite = () => {
     lancerVisite()
@@ -67,8 +69,19 @@ export default function Profil() {
         )}
 
         <section className="carte" style={{ padding: 0, borderRadius: 16 }}>
-          <Link to="/aider" style={{ ...ligne, borderBottom: mode === 'veille' ? '1px solid var(--bleu-voile)' : 'none' }}>
+          <Link to="/aider" style={{ ...ligne, borderBottom: '1px solid var(--bleu-voile)' }}>
             Mes types d'aide (ce que je peux offrir)
+            <Icone nom="fleche" taille={18} />
+          </Link>
+          <Link to="/profil/role" style={{ ...ligne, borderBottom: mode === 'veille' ? '1px solid var(--bleu-voile)' : 'none' }}>
+            <span style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+              Protection civile, entreprise partenaire
+              {(verifies > 0 || enAttente > 0) && (
+                <span className="texte-doux" style={{ fontWeight: 600 }}>
+                  {verifies > 0 ? `✓ ${verifies > 1 ? 'Rôles vérifiés' : 'Rôle vérifié'} par la mairie` : 'En attente de vérification'}
+                </span>
+              )}
+            </span>
             <Icone nom="fleche" taille={18} />
           </Link>
           {mode === 'veille' && (

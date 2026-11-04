@@ -51,6 +51,20 @@ export type Accueil = { places: number; adresse: string; lat: number | null; lng
 // Notification de l'app : la clé évite d'annoncer deux fois le même événement
 export type NotificationApp = { cle: string; titre: string; texte: string; lien: string; heure: string; lue: boolean; urgente?: boolean }
 
+// Rôle déclaré dans la commune : bénévole de la protection civile ou entreprise sous convention.
+// Vérifié par la mairie (auprès de l'association ou de sa liste de conventions) : aucun justificatif
+// n'est déposé dans l'app, pour ne pas stocker de pièces d'identité
+export type TypeHabilitation = 'protection_civile' | 'entreprise'
+export type StatutHabilitation = 'a_verifier' | 'verifiee' | 'refusee'
+export type Habilitation = {
+  id: string
+  type: TypeHabilitation
+  details: Record<string, string>
+  statut: StatutHabilitation
+  // Faux tant que la mairie ne l'a pas reçue (pas de réseau)
+  envoyee: boolean
+}
+
 export type Alerte = { titre: string; consigne: string; heure: string; id?: string }
 
 // Réponse du volontaire à la mission proposée par le coordinateur
@@ -100,6 +114,7 @@ type Etat = {
   offresEnregistrees: boolean
   // Crise terminée alors qu'une demande était en cours : on demande si l'aide est toujours nécessaire
   apresCrise: boolean
+  habilitations: Habilitation[]
 }
 
 type AppStateValue = Etat & {
@@ -131,6 +146,8 @@ type AppStateValue = Etat & {
   marquerNotificationsLues: () => void
   // cle absente : tout effacer
   effacerNotifications: (cle?: string) => void
+  demanderHabilitation: (type: TypeHabilitation, details: Record<string, string>) => void
+  retirerHabilitation: (type: TypeHabilitation) => void
 }
 
 const CLE_STOCKAGE = 'vigipop-demo'
@@ -161,6 +178,7 @@ const etatInitial: Etat = {
   visiteFaite: false,
   offresEnregistrees: false,
   apresCrise: false,
+  habilitations: [],
 }
 
 // Mode démo local : alerte fictive affichée quand on simule la crise
@@ -457,6 +475,77 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     }
   }, [aEnvoyer, enLigne, utilisateur])
 
+  // ─── Rôle déclaré (protection civile, entreprise partenaire) : envoi puis suivi de la vérification ───
+  const habilitationAEnvoyer = etat.habilitations.find((h) => !h.envoyee)
+  useEffect(() => {
+    if (!habilitationAEnvoyer || !enLigne || !utilisateur) return
+    let annule = false
+    const h = habilitationAEnvoyer
+    const marquer = () =>
+      !annule && setEtat((e) => ({ ...e, habilitations: e.habilitations.map((x) => (x.id === h.id ? { ...x, envoyee: true } : x)) }))
+    if (!serveur) {
+      marquer()
+      return
+    }
+    const client = serveur
+    ;(async () => {
+      try {
+        const auteur = await assurerSession(client)
+        const { error } = await client.from('habilitations').upsert({
+          id: h.id,
+          auteur,
+          commune_id: COMMUNE_ID,
+          type: h.type,
+          details: h.details,
+          statut: 'a_verifier',
+          prenom: utilisateur.prenom,
+          nom: utilisateur.nom ?? '',
+          telephone: utilisateur.telephone,
+        })
+        if (!error) marquer()
+      } catch {
+        // Nouvel essai au prochain retour en ligne
+      }
+    })()
+    return () => {
+      annule = true
+    }
+  }, [habilitationAEnvoyer, enLigne, utilisateur])
+
+  const idsHabilitations = etat.habilitations
+    .filter((h) => h.envoyee)
+    .map((h) => h.id)
+    .join(',')
+  useEffect(() => {
+    if (!serveur || !idsHabilitations) return
+    const client = serveur
+    const ids = idsHabilitations.split(',')
+    type Suivi = { id: string; statut: StatutHabilitation }
+    const appliquer = (lignes: Suivi[]) =>
+      setEtat((e) => ({
+        ...e,
+        habilitations: e.habilitations.map((h) => {
+          const l = lignes.find((x) => x.id === h.id)
+          return l && l.statut !== h.statut ? { ...h, statut: l.statut } : h
+        }),
+      }))
+    void client
+      .from('habilitations')
+      .select('id, statut')
+      .in('id', ids)
+      .then(({ data, error }) => !error && data && appliquer(data as Suivi[]))
+    const canal = client
+      .channel(`habilitations-${ids[0]}`)
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'habilitations' }, (p) => {
+        const l = p.new as Suivi
+        if (ids.includes(l.id)) appliquer([l])
+      })
+      .subscribe()
+    return () => {
+      void client.removeChannel(canal)
+    }
+  }, [idsHabilitations])
+
   const proposables = (serveur ? etat.missions : missionsDemo).filter(
     (m) => (m.categorie === '' || etat.ressources.includes(m.categorie as RessourceId)) && !etat.missionsRefusees.includes(m.id),
   )
@@ -538,6 +627,17 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     },
     marquerNotificationsLues: () =>
       setEtat((e) => (e.notifications.some((n) => !n.lue) ? { ...e, notifications: e.notifications.map((n) => ({ ...n, lue: true })) } : e)),
+    // Une seule déclaration par type : une nouvelle remplace la précédente, à revérifier
+    demanderHabilitation: (type, details) =>
+      setEtat((e) => ({
+        ...e,
+        habilitations: [...e.habilitations.filter((h) => h.type !== type), { id: crypto.randomUUID(), type, details, statut: 'a_verifier', envoyee: false }],
+      })),
+    retirerHabilitation: (type) => {
+      const h = etat.habilitations.find((x) => x.type === type)
+      if (h?.envoyee && serveur) void serveur.from('habilitations').delete().eq('id', h.id).then(() => undefined)
+      setEtat((e) => ({ ...e, habilitations: e.habilitations.filter((x) => x.type !== type) }))
+    },
     effacerNotifications: (cle) =>
       setEtat((e) => {
         const effacees = e.notifications.filter((n) => cle === undefined || n.cle === cle).map((n) => n.cle)
