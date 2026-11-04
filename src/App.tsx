@@ -15,12 +15,14 @@ import MesInfos from './screens/MesInfos.tsx'
 import Carte from './screens/Carte.tsx'
 import Notifications from './screens/Notifications.tsx'
 import Notifieur from './components/Notifieur.tsx'
+import RaccourciCrise from './components/RaccourciCrise.tsx'
 import Signaler from './screens/Signaler.tsx'
 
 export default function App() {
   return (
     <>
     <Notifieur />
+    <RaccourciCrise />
     <Routes>
       <Route path="/" element={<Lancement />} />
       <Route path="/inscription" element={<Inscription />} />

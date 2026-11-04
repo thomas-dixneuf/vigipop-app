@@ -2,7 +2,7 @@ import { useEffect, useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import type { Session } from '@supabase/supabase-js'
 import Logo from '../components/Logo.tsx'
-import { serveur } from '../services/serveur.ts'
+import { serveurMairie as serveur } from '../services/serveur.ts'
 import TableauDeBord, { type Coordinateur } from './TableauDeBord.tsx'
 import './mairie.css'
 
