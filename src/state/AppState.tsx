@@ -166,7 +166,7 @@ const etatInitial: Etat = {
 // Mode démo local : alerte fictive affichée quand on simule la crise
 const alerteDemo: Alerte = {
   id: 'demo',
-  titre: 'Crue de la Moine — vigilance rouge',
+  titre: 'Crue de [RIVIÈRE] — vigilance rouge',
   consigne: "montez à l'étage, ne prenez pas votre voiture.",
   heure: '14:05',
 }
