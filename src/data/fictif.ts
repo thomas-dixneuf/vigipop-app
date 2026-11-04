@@ -9,11 +9,12 @@ export const commune = 'Cholet'
 // Risques repris du DICRIM de Cholet (édition septembre 2022)
 // Tous les risques du DICRIM de Cholet (3e édition, 2021), plus les installations industrielles
 // soumises à autorisation ou classées Seveso recensées par Géorisques (consulté le 04/11/2026).
+// Michelin retiré : usine de Cholet fermée (production arrêtée fin 2025), même si Géorisques la liste encore.
 export const risques = [
   'Inondation de la Moine',
   'Rupture de barrage (Verdon, Ribou)',
   'Transport de matières dangereuses',
-  'Risque industriel (Charal, Michelin, Carrefour Supply Chain)',
+  'Risque industriel (Charal, entrepôt Carrefour Supply Chain)',
   "Dépôt d'explosifs (Puy-Saint-Bonnet)",
   'Vents violents, orages, canicule, grand froid',
   'Retrait-gonflement des argiles',
