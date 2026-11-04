@@ -199,6 +199,7 @@ export default function TableauDeBord({ coordinateur }: { coordinateur: Coordina
               zonesRisque={donnees.zonesRisque}
               risques={donnees.risques}
               communeId={commune}
+              enCrise={!!donnees.crise}
             />
             <PanneauBesoins
               demandes={donnees.demandes}
@@ -214,7 +215,7 @@ export default function TableauDeBord({ coordinateur }: { coordinateur: Coordina
           </div>
           <div className="mairie-colonne">
             <PanneauCrise crise={donnees.crise} communeId={commune} />
-            <PanneauRisques risques={donnees.risques} communeId={commune} onEnregistre={() => void charger()} />
+            <PanneauRisques risques={donnees.risques} communeId={commune} enCrise={!!donnees.crise} onEnregistre={() => void charger()} />
             <PanneauLieux lieux={donnees.lieux} communeId={commune} />
             <PanneauVolontaires volontaires={donnees.volontaires} enCrise={!!donnees.crise} />
             <PanneauHabilitations communeId={commune} />
@@ -525,12 +526,56 @@ type PropsCarte = {
   zonesRisque: ZoneRisqueServeur[]
   risques: string[]
   communeId: string
+  enCrise: boolean
+}
+
+// Référentiel des risques (DICRIM, TIM) : verrouillé par défaut, jamais modifiable pendant une crise.
+// Évite qu'un clic malheureux retire une information officielle de l'app des habitants.
+function useVerrou(enCrise: boolean, objet: string) {
+  const [deverrouille, setDeverrouille] = useState(false)
+  const modifiable = deverrouille && !enCrise
+  const basculer = () => {
+    if (modifiable) return setDeverrouille(false)
+    if (window.confirm(`${objet} viennent des documents officiels de la commune (DICRIM, TIM). Les modifier ?`)) setDeverrouille(true)
+  }
+  const bandeau = (
+    <div
+      style={{
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        gap: 10,
+        flexWrap: 'wrap',
+        background: modifiable ? '#fff4dc' : 'var(--bleu-voile)',
+        borderRadius: 10,
+        padding: '8px 12px',
+        fontSize: 13,
+      }}
+    >
+      <span>
+        <strong>{modifiable ? 'Modification en cours' : 'Verrouillé'}</strong>
+        {' · '}
+        {enCrise
+          ? 'non modifiable pendant une crise.'
+          : modifiable
+            ? 'les changements sont visibles tout de suite par les habitants.'
+            : 'issu du DICRIM et du TIM, protégé contre les modifications involontaires.'}
+      </span>
+      {!enCrise && (
+        <button type="button" className="mairie-bouton" onClick={basculer}>
+          {modifiable ? 'Terminer' : 'Déverrouiller'}
+        </button>
+      )}
+    </div>
+  )
+  return { modifiable, bandeau }
 }
 
 // Zone tracée à la main : à éviter (crise en cours, rouge) ou exposée à un risque du TIM (permanente)
 type Trace = { type: 'danger' | 'risque'; points: [number, number][] }
 
-function CarteMairie({ lieux, demandes, zones, zonesRisque, risques, communeId }: PropsCarte) {
+function CarteMairie({ lieux, demandes, zones, zonesRisque, risques, communeId, enCrise }: PropsCarte) {
+  const verrou = useVerrou(enCrise, 'Les zones de risque')
   // Chaque clic sur la carte ajoute un point du contour
   const [trace, setTrace] = useState<Trace | null>(null)
   const [nom, setNom] = useState('')
@@ -760,21 +805,25 @@ function CarteMairie({ lieux, demandes, zones, zonesRisque, risques, communeId }
           <button type="button" className="mairie-bouton" onClick={() => commencer('danger')}>
             Tracer une zone à éviter
           </button>
-          <button type="button" className="mairie-bouton" onClick={() => commencer('risque')}>
-            Tracer une zone du TIM
-          </button>
-          <label className="mairie-bouton" style={{ cursor: 'pointer', position: 'relative', display: 'inline-flex', alignItems: 'center' }}>
-            Importer un fichier du TIM (GeoJSON)
-            <input
-              type="file"
-              accept=".geojson,.json,application/geo+json,application/json"
-              style={{ position: 'absolute', width: 1, height: 1, opacity: 0 }}
-              onChange={(e) => {
-                void lireFichier(e.target.files?.[0])
-                e.target.value = ''
-              }}
-            />
-          </label>
+          {(verrou.modifiable || (!enCrise && zonesRisque.length === 0)) && (
+            <>
+              <button type="button" className="mairie-bouton" onClick={() => commencer('risque')}>
+                Tracer une zone du TIM
+              </button>
+              <label className="mairie-bouton" style={{ cursor: 'pointer', position: 'relative', display: 'inline-flex', alignItems: 'center' }}>
+                Importer un fichier du TIM (GeoJSON)
+                <input
+                  type="file"
+                  accept=".geojson,.json,application/geo+json,application/json"
+                  style={{ position: 'absolute', width: 1, height: 1, opacity: 0 }}
+                  onChange={(e) => {
+                    void lireFichier(e.target.files?.[0])
+                    e.target.value = ''
+                  }}
+                />
+              </label>
+            </>
+          )}
         </div>
       )}
       {zones.map((z) => (
@@ -788,6 +837,7 @@ function CarteMairie({ lieux, demandes, zones, zonesRisque, risques, communeId }
           </button>
         </div>
       ))}
+      {zonesRisque.length > 0 && verrou.bandeau}
       {zonesRisque.map((z) => (
         <div key={z.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10 }}>
           <span style={{ fontSize: 14 }}>
@@ -798,9 +848,11 @@ function CarteMairie({ lieux, demandes, zones, zonesRisque, risques, communeId }
               {z.consigne ? ` · ${z.consigne}` : ''} · {z.source}
             </span>
           </span>
-          <button type="button" className="mairie-bouton" onClick={() => void retirerRisque(z)}>
-            Supprimer
-          </button>
+          {verrou.modifiable && (
+            <button type="button" className="mairie-bouton" onClick={() => void retirerRisque(z)}>
+              Supprimer
+            </button>
+          )}
         </div>
       ))}
       {message && (
@@ -829,7 +881,20 @@ function Legende({ couleur, texte }: { couleur: string; texte: string }) {
 const risquesSuggeres = ['Inondation', 'Crue', 'Tempête', 'Canicule', 'Feu de forêt', 'Mouvement de terrain', 'Risque industriel', 'Séisme', 'Submersion marine', 'Neige et verglas']
 
 // Risques connus de la commune (DICRIM) : affichés aux habitants en veille, pour se préparer
-function PanneauRisques({ risques, communeId, onEnregistre }: { risques: string[]; communeId: string; onEnregistre: () => void }) {
+function PanneauRisques({
+  risques,
+  communeId,
+  enCrise,
+  onEnregistre,
+}: {
+  risques: string[]
+  communeId: string
+  enCrise: boolean
+  onEnregistre: () => void
+}) {
+  const verrou = useVerrou(enCrise, 'Les risques de la commune')
+  // Liste vide : rien à protéger, la mairie peut la remplir (hors crise)
+  const modifiable = verrou.modifiable || (!enCrise && risques.length === 0)
   const [saisie, setSaisie] = useState('')
   const [message, setMessage] = useState('')
   const enregistrer = async (liste: string[]) => {
@@ -853,19 +918,28 @@ function PanneauRisques({ risques, communeId, onEnregistre }: { risques: string[
         placent sur la carte de la commune.
       </p>
       {risques.length === 0 && <p className="texte-doux">Aucun risque renseigné : la rubrique est masquée dans l'app.</p>}
+      {risques.length > 0 && verrou.bandeau}
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-        {risques.map((r) => (
-          <button
-            key={r}
-            type="button"
-            className="mairie-bouton mairie-bouton--principal"
-            aria-label={`Retirer ${r}`}
-            onClick={() => void enregistrer(risques.filter((x) => x !== r))}
-          >
-            {r} ×
-          </button>
-        ))}
+        {risques.map((r) =>
+          modifiable ? (
+            <button
+              key={r}
+              type="button"
+              className="mairie-bouton mairie-bouton--principal"
+              aria-label={`Retirer ${r}`}
+              onClick={() => void enregistrer(risques.filter((x) => x !== r))}
+            >
+              {r} ×
+            </button>
+          ) : (
+            <span key={r} className="mairie-etiquette">
+              {r}
+            </span>
+          ),
+        )}
       </div>
+      {modifiable && (
+        <>
       <form
         onSubmit={(e) => {
           e.preventDefault()
@@ -890,6 +964,8 @@ function PanneauRisques({ risques, communeId, onEnregistre }: { risques: string[
             </button>
           ))}
         </div>
+      )}
+        </>
       )}
       {message && (
         <p role="status" style={{ fontSize: 14 }}>
