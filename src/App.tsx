@@ -15,12 +15,14 @@ import MesInfos from './screens/MesInfos.tsx'
 import Carte from './screens/Carte.tsx'
 import Notifications from './screens/Notifications.tsx'
 import Notifieur from './components/Notifieur.tsx'
+import BandeauHorsLigne from './components/BandeauHorsLigne.tsx'
 import Signaler from './screens/Signaler.tsx'
 
 export default function App() {
   return (
     <>
     <Notifieur />
+    <BandeauHorsLigne />
     <Routes>
       <Route path="/" element={<Lancement />} />
       <Route path="/inscription" element={<Inscription />} />
