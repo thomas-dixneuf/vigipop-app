@@ -26,4 +26,6 @@ export type EtatCode = {
   modification?: boolean
   // Écran où revenir une fois le compte créé (par défaut selon le mode)
   suite?: string
+  // Type de code envoyé par le serveur (connexion par SMS réelle)
+  typeCode?: 'sms' | 'phone_change'
 }

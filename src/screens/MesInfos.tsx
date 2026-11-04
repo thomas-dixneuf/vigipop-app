@@ -7,6 +7,7 @@ import EnTeteRetour from '../components/EnTeteRetour.tsx'
 import Icone from '../components/Icone.tsx'
 import { champ, libelle, numeroValide, type EtatCode } from '../outils/formulaire.ts'
 import { useAppState } from '../state/AppState.tsx'
+import { envoyerCode } from '../services/codeSms.ts'
 
 const chiffres = (numero: string) => numero.replace(/[\s.-]/g, '')
 
@@ -22,6 +23,7 @@ export default function MesInfos() {
   const [telephone, setTelephone] = useState(utilisateur?.telephone ?? '')
   const [commune, setCommune] = useState(utilisateur?.commune ?? '')
   const [enregistre, setEnregistre] = useState(retourDuCode)
+  const [erreurCode, setErreurCode] = useState('')
 
   if (!utilisateur) return null
 
@@ -38,13 +40,15 @@ export default function MesInfos() {
     setEdition(false)
   }
 
-  const enregistrer = (e: FormEvent) => {
+  const enregistrer = async (e: FormEvent) => {
     e.preventDefault()
     if (!valide) return
     if (!modifie) return setEdition(false)
     const infos = { prenom: prenom.trim(), nom: nom.trim(), commune: commune.trim() }
     if (nouveauNumero) {
-      const etat: EtatCode = { ...infos, telephone, nouveauCompte: false, modification: true }
+      const resultat = await envoyerCode(telephone, true)
+      if ('erreur' in resultat) return setErreurCode(resultat.erreur)
+      const etat: EtatCode = { ...infos, telephone, nouveauCompte: false, modification: true, typeCode: resultat.type }
       navigate('/code', { state: etat })
       return
     }
@@ -89,7 +93,7 @@ export default function MesInfos() {
             </button>
           </>
         ) : (
-          <form onSubmit={enregistrer} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <form onSubmit={(e) => void enregistrer(e)} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
             <label style={libelle}>
               Prénom
               <input type="text" value={prenom} onChange={(e) => setPrenom(e.target.value)} autoComplete="given-name" maxLength={60} style={champ} />
@@ -101,6 +105,11 @@ export default function MesInfos() {
             <ChampTelephone valeur={telephone} onChange={setTelephone} />
             {nouveauNumero && numeroValide(telephone) && (
               <span className="texte-doux" style={{ marginTop: -6 }}>Un code SMS confirmera ce nouveau numéro.</span>
+            )}
+            {erreurCode && (
+              <span role="alert" style={{ color: 'var(--danger)', fontSize: 14, fontWeight: 700 }}>
+                {erreurCode}
+              </span>
             )}
             <ChampAdresse
               variante="app"
