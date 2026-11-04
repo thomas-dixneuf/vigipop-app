@@ -41,7 +41,11 @@ export type Utilisateur = {
   nom?: string
   telephone: string
   commune: string
+  // « Mon foyer » : pré-remplit la demande d'aide ; reste sur le téléphone
+  foyer?: Foyer
 }
+
+export type Foyer = { adresse: string; personnes: number; vulnerable: boolean }
 
 // Ce qu'une personne sans compte a déjà saisi : repris pour pré-remplir l'inscription
 export type Contact = { prenom: string; telephone: string }

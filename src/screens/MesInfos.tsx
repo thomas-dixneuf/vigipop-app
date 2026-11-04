@@ -8,6 +8,7 @@ import Icone from '../components/Icone.tsx'
 import { champ, libelle, numeroValide, type EtatCode } from '../outils/formulaire.ts'
 import { useAppState } from '../state/AppState.tsx'
 import { envoyerCode } from '../services/codeSms.ts'
+import MonFoyer from '../components/MonFoyer.tsx'
 
 const chiffres = (numero: string) => numero.replace(/[\s.-]/g, '')
 
@@ -150,6 +151,8 @@ export default function MesInfos() {
           </Link>
         </section>
 
+        <MonFoyer />
+
         <section className="carte" aria-labelledby="titre-suppression" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           <strong id="titre-suppression" style={{ fontSize: 16, color: 'var(--bleu-nuit)' }}>
             Supprimer mon compte
@@ -160,7 +163,7 @@ export default function MesInfos() {
                 Vos informations, vos demandes d'aide et vos offres d'aide seront effacées, sur ce téléphone et chez votre mairie.
               </span>
               <button type="button" className="bouton bouton--contour" style={{ color: 'var(--danger)', borderColor: 'var(--danger)' }} onClick={() => setSuppression('confirmation')}>
-                Supprimer mon compte et mes données
+                Supprimer mon compte
               </button>
             </>
           ) : (
