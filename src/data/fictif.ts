@@ -3,9 +3,10 @@ import type { LieuServeur, MissionServeur, ZoneRisqueServeur, ZoneServeur } from
 // Données de démonstration : tout est fictif tant que la phase RGPD n'est pas validée.
 // Ne jamais remplacer par de vraies données d'habitants dans ce prototype.
 
-export const commune = '[VOTRE COMMUNE]'
+// Maquette adaptée à Cholet (branche maquette/cholet) : habitants, demandes et volontaires restent fictifs
+export const commune = 'Cholet'
 
-export const risques = ['Inondation', 'Tempête', '[AUTRE RISQUE]']
+export const risques = ['Inondation', 'Rupture de barrage', 'Tempête', 'Transport de matières dangereuses']
 
 // Lieux de démonstration, au même format que ceux du serveur
 // Coordonnées fictives autour du centre de la commune démo
@@ -22,7 +23,7 @@ export const lieuxDemo: LieuServeur[] = [
 export const zonesDemo: ZoneServeur[] = [
   {
     id: 'zone-demo',
-    nom: 'Quartier [BORD DE RIVIÈRE] inondé',
+    nom: 'Bords de la Moine inondés',
     consigne: 'Ne pas circuler, même à pied : courant fort.',
     points: [
       [47.0569, -0.8838],
@@ -39,9 +40,9 @@ export const zonesRisqueDemo: ZoneRisqueServeur[] = [
   {
     id: 'risque-demo',
     risque: 'Inondation',
-    nom: 'Zone inondable de [RIVIÈRE]',
+    nom: 'Zone inondable de la Moine (illustration)',
     consigne: "En cas d'alerte crue, montez à l'étage et ne prenez pas votre voiture.",
-    source: 'TIM [ANNÉE] (fictif)',
+    source: 'Illustration, à remplacer par le TIM de Cholet',
     points: [
       [47.0552, -0.8862],
       [47.0590, -0.8851],
@@ -101,8 +102,8 @@ export const ressourcesParDefaut: RessourceId[] = []
 export const missionsDemo: MissionServeur[] = [
   {
     id: 'demo-vehicule',
-    titre: "Distribution d'eau aux habitants du quartier [NOM]",
-    coordinateur: '[PRÉNOM]',
+    titre: "Distribution d'eau aux habitants des bords de la Moine",
+    coordinateur: 'Julien',
     rendez_vous: '15:00',
     duree: '2 h',
     equipe: '4 volontaires',
@@ -113,8 +114,8 @@ export const missionsDemo: MissionServeur[] = [
   },
   {
     id: 'demo-mainoeuvre',
-    titre: 'Déblayer la cour de l’école [NOM]',
-    coordinateur: '[PRÉNOM]',
+    titre: 'Déblayer une cour d’école près de la Moine',
+    coordinateur: 'Julien',
     rendez_vous: '16:30',
     duree: '3 h',
     equipe: '6 volontaires',
