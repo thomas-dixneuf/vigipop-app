@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import type { Coordonnees } from '../outils/carte.ts'
-import type { ZoneServeur } from '../services/serveur.ts'
+import type { ZoneRisqueServeur, ZoneServeur } from '../services/serveur.ts'
 
 export type Repere = Coordonnees & {
   id: string
@@ -21,6 +21,10 @@ type Props = {
   hauteur?: number | string
   // Zones à éviter, en rouge
   zones?: ZoneServeur[]
+  // Zones exposées à un risque connu (TIM), en pointillés bleu nuit sous les zones rouges
+  zonesRisque?: ZoneRisqueServeur[]
+  // Couleur du tracé en cours (rouge : zone à éviter ; bleu nuit : zone de risque)
+  couleurTrace?: string
   // Tracé en cours (espace mairie) et clic sur la carte pour l'allonger
   trace?: [number, number][]
   onClicCarte?: (point: [number, number]) => void
@@ -28,7 +32,7 @@ type Props = {
 
 // Fond OpenStreetMap : gratuit, sans clé ; si les tuiles ne chargent pas (hors ligne),
 // la liste des lieux affichée sous la carte reste utilisable.
-export default function CarteInteractive({ reperes, centre, position, selection, onSelection, hauteur = 320, zones = [], trace, onClicCarte }: Props) {
+export default function CarteInteractive({ reperes, centre, position, selection, onSelection, hauteur = 320, zones = [], zonesRisque = [], couleurTrace = '#b42318', trace, onClicCarte }: Props) {
   const conteneur = useRef<HTMLDivElement>(null)
   const carte = useRef<L.Map | null>(null)
   const calque = useRef<L.LayerGroup | null>(null)
@@ -62,15 +66,21 @@ export default function CarteInteractive({ reperes, centre, position, selection,
     const groupe = calque.current
     if (!instance || !groupe) return
     groupe.clearLayers()
-    // Les zones d'abord, pour que les repères restent cliquables par-dessus
+    // Les zones d'abord, pour que les repères restent cliquables par-dessus ;
+    // les zones de risque (permanentes) sous les zones à éviter (crise en cours)
+    for (const z of zonesRisque) {
+      L.polygon(z.points, { color: '#0e3a52', weight: 2, dashArray: '6 5', fillColor: '#86ddff', fillOpacity: 0.25 })
+        .bindTooltip(`Risque ${z.risque.toLowerCase()} : ${z.nom}`, { sticky: true })
+        .addTo(groupe)
+    }
     for (const z of zones) {
       L.polygon(z.points, { color: '#b42318', weight: 2, fillColor: '#d92d20', fillOpacity: 0.3 })
         .bindTooltip(`Zone à éviter : ${z.nom}`, { sticky: true })
         .addTo(groupe)
     }
     if (trace && trace.length > 0) {
-      L.polyline(trace.length > 2 ? [...trace, trace[0]] : trace, { color: '#b42318', weight: 2, dashArray: '6 6' }).addTo(groupe)
-      for (const p of trace) L.circleMarker(p, { radius: 4, color: '#b42318', fillOpacity: 1 }).addTo(groupe)
+      L.polyline(trace.length > 2 ? [...trace, trace[0]] : trace, { color: couleurTrace, weight: 2, dashArray: '6 6' }).addTo(groupe)
+      for (const p of trace) L.circleMarker(p, { radius: 4, color: couleurTrace, fillOpacity: 1 }).addTo(groupe)
     }
     for (const r of reperes) {
       const choisi = r.id === selection
@@ -90,7 +100,8 @@ export default function CarteInteractive({ reperes, centre, position, selection,
         .bindTooltip('Vous êtes ici')
         .addTo(groupe)
     }
-    // Premier affichage : on cadre tous les repères (et la position) une seule fois
+    // Premier affichage : on cadre tous les repères (et la position) une seule fois.
+    // Les zones de risque n'entrent pas dans le cadrage : elles peuvent couvrir toute la commune.
     const points = [
       ...reperes.map((r) => L.latLng(r.lat, r.lng)),
       ...zones.flatMap((z) => z.points.map((p) => L.latLng(p[0], p[1]))),
@@ -100,7 +111,7 @@ export default function CarteInteractive({ reperes, centre, position, selection,
       instance.fitBounds(L.latLngBounds(points), { padding: [30, 30], maxZoom: 16 })
       cadree.current = true
     }
-  }, [reperes, position, selection, onSelection, zones, trace])
+  }, [reperes, position, selection, onSelection, zones, zonesRisque, couleurTrace, trace])
 
   useEffect(() => {
     const r = reperes.find((x) => x.id === selection)

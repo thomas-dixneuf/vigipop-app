@@ -24,7 +24,8 @@ les secours et l'alerte officielle (FR-Alert), elle ne les remplace jamais.
   « Itinéraire » ouvre Google Maps. Jamais d'adresse privée (hébergement chez l'habitant) sur
   la carte des habitants : seulement un nombre de foyers. Le serveur propose automatiquement le
   foyer le plus proche, l'hébergeur accepte ou refuse, la mairie supervise et peut réattribuer.
-  Zones à éviter tracées par la mairie, en rouge.
+  Zones à éviter tracées par la mairie, en rouge. Zones exposées aux risques connus (TIM fourni par la
+  commune, DICRIM) : tracées ou importées en GeoJSON par la mairie, permanentes, en pointillés bleu nuit.
 - **Missions ciblées** : une mission a un type d'aide ; un volontaire ne reçoit que celles des
   types qu'il propose. Après un refus, la suivante de ses types lui est proposée. L'hébergement
   ne passe jamais par une mission (mise en relation dédiée).

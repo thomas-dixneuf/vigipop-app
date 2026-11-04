@@ -8,6 +8,7 @@ import {
   type CriseServeur,
   type LieuServeur,
   type MissionServeur,
+  type ZoneRisqueServeur,
   type ZoneServeur,
   type StatutDemande,
 } from '../services/serveur'
@@ -63,6 +64,8 @@ type Etat = {
   lieux: LieuServeur[] | null
   // Zones à éviter tracées par la mairie (null : pas encore chargées, mode démo)
   zones: ZoneServeur[] | null
+  // Zones exposées aux risques connus (TIM), permanentes (null : pas encore chargées, mode démo)
+  zonesRisque: ZoneRisqueServeur[] | null
   // Missions ouvertes par la mairie (toutes catégories)
   missions: MissionServeur[]
   enSecurite: boolean
@@ -136,6 +139,7 @@ const etatInitial: Etat = {
   alerte: null,
   lieux: null,
   zones: null,
+  zonesRisque: null,
   missions: [],
   enSecurite: false,
   demande: null,
@@ -256,6 +260,13 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
           e.nomCommune === nom && JSON.stringify(e.risques) === JSON.stringify(risques) ? e : { ...e, nomCommune: nom, risques },
         )
       })
+    // Zones de risque du TIM : à part aussi (absentes tant que la migration 0012 n'est pas lancée)
+    void serveur
+      .from('zones_risque')
+      .select('id, risque, nom, consigne, source, points')
+      .eq('commune_id', COMMUNE_ID)
+      .order('created_at')
+      .then(({ data, error }) => !error && setEtat((e) => ({ ...e, zonesRisque: data as ZoneRisqueServeur[] })))
     const [crise, lieux, mission, zones] = await Promise.all([
       serveur.from('crises').select('id, titre, consigne, active, declenchee_a').eq('commune_id', COMMUNE_ID).eq('active', true).maybeSingle(),
       serveur.from('lieux').select('id, type, nom, details, distance, places, ouvert, adresse, lat, lng').eq('commune_id', COMMUNE_ID).order('nom'),
@@ -297,6 +308,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'lieux', filter: filtre }, () => void chargerCommune())
       .on('postgres_changes', { event: '*', schema: 'public', table: 'missions', filter: filtre }, () => void chargerCommune())
       .on('postgres_changes', { event: '*', schema: 'public', table: 'zones_danger', filter: filtre }, () => void chargerCommune())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'zones_risque', filter: filtre }, () => void chargerCommune())
       .subscribe()
     const auRetour = () => document.visibilityState === 'visible' && void chargerCommune()
     document.addEventListener('visibilitychange', auRetour)
