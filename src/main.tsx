@@ -8,8 +8,8 @@ import Presentation from './presentation/Presentation.tsx'
 import { commune } from './data/fictif.ts'
 import { serveurLocal } from './services/serveur.ts'
 
-// Présentation hors ligne sur grand écran : app habitant et espace mairie côte à côte
-const coteACote = serveurLocal && import.meta.env.VITE_PRESENTATION === '1' && window.innerWidth >= 1100 && !location.hash.startsWith('#/mairie')
+// Présentation hors ligne : app habitant et espace mairie reliés (côte à côte ou au choix)
+const coteACote = serveurLocal && import.meta.env.VITE_PRESENTATION === '1' && !location.hash.startsWith('#/mairie')
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
