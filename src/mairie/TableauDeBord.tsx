@@ -68,9 +68,9 @@ const libelleStatut: Record<StatutDemande, string> = {
 }
 
 const modelesCrise = [
-  { nom: 'Crue', titre: 'Crue de [RIVIÈRE] — vigilance rouge', consigne: "Montez à l'étage, ne prenez pas votre voiture." },
+  { nom: 'Crue', titre: 'Crue de la Moine — vigilance rouge', consigne: "Rejoignez les points hauts, ne prenez pas votre voiture." },
+  { nom: 'Barrage', titre: 'Rupture du barrage du Verdon', consigne: "Gagnez immédiatement les points hauts ou les étages d'un immeuble élevé et solide." },
   { nom: 'Tempête', titre: 'Tempête — vents violents', consigne: 'Restez chez vous, éloignez-vous des fenêtres et des arbres.' },
-  { nom: 'Incendie', titre: 'Feu de forêt à proximité', consigne: 'Fermez portes et volets, préparez-vous à évacuer sur consigne.' },
 ]
 
 const libelleAction: Record<string, string> = {

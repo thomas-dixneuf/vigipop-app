@@ -6,50 +6,69 @@ import type { LieuServeur, MissionServeur, ZoneRisqueServeur, ZoneServeur } from
 // Maquette adaptée à Cholet (branche maquette/cholet) : habitants, demandes et volontaires restent fictifs
 export const commune = 'Cholet'
 
-export const risques = ['Inondation', 'Rupture de barrage', 'Tempête', 'Transport de matières dangereuses']
-
-// Lieux de démonstration, au même format que ceux du serveur
-// Coordonnées fictives autour du centre de la commune démo
-export const centreCommune: [number, number] = [47.0585, -0.88]
-
-export const lieuxDemo: LieuServeur[] = [
-  { id: 'gymnase', type: 'accueil', nom: '[NOM DU GYMNASE]', details: 'ouvert 24 h/24 · repas chauds', distance: '1,2 km', places: 80, ouvert: true, adresse: '[ADRESSE DU GYMNASE]', lat: 47.0612, lng: -0.8745 },
-  { id: 'salle', type: 'accueil', nom: '[SALLE DES FÊTES]', details: 'lits de camp', distance: '2,4 km', places: 40, ouvert: false, adresse: '[ADRESSE DE LA SALLE]', lat: 47.0538, lng: -0.8871 },
-  { id: 'eau', type: 'eau', nom: '[NOM DU LIEU]', details: 'eau potable en bouteilles', distance: '800 m', places: null, ouvert: true, adresse: "[ADRESSE DU POINT D'EAU]", lat: 47.0581, lng: -0.8802 },
-  { id: 'soins', type: 'soins', nom: '[POSTE DE SECOURS]', details: 'Croix-Rouge · premiers soins', distance: '1,5 km', places: null, ouvert: true, adresse: '[ADRESSE DU POSTE]', lat: 47.0634, lng: -0.8856 },
+// Risques repris du DICRIM de Cholet (édition septembre 2022)
+export const risques = [
+  'Inondation de la Moine',
+  'Rupture de barrage (Verdon, Ribou)',
+  'Transport de matières dangereuses',
+  'Vents violents, canicule, grand froid',
+  'Retrait-gonflement des argiles',
+  'Séisme (aléa modéré)',
 ]
 
-// Zone à éviter fictive (bord de rivière inondé), affichée en mode crise de démo
+// Lieux réels de Cholet : centres d'hébergement d'urgence du DICRIM (p. 24) et Croix-Rouge.
+// Positions et adresses tirées d'OpenStreetMap. Places, horaires et ouverture restent un scénario de démo.
+export const centreCommune: [number, number] = [47.0525, -0.8835]
+
+export const lieuxDemo: LieuServeur[] = [
+  { id: 'rambourg', type: 'accueil', nom: 'Salle Rambourg', details: "centre d'hébergement d'urgence · zone Nord Moine", distance: '1,6 km', places: 80, ouvert: true, adresse: 'Rue de Rambourg, 49300 Cholet', lat: 47.06614, lng: -0.88481 },
+  { id: 'mocrat', type: 'accueil', nom: 'Salle polyvalente Mocrat', details: "centre d'hébergement d'urgence · zone Nord Moine", distance: '2,4 km', places: 60, ouvert: false, adresse: 'Avenue de Mocrat, 49300 Cholet', lat: 47.06233, lng: -0.89642 },
+  { id: 'eau', type: 'eau', nom: 'Gymnase Joachim du Bellay', details: "eau potable en bouteilles · centre d'hébergement zone Sud Moine", distance: '1,5 km', places: null, ouvert: true, adresse: '2 Square de Liré, 49300 Cholet', lat: 47.03928, lng: -0.88594 },
+  { id: 'soins', type: 'soins', nom: 'Croix-Rouge française', details: 'premiers soins', distance: '1,4 km', places: null, ouvert: true, adresse: '22 Rue de la Hollande, 49300 Cholet', lat: 47.05981, lng: -0.871 },
+]
+
+// Zone à éviter du scénario de démo, tracée le long du lit de la Moine (tracé OpenStreetMap)
 export const zonesDemo: ZoneServeur[] = [
   {
     id: 'zone-demo',
     nom: 'Bords de la Moine inondés',
     consigne: 'Ne pas circuler, même à pied : courant fort.',
     points: [
-      [47.0569, -0.8838],
-      [47.0592, -0.8829],
-      [47.0601, -0.8771],
-      [47.0583, -0.8752],
-      [47.0561, -0.8786],
+      [47.0586, -0.889],
+      [47.059, -0.8827],
+      [47.0572, -0.8792],
+      [47.056, -0.8763],
+      [47.0546, -0.8774],
+      [47.0558, -0.8805],
+      [47.0574, -0.883],
+      [47.0571, -0.889],
     ],
   },
 ]
 
-// Zone inondable fictive, comme la mairie la reprendrait du TIM : visible en veille comme en crise
+// Zone inondable approximative autour de la Moine : la carte du DICRIM (p. 25) est une image,
+// à remplacer par le tracé officiel (TIM ou Géorisques) importé par la mairie
 export const zonesRisqueDemo: ZoneRisqueServeur[] = [
   {
     id: 'risque-demo',
     risque: 'Inondation',
-    nom: 'Zone inondable de la Moine (illustration)',
-    consigne: "En cas d'alerte crue, montez à l'étage et ne prenez pas votre voiture.",
-    source: 'Illustration, à remplacer par le TIM de Cholet',
+    nom: 'Zone inondable de la Moine (tracé approximatif)',
+    consigne: "En cas d'alerte crue, rejoignez les points hauts. N'allez pas chercher les enfants à l'école : ils sont pris en charge.",
+    source: 'DICRIM de Cholet 2022, tracé approximatif',
     points: [
-      [47.0552, -0.8862],
-      [47.0590, -0.8851],
-      [47.0612, -0.8790],
-      [47.0596, -0.8735],
-      [47.0570, -0.8728],
-      [47.0548, -0.8780],
+      [47.0597, -0.8936],
+      [47.059, -0.8896],
+      [47.0596, -0.8827],
+      [47.0578, -0.879],
+      [47.0563, -0.876],
+      [47.0505, -0.8728],
+      [47.049, -0.8755],
+      [47.0532, -0.8775],
+      [47.0548, -0.878],
+      [47.0552, -0.8806],
+      [47.0566, -0.8832],
+      [47.0566, -0.8896],
+      [47.0577, -0.894],
     ],
   },
 ]
@@ -109,19 +128,19 @@ export const missionsDemo: MissionServeur[] = [
     equipe: '4 volontaires',
     ressource: 'Véhicule',
     categorie: 'vehicule',
-    lieu: '[SALLE DES FÊTES]',
+    lieu: 'Gymnase Joachim du Bellay',
     consignes: "N'entrez jamais dans une zone inondée. Gilet fourni sur place. Suivez uniquement les consignes du coordinateur.",
   },
   {
     id: 'demo-mainoeuvre',
-    titre: 'Déblayer une cour d’école près de la Moine',
+    titre: 'Déblayer une cour d’école du quartier Val de Moine',
     coordinateur: 'Julien',
     rendez_vous: '16:30',
     duree: '3 h',
     equipe: '6 volontaires',
     ressource: "Main-d'œuvre",
     categorie: 'mainoeuvre',
-    lieu: '[ÉCOLE]',
+    lieu: 'Quartier Val de Moine Nord',
     consignes: 'Gants et bottes obligatoires. Ne touchez à aucun câble électrique.',
   },
 ]
