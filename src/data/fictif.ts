@@ -16,13 +16,17 @@ export const risques = [
   'Séisme (aléa modéré)',
 ]
 
-// Lieux réels de Cholet : centres d'hébergement d'urgence du DICRIM (p. 24) et Croix-Rouge.
+// Lieux réels de Cholet : les six centres d'hébergement d'urgence du DICRIM (p. 24) et la Croix-Rouge.
 // Positions et adresses tirées d'OpenStreetMap. Places, horaires et ouverture restent un scénario de démo.
 export const centreCommune: [number, number] = [47.0525, -0.8835]
 
 export const lieuxDemo: LieuServeur[] = [
   { id: 'rambourg', type: 'accueil', nom: 'Salle Rambourg', details: "centre d'hébergement d'urgence · zone Nord Moine", distance: '1,6 km', places: 80, ouvert: true, adresse: 'Rue de Rambourg, 49300 Cholet', lat: 47.06614, lng: -0.88481 },
   { id: 'mocrat', type: 'accueil', nom: 'Salle polyvalente Mocrat', details: "centre d'hébergement d'urgence · zone Nord Moine", distance: '2,4 km', places: 60, ouvert: false, adresse: 'Avenue de Mocrat, 49300 Cholet', lat: 47.06233, lng: -0.89642 },
+  { id: 'jeune-france', type: 'accueil', nom: 'Complexe sportif Jeune France', details: "centre d'hébergement d'urgence · zone Nord Moine", distance: '1,5 km', places: 100, ouvert: false, adresse: '47 Rue Alphonse Darmaillacq, 49300 Cholet', lat: 47.06464, lng: -0.87403 },
+  // Pour ces deux centres, le DICRIM ne donne que la rue : position approximative sur la rue
+  { id: 'demiannay', type: 'accueil', nom: 'Salle de sports René Demiannay', details: "centre d'hébergement d'urgence · zone Sud Moine", distance: '900 m', places: 50, ouvert: true, adresse: 'Boulevard de Richelieu, 49300 Cholet', lat: 47.04479, lng: -0.87888 },
+  { id: 'puy-saint-bonnet', type: 'accueil', nom: 'Salle polyvalente du Puy-Saint-Bonnet', details: "centre d'hébergement d'urgence · zone Sud Moine", distance: '6,3 km', places: 30, ouvert: false, adresse: 'Rue Victor Ménard, Le Puy-Saint-Bonnet, 49300 Cholet', lat: 46.99602, lng: -0.8916 },
   { id: 'eau', type: 'eau', nom: 'Gymnase Joachim du Bellay', details: "eau potable en bouteilles · centre d'hébergement zone Sud Moine", distance: '1,5 km', places: null, ouvert: true, adresse: '2 Square de Liré, 49300 Cholet', lat: 47.03928, lng: -0.88594 },
   { id: 'soins', type: 'soins', nom: 'Croix-Rouge française', details: 'premiers soins', distance: '1,4 km', places: null, ouvert: true, adresse: '22 Rue de la Hollande, 49300 Cholet', lat: 47.05981, lng: -0.871 },
 ]
