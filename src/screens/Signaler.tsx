@@ -29,12 +29,15 @@ export default function Signaler() {
   const enCours = demande && demande.statut !== 'close' ? demande : null
   const [situation, setSituation] = useState<SituationId | null>(demande?.situation ?? null)
   const [choix, setChoix] = useState<BesoinId[]>(demande?.besoins ?? [])
-  const [personnes, setPersonnes] = useState(demande?.personnes ?? 1)
-  const [vulnerable, setVulnerable] = useState(demande?.personneVulnerable ?? false)
+  // « Mon foyer » (profil) pré-remplit une première demande
+  const foyer = utilisateur?.foyer
+  const [personnes, setPersonnes] = useState(demande?.personnes ?? foyer?.personnes ?? 1)
+  const [vulnerable, setVulnerable] = useState(demande?.personneVulnerable ?? foyer?.vulnerable ?? false)
   const [position, setPosition] = useState<Position>(() =>
     'geolocation' in navigator ? { etat: 'recherche' } : { etat: 'indisponible' },
   )
-  const [adresseSaisie, setAdresseSaisie] = useState('')
+  // Sans GPS : l'adresse du domicile est proposée, modifiable
+  const [adresseSaisie, setAdresseSaisie] = useState(foyer?.adresse ?? '')
   // Avec un compte, la mairie a déjà le numéro ; sans compte, on le propose sans l'exiger
   const [prenom, setPrenom] = useState(demande?.prenom || contact?.prenom || '')
   const [telephone, setTelephone] = useState(demande?.telephone || contact?.telephone || '')

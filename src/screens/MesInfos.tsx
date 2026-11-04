@@ -7,6 +7,8 @@ import EnTeteRetour from '../components/EnTeteRetour.tsx'
 import Icone from '../components/Icone.tsx'
 import { champ, libelle, numeroValide, type EtatCode } from '../outils/formulaire.ts'
 import { useAppState } from '../state/AppState.tsx'
+import { envoyerCode } from '../services/codeSms.ts'
+import MonFoyer from '../components/MonFoyer.tsx'
 
 const chiffres = (numero: string) => numero.replace(/[\s.-]/g, '')
 
@@ -15,13 +17,16 @@ const chiffres = (numero: string) => numero.replace(/[\s.-]/g, '')
 export default function MesInfos() {
   const navigate = useNavigate()
   const retourDuCode = !!(useLocation().state as { enregistre?: boolean } | null)?.enregistre
-  const { utilisateur, ressources, accueil, modifierUtilisateur } = useAppState()
+  const { utilisateur, ressources, accueil, modifierUtilisateur, supprimerCompte } = useAppState()
   const [edition, setEdition] = useState(false)
   const [prenom, setPrenom] = useState(utilisateur?.prenom ?? '')
   const [nom, setNom] = useState(utilisateur?.nom ?? '')
   const [telephone, setTelephone] = useState(utilisateur?.telephone ?? '')
   const [commune, setCommune] = useState(utilisateur?.commune ?? '')
   const [enregistre, setEnregistre] = useState(retourDuCode)
+  const [erreurCode, setErreurCode] = useState('')
+  const [suppression, setSuppression] = useState<'fermee' | 'confirmation' | 'en-cours'>('fermee')
+  const [erreurSuppression, setErreurSuppression] = useState('')
 
   if (!utilisateur) return null
 
@@ -38,13 +43,15 @@ export default function MesInfos() {
     setEdition(false)
   }
 
-  const enregistrer = (e: FormEvent) => {
+  const enregistrer = async (e: FormEvent) => {
     e.preventDefault()
     if (!valide) return
     if (!modifie) return setEdition(false)
     const infos = { prenom: prenom.trim(), nom: nom.trim(), commune: commune.trim() }
     if (nouveauNumero) {
-      const etat: EtatCode = { ...infos, telephone, nouveauCompte: false, modification: true }
+      const resultat = await envoyerCode(telephone, true)
+      if ('erreur' in resultat) return setErreurCode(resultat.erreur)
+      const etat: EtatCode = { ...infos, telephone, nouveauCompte: false, modification: true, typeCode: resultat.type }
       navigate('/code', { state: etat })
       return
     }
@@ -89,7 +96,7 @@ export default function MesInfos() {
             </button>
           </>
         ) : (
-          <form onSubmit={enregistrer} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <form onSubmit={(e) => void enregistrer(e)} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
             <label style={libelle}>
               Prénom
               <input type="text" value={prenom} onChange={(e) => setPrenom(e.target.value)} autoComplete="given-name" maxLength={60} style={champ} />
@@ -101,6 +108,11 @@ export default function MesInfos() {
             <ChampTelephone valeur={telephone} onChange={setTelephone} />
             {nouveauNumero && numeroValide(telephone) && (
               <span className="texte-doux" style={{ marginTop: -6 }}>Un code SMS confirmera ce nouveau numéro.</span>
+            )}
+            {erreurCode && (
+              <span role="alert" style={{ color: 'var(--danger)', fontSize: 14, fontWeight: 700 }}>
+                {erreurCode}
+              </span>
             )}
             <ChampAdresse
               variante="app"
@@ -137,6 +149,57 @@ export default function MesInfos() {
             Modifier ce que je peux offrir
             <Icone nom="fleche" taille={18} />
           </Link>
+        </section>
+
+        <MonFoyer />
+
+        <section className="carte" aria-labelledby="titre-suppression" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <strong id="titre-suppression" style={{ fontSize: 16, color: 'var(--bleu-nuit)' }}>
+            Supprimer mon compte
+          </strong>
+          {suppression === 'fermee' ? (
+            <>
+              <span className="texte-doux" style={{ lineHeight: 1.4 }}>
+                Vos informations, vos demandes d'aide et vos offres d'aide seront effacées, sur ce téléphone et chez votre mairie.
+              </span>
+              <button type="button" className="bouton bouton--contour" style={{ color: 'var(--danger)', borderColor: 'var(--danger)' }} onClick={() => setSuppression('confirmation')}>
+                Supprimer mon compte
+              </button>
+            </>
+          ) : (
+            <>
+              <p role="alert" style={{ lineHeight: 1.4, fontSize: 15 }}>
+                <strong>C'est définitif.</strong> Une demande d'aide en cours sera aussi supprimée : en cas d'urgence, appelez le 112.
+              </p>
+              {erreurSuppression && (
+                <span role="alert" style={{ color: 'var(--danger)', fontSize: 14, fontWeight: 700 }}>
+                  {erreurSuppression}
+                </span>
+              )}
+              <button
+                type="button"
+                className="bouton"
+                style={{ background: 'var(--danger)', color: 'var(--blanc)' }}
+                disabled={suppression === 'en-cours'}
+                onClick={async () => {
+                  setSuppression('en-cours')
+                  setErreurSuppression('')
+                  const probleme = await supprimerCompte()
+                  if (probleme) {
+                    setErreurSuppression(probleme)
+                    setSuppression('confirmation')
+                    return
+                  }
+                  navigate('/', { replace: true })
+                }}
+              >
+                {suppression === 'en-cours' ? 'Suppression…' : 'Oui, tout supprimer'}
+              </button>
+              <button type="button" className="bouton bouton--contour" onClick={() => setSuppression('fermee')}>
+                Annuler
+              </button>
+            </>
+          )}
         </section>
       </main>
       <BarreNav />

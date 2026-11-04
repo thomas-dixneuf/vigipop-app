@@ -111,3 +111,25 @@ textarea.mairie-champ { resize: vertical; min-height: 72px; }
 }
 .mairie-face-a-face { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; align-items: start; }
 @media (max-width: 700px) { .mairie-face-a-face { grid-template-columns: minmax(0, 1fr); } }
+
+/* Bilan de crise */
+.mairie-bilan { width: 100%; border-collapse: collapse; font-size: 14px; }
+.mairie-bilan caption { text-align: left; font-weight: 800; color: var(--bleu-nuit); padding-bottom: 4px; }
+.mairie-bilan th { text-align: left; font-weight: 600; padding: 6px 8px 6px 0; border-bottom: 1px solid var(--bordure); }
+.mairie-bilan td { text-align: right; font-weight: 800; color: var(--bleu-nuit); padding: 6px 0; border-bottom: 1px solid var(--bordure); white-space: nowrap; }
+
+/* Impression : seul le bloc demandé (liste des demandes ou bilan) part à l'imprimante */
+.impression { display: none; }
+@media print {
+  body[data-imprimer] #root { display: none; }
+  body[data-imprimer='liste'] .impression-liste,
+  body[data-imprimer='bilan'] .impression-bilan { display: block; color: #000; font-size: 11pt; }
+  .impression h1 { font-size: 16pt; margin-bottom: 4pt; }
+  .impression p { margin: 0 0 8pt; }
+  .impression table { width: 100%; border-collapse: collapse; margin-bottom: 10pt; }
+  .impression-liste th, .impression-liste td { border: 1px solid #555; padding: 4pt; vertical-align: top; text-align: left; }
+  .impression-liste tr { break-inside: avoid; }
+  .impression-case { font-size: 14pt; text-align: center; }
+  .impression .mairie-face-a-face { display: grid; grid-template-columns: 1fr 1fr; gap: 16pt; }
+  .impression .mairie-bilan th, .impression .mairie-bilan td { color: #000; border-bottom: 1px solid #999; }
+}

@@ -1,0 +1,35 @@
+name: Mise en ligne (OVH, France)
+
+# Hébergement en France pour sortir de GitHub Pages (serveurs hors UE). Voir docs/HEBERGEMENT.md.
+# Lancement manuel seulement (onglet Actions → « Mise en ligne (OVH, France) » → Run workflow),
+# jusqu'à ce que la bascule soit décidée. Secrets à créer dans GitHub (Settings → Secrets → Actions) :
+# FTP_SERVEUR, FTP_IDENTIFIANT, FTP_MOT_DE_PASSE (les mêmes que pour le site vitrine).
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ovh
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - name: Envoi sur l'hébergement OVH (dossier www/application/)
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        with:
+          server: ${{ secrets.FTP_SERVEUR }}
+          username: ${{ secrets.FTP_IDENTIFIANT }}
+          password: ${{ secrets.FTP_MOT_DE_PASSE }}
+          local-dir: ./dist/
+          server-dir: ./www/application/

@@ -5,6 +5,7 @@ import EnTeteRetour from '../components/EnTeteRetour.tsx'
 import { commune as communeDemo } from '../data/fictif.ts'
 import { champ, libelle, numeroValide, type EtatCode } from '../outils/formulaire.ts'
 import { useAppState } from '../state/AppState.tsx'
+import { envoyerCode } from '../services/codeSms.ts'
 
 export default function Inscription() {
   const navigate = useNavigate()
@@ -15,13 +16,21 @@ export default function Inscription() {
   const [telephone, setTelephone] = useState(contact?.telephone ?? '')
   const [commune, setCommune] = useState('')
   const [consentement, setConsentement] = useState(false)
+  const [envoi, setEnvoi] = useState(false)
+  const [erreur, setErreur] = useState('')
 
   const valide = prenom.trim() !== '' && numeroValide(telephone) && consentement
 
-  const envoyer = (e: FormEvent) => {
+  const envoyer = async (e: FormEvent) => {
     e.preventDefault()
-    if (!valide) return
-    const etat: EtatCode = { prenom: prenom.trim(), telephone, commune: commune.trim() || communeDemo, nouveauCompte: true, suite }
+    if (!valide || envoi) return
+    setEnvoi(true)
+    setErreur('')
+    // Le numéro est rattaché à la session de ce téléphone : le compte garde la demande déjà envoyée
+    const resultat = await envoyerCode(telephone, true)
+    setEnvoi(false)
+    if ('erreur' in resultat) return setErreur(resultat.erreur)
+    const etat: EtatCode = { prenom: prenom.trim(), telephone, commune: commune.trim() || communeDemo, nouveauCompte: true, suite, typeCode: resultat.type }
     navigate('/code', { state: etat })
   }
 
@@ -32,7 +41,7 @@ export default function Inscription() {
         <span className="texte-doux">1 minute · sans mot de passe</span>
       </EnTeteRetour>
 
-      <form onSubmit={envoyer} className="contenu" style={{ paddingTop: 16 }}>
+      <form onSubmit={(e) => void envoyer(e)} className="contenu" style={{ paddingTop: 16 }}>
         {contact && (
           <p role="status" style={{ background: 'var(--bleu-voile)', color: 'var(--bleu-nuit)', borderRadius: 12, padding: '10px 14px', fontSize: 14, lineHeight: 1.4 }}>
             Nous avons repris les informations de votre demande d'aide. Vérifiez-les et complétez.
@@ -57,9 +66,14 @@ export default function Inscription() {
           J'accepte que ma commune utilise ces informations pour me contacter en cas de crise.
         </label>
 
+        {erreur && (
+          <p role="alert" style={{ color: 'var(--danger)', fontSize: 14, fontWeight: 700 }}>
+            {erreur}
+          </p>
+        )}
         <div style={{ flex: 1 }} />
-        <button type="submit" className="bouton bouton--principal" disabled={!valide}>
-          Recevoir mon code
+        <button type="submit" className="bouton bouton--principal" disabled={!valide || envoi}>
+          {envoi ? 'Envoi du code…' : 'Recevoir mon code'}
         </button>
         <span className="texte-doux" style={{ textAlign: 'center' }}>
           Pas de mot de passe : un code à 6 chiffres vous est envoyé par SMS.

@@ -3,6 +3,7 @@ import { Navigate, useLocation, useNavigate } from 'react-router-dom'
 import EnTeteRetour from '../components/EnTeteRetour.tsx'
 import type { EtatCode } from '../outils/formulaire.ts'
 import { useAppState } from '../state/AppState.tsx'
+import { connexionSmsActive, envoyerCode, verifierCode } from '../services/codeSms.ts'
 
 export default function Code() {
   const navigate = useNavigate()
@@ -10,16 +11,22 @@ export default function Code() {
   const etat = useLocation().state as EtatCode | null
   const [code, setCode] = useState('')
   const [renvoye, setRenvoye] = useState(false)
+  const [verification, setVerification] = useState(false)
+  const [erreur, setErreur] = useState('')
 
   if (!etat) return <Navigate to="/" replace />
-  const { nouveauCompte, modification, suite: suiteDemandee, ...utilisateur } = etat
+  const { nouveauCompte, modification, suite: suiteDemandee, typeCode = 'sms', ...utilisateur } = etat
 
   const valide = /^\d{6}$/.test(code)
 
-  const verifier = (e: FormEvent) => {
+  const verifier = async (e: FormEvent) => {
     e.preventDefault()
-    if (!valide) return
-    // Prototype : aucun SMS n'est envoyé, n'importe quel code à 6 chiffres est accepté
+    if (!valide || verification) return
+    // Sans VITE_CONNEXION_SMS : démo, n'importe quel code à 6 chiffres est accepté
+    setVerification(true)
+    const probleme = await verifierCode(utilisateur.telephone, code, typeCode)
+    setVerification(false)
+    if (probleme) return setErreur(probleme)
     if (modification) {
       modifierUtilisateur(utilisateur)
       navigate('/profil/infos', { replace: true, state: { enregistre: true } })
@@ -39,7 +46,7 @@ export default function Code() {
         <span className="texte-doux">Envoyé par SMS au {utilisateur.telephone}</span>
       </EnTeteRetour>
 
-      <form onSubmit={verifier} className="contenu" style={{ paddingTop: 20, gap: 16 }}>
+      <form onSubmit={(e) => void verifier(e)} className="contenu" style={{ paddingTop: 20, gap: 16 }}>
         <label style={{ display: 'flex', flexDirection: 'column', gap: 8, fontSize: 14, fontWeight: 700 }}>
           Code à 6 chiffres
           <input
@@ -55,17 +62,32 @@ export default function Code() {
           />
         </label>
 
-        <p style={{ fontSize: 13, color: 'var(--bleu-nuit)', background: 'var(--bleu-voile)', borderRadius: 12, padding: '10px 12px', lineHeight: 1.4 }}>
-          <strong>Démo :</strong> aucun SMS n'est envoyé. Tapez n'importe quel code à 6 chiffres.
-        </p>
+        {erreur && (
+          <p role="alert" style={{ color: 'var(--danger)', fontSize: 14, fontWeight: 700 }}>
+            {erreur}
+          </p>
+        )}
+        {!connexionSmsActive && (
+          <p style={{ fontSize: 13, color: 'var(--bleu-nuit)', background: 'var(--bleu-voile)', borderRadius: 12, padding: '10px 12px', lineHeight: 1.4 }}>
+            <strong>Démo :</strong> aucun SMS n'est envoyé. Tapez n'importe quel code à 6 chiffres.
+          </p>
+        )}
 
-        <button type="button" onClick={() => setRenvoye(true)} disabled={renvoye} style={{ alignSelf: 'center', minHeight: 44, background: 'none', border: 'none', color: 'var(--bleu)', fontWeight: 700, fontSize: 15 }}>
+        <button
+          type="button"
+          onClick={async () => {
+            setErreur('')
+            const resultat = await envoyerCode(utilisateur.telephone, nouveauCompte || !!modification)
+            if ('erreur' in resultat) return setErreur(resultat.erreur)
+            setRenvoye(true)
+          }}
+          disabled={renvoye} style={{ alignSelf: 'center', minHeight: 44, background: 'none', border: 'none', color: 'var(--bleu)', fontWeight: 700, fontSize: 15 }}>
           {renvoye ? 'Nouveau code envoyé' : "Je n'ai rien reçu, renvoyer le code"}
         </button>
 
         <div style={{ flex: 1 }} />
-        <button type="submit" className="bouton bouton--principal" disabled={!valide}>
-          Valider
+        <button type="submit" className="bouton bouton--principal" disabled={!valide || verification}>
+          {verification ? 'Vérification…' : 'Valider'}
         </button>
       </form>
     </div>

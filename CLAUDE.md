@@ -36,6 +36,12 @@ les secours et l'alerte officielle (FR-Alert), elle ne les remplace jamais.
 - **Notifications** : centre de notifications dans l'app, alertes du téléphone, push app fermée
   (`docs/NOTIFICATIONS.md`). Clé privée VAPID uniquement dans les secrets Supabase, jamais dans
   le dépôt ni dans une conversation. Complète FR-Alert, ne le remplace jamais.
+- **SMS** : SMS de secours reçus dans le tableau de bord (`recevoir-sms`, migration 0013, sans doublon
+  avec l'app) ; vrai code de connexion activé par `VITE_CONNEXION_SMS=1` (`docs/SMS.md`).
+- **RGPD** : suppression de compte par l'habitant, effacement automatique chaque nuit (migration 0014),
+  déconnexion qui ne garde que les informations publiques ; « Mon foyer » reste sur le téléphone.
+- **Mairie hors ligne** : dernière liste gardée sur l'ordinateur (effacée à la déconnexion), impression
+  et export des demandes, bilan de crise sans donnée nominative.
 - Accessibilité : zones tactiles ≥ 44 px, vrais `<button>` et `<a>`, contrastes AA.
 
 ## Charte

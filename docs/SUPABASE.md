@@ -23,7 +23,9 @@ fonctionne en mode démo local, avec un bouton « Démo » pour simuler la crise
    `0010_corrections_tests.sql` (risques de la commune, adresse du rendez-vous des missions, message « aide organisée »,
    nom des volontaires, demandes closes à la fin de la crise), puis `0011_entraide_auto.sql` (transport et matériel
    proposés automatiquement au volontaire le plus proche), puis `0012_zones_risque.sql` (zones exposées aux risques
-   connus, reprises du TIM de la commune). Chaque nouveau fichier de `supabase/migrations/` se lance
+   connus, reprises du TIM de la commune), puis `0013_sms_secours.sql` (demandes reçues par SMS,
+   voir `docs/SMS.md`), puis `0014_rgpd.sql` (suppression de compte par l'habitant, effacement
+   automatique chaque nuit : activer d'abord l'extension **pg_cron** dans **Database → Extensions**). Chaque nouveau fichier de `supabase/migrations/` se lance
    une seule fois, dans l'ordre des numéros.
 
 ## 2. Autoriser les habitants sans mot de passe

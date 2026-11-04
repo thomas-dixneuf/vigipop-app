@@ -6,17 +6,25 @@ import Logo from '../components/Logo.tsx'
 import { commune as communeDemo } from '../data/fictif.ts'
 import { numeroValide, type EtatCode } from '../outils/formulaire.ts'
 import { useAppState } from '../state/AppState.tsx'
+import { envoyerCode } from '../services/codeSms.ts'
 
 export default function Connexion() {
   const navigate = useNavigate()
   const { dernierUtilisateur: compte } = useAppState()
   const [telephone, setTelephone] = useState(compte?.telephone ?? '')
+  const [envoi, setEnvoi] = useState(false)
+  const [erreur, setErreur] = useState('')
 
   const valide = numeroValide(telephone)
 
-  const envoyer = (e: FormEvent) => {
+  const envoyer = async (e: FormEvent) => {
     e.preventDefault()
-    if (!valide) return
+    if (!valide || envoi) return
+    setEnvoi(true)
+    setErreur('')
+    const resultat = await envoyerCode(telephone, false)
+    setEnvoi(false)
+    if ('erreur' in resultat) return setErreur(resultat.erreur)
     // En vrai, le prénom et la commune viendront du serveur ; ici on reprend ceux du téléphone
     const memeCompte = compte && compte.telephone.replace(/\D/g, '') === telephone.replace(/\D/g, '')
     const etat: EtatCode = {
@@ -24,6 +32,7 @@ export default function Connexion() {
       telephone,
       commune: memeCompte ? compte.commune : communeDemo,
       nouveauCompte: false,
+      typeCode: resultat.type,
     }
     navigate('/code', { state: etat })
   }
@@ -35,15 +44,20 @@ export default function Connexion() {
         <span className="texte-doux">Content de vous revoir</span>
       </EnTeteRetour>
 
-      <form onSubmit={envoyer} className="contenu" style={{ paddingTop: 16 }}>
+      <form onSubmit={(e) => void envoyer(e)} className="contenu" style={{ paddingTop: 16 }}>
         <div style={{ display: 'flex', justifyContent: 'center', padding: '12px 0' }}>
           <Logo taille={80} />
         </div>
         <ChampTelephone valeur={telephone} onChange={setTelephone} />
 
+        {erreur && (
+          <p role="alert" style={{ color: 'var(--danger)', fontSize: 14, fontWeight: 700 }}>
+            {erreur}
+          </p>
+        )}
         <div style={{ flex: 1 }} />
-        <button type="submit" className="bouton bouton--principal" disabled={!valide}>
-          Recevoir mon code
+        <button type="submit" className="bouton bouton--principal" disabled={!valide || envoi}>
+          {envoi ? 'Envoi du code…' : 'Recevoir mon code'}
         </button>
         <span className="texte-doux" style={{ textAlign: 'center' }}>
           Vous recevrez un code à 6 chiffres par SMS.
