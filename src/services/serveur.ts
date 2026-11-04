@@ -82,6 +82,9 @@ export type DemandeServeur = {
   statut: StatutDemande
   // Ce que la mairie a prévu, lu par l'habitant (migration 0010)
   reponse_mairie?: string
+  // Demande arrivée par SMS (migration 0013) et texte reçu
+  source?: 'app' | 'sms'
+  message_sms?: string | null
   created_at: string
   updated_at: string
 }

@@ -90,6 +90,9 @@ const libelleAction: Record<string, string> = {
   entraide_acceptee: 'Aide acceptée',
   entraide_refusee: 'Aide refusée',
   entraide_annulee: 'Aide annulée',
+  sms_recu: 'Demande reçue par SMS',
+  sms_doublon: 'SMS en double ignoré',
+  sms_fusionne: 'Demande SMS rejointe par l\'app',
 }
 
 export default function TableauDeBord({ coordinateur }: { coordinateur: Coordinateur }) {
@@ -351,6 +354,7 @@ function Demandes({ demandes, depuis, communeNom }: { demandes: DemandeServeur[]
             <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
               {urgent && <span className="mairie-etiquette mairie-etiquette--urgent">Prioritaire</span>}
               {d.personne_vulnerable && <span className="mairie-etiquette mairie-etiquette--urgent">Personne vulnérable</span>}
+              {d.source === 'sms' && <span className="mairie-etiquette">Reçue par SMS</span>}
               <span className="mairie-etiquette">
                 {d.personnes} personne{d.personnes > 1 ? 's' : ''}
               </span>
@@ -360,6 +364,11 @@ function Demandes({ demandes, depuis, communeNom }: { demandes: DemandeServeur[]
                 </span>
               ))}
             </div>
+            {d.message_sms && (
+              <blockquote style={{ fontSize: 14, background: 'var(--bleu-voile)', borderRadius: 8, padding: '8px 10px', whiteSpace: 'pre-line' }}>
+                <span className="texte-doux">SMS reçu :</span> {d.message_sms}
+              </blockquote>
+            )}
             <div style={{ fontSize: 14 }}>
               Position :{' '}
               {coords ? (
@@ -1597,7 +1606,8 @@ function PanneauJournal({ journal }: { journal: Evenement[] }) {
         {journal.map((j) => (
           <li key={j.id} style={{ fontSize: 13 }}>
             <span className="texte-doux">{heure(j.created_at)}</span> · {libelleAction[j.action] ?? j.action}
-            {j.details.demande ? ` ${j.details.demande} → ${libelleStatut[j.details.vers as StatutDemande] ?? j.details.vers}` : ''}
+            {j.details.demande ? ` ${j.details.demande}` : ''}
+            {j.details.vers ? ` → ${libelleStatut[j.details.vers as StatutDemande] ?? j.details.vers}` : ''}
             {j.details.titre && j.action !== 'statut_demande' ? ` : ${j.details.titre}` : ''}
           </li>
         ))}

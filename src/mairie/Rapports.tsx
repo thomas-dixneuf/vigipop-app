@@ -49,11 +49,12 @@ function telecharger(nom: string, contenu: string) {
 const cellule = (v: string | number) => `"${String(v).replace(/"/g, '""')}"`
 
 function csvDemandes(demandes: DemandeServeur[]) {
-  const entetes = ['Référence', 'Reçue', 'Statut', 'Situation', 'Personnes', 'Vulnérable', 'Besoins', 'Lieu', 'Prénom', 'Téléphone', 'Réponse de la mairie']
+  const entetes = ['Référence', 'Reçue', 'Canal', 'Statut', 'Situation', 'Personnes', 'Vulnérable', 'Besoins', 'Lieu', 'Prénom', 'Téléphone', 'Réponse de la mairie']
   const lignes = demandes.map((d) =>
     [
       d.reference,
       dateHeure(d.created_at),
+      d.source === 'sms' ? `SMS : ${d.message_sms ?? ''}` : 'App',
       libelleStatut[d.statut],
       libelleSituation(d.situation),
       d.personnes,
@@ -125,6 +126,7 @@ export function ActionsListe({ demandes, communeNom }: { demandes: DemandeServeu
                   <td>
                     <strong>{libelleSituation(d.situation)}</strong>
                     {d.personne_vulnerable ? <><br />Personne vulnérable</> : null}
+                    {d.source === 'sms' ? <><br />Reçue par SMS : {d.message_sms}</> : null}
                   </td>
                   <td>{d.personnes}</td>
                   <td>{libellesBesoins(d.besoins)}</td>
