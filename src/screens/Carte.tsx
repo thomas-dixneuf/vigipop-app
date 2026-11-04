@@ -4,7 +4,7 @@ import Bandeau112 from '../components/Bandeau112.tsx'
 import BarreNav from '../components/BarreNav.tsx'
 import CarteInteractive, { type Repere } from '../components/CarteInteractive.tsx'
 import Icone from '../components/Icone.tsx'
-import { centreCommune, hebergementsSolidairesDemo, libelleLieu, lieuxDemo, missionsDemo, zonesDemo } from '../data/fictif.ts'
+import { centreCommune, hebergementsSolidairesDemo, libelleLieu, lieuxDemo, missionsDemo, zonesDemo, zonesRisqueDemo } from '../data/fictif.ts'
 import { couleurLieu, dansZone, distanceLisible, distanceMetres, estPlace, lienItineraire, type Coordonnees } from '../outils/carte.ts'
 import { COMMUNE_ID, serveur, type LieuServeur } from '../services/serveur.ts'
 import { useAppState } from '../state/AppState.tsx'
@@ -21,13 +21,15 @@ const filtres: [Filtre, string][] = [
 const aucunLieu: LieuServeur[] = []
 
 export default function Carte() {
-  const { mode, lieux, zones: zonesServeur, missions, communeAffichee } = useAppState()
+  const { mode, lieux, zones: zonesServeur, zonesRisque: zonesRisqueServeur, missions, communeAffichee } = useAppState()
   // Arrivée depuis une mission acceptée : son point de rendez-vous est mis en avant
   const idMission = (useLocation().state as { mission?: string } | null)?.mission
   const mission = idMission ? (serveur ? missions : missionsDemo).find((m) => m.id === idMission) ?? null : null
   const enCrise = mode === 'crise'
   // Démo locale : une zone fictive apparaît quand la crise est simulée
   const zones = zonesServeur ?? (enCrise && !serveur ? zonesDemo : [])
+  // Zones exposées aux risques connus (TIM de la commune) : en veille comme en crise
+  const zonesRisque = zonesRisqueServeur ?? (serveur ? [] : zonesRisqueDemo)
   const [filtre, setFiltre] = useState<Filtre>('tous')
   const [selection, setSelection] = useState<string | null>(mission ? 'mission' : null)
   const [position, setPosition] = useState<Coordonnees | null>(null)
@@ -92,6 +94,7 @@ export default function Carte() {
   )
 
   const zoneActuelle = position ? zones.find((z) => dansZone(position, z.points)) : undefined
+  const risquesIci = position ? zonesRisque.filter((z) => dansZone(position, z.points)) : []
 
   const choisir = useCallback((id: string) => {
     setSelection(id)
@@ -123,9 +126,20 @@ export default function Carte() {
           </p>
         )}
 
+        {!zoneActuelle && risquesIci.length > 0 && (
+          <p className="carte" style={{ background: 'var(--bleu-voile)', fontSize: 15, lineHeight: 1.4 }}>
+            <strong style={{ color: 'var(--bleu-nuit)' }}>
+              Vous êtes dans une zone exposée : {risquesIci.map((z) => z.risque.toLowerCase()).filter((r, i, t) => t.indexOf(r) === i).join(', ')}.
+            </strong>{' '}
+            {risquesIci.find((z) => z.consigne)?.consigne ??
+              (enCrise ? 'Suivez les consignes de la mairie.' : "Repérez dès maintenant le lieu d'accueil le plus proche.")}
+          </p>
+        )}
+
         <CarteInteractive
           reperes={reperes}
           zones={zones}
+          zonesRisque={zonesRisque}
           centre={centreCommune}
           position={position}
           selection={selection}
@@ -158,6 +172,24 @@ export default function Carte() {
                 <span>
                   <strong style={{ color: 'var(--danger)' }}>Zone à éviter : {z.nom}</strong>
                   {z.consigne ? <span className="texte-doux"> · {z.consigne}</span> : null}
+                </span>
+              </div>
+            ))}
+          </section>
+        )}
+
+        {zonesRisque.length > 0 && (
+          <section aria-label="Risques connus de la commune" style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            {zonesRisque.map((z) => (
+              <div key={z.id} style={{ display: 'flex', gap: 10, alignItems: 'flex-start', fontSize: 14, lineHeight: 1.4 }}>
+                <span aria-hidden="true" style={{ width: 14, height: 14, marginTop: 3, borderRadius: 3, background: 'rgba(134,221,255,.45)', border: '2px dashed #0e3a52', flexShrink: 0 }} />
+                <span>
+                  <strong style={{ color: 'var(--bleu-nuit)' }}>
+                    Risque {z.risque.toLowerCase()} : {z.nom}
+                  </strong>
+                  <span className="texte-doux">
+                    {z.consigne ? ` · ${z.consigne}` : ''} · Source : {z.source}
+                  </span>
                 </span>
               </div>
             ))}

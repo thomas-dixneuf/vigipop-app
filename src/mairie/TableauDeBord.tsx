@@ -15,9 +15,10 @@ import {
   type BesoinEntraide,
   type StatutDemande,
   type StatutHebergement,
+  type ZoneRisqueServeur,
   type ZoneServeur,
 } from '../services/serveur.ts'
-import { couleurLieu, distanceLisible, distanceMetres, estPlace, type ResultatAdresse } from '../outils/carte.ts'
+import { couleurLieu, distanceLisible, distanceMetres, estPlace, zonesDepuisGeoJSON, type ResultatAdresse, type ZoneImportee } from '../outils/carte.ts'
 
 export type Coordinateur = { nom: string; communeId: string; communeNom: string }
 
@@ -49,6 +50,7 @@ type Donnees = {
   hebergements: Hebergement[]
   entraides: Entraide[]
   zones: ZoneServeur[]
+  zonesRisque: ZoneRisqueServeur[]
   journal: Evenement[]
 }
 
@@ -97,7 +99,7 @@ export default function TableauDeBord({ coordinateur }: { coordinateur: Coordina
   const [modeleMission, setModeleMission] = useState<ModeleMission | null>(null)
 
   const charger = useCallback(async () => {
-    const [crise, demandes, lieux, missions, reponses, volontaires, hebergements, zones, journal, communeLue, entraides] = await Promise.all([
+    const [crise, demandes, lieux, missions, reponses, volontaires, hebergements, zones, journal, communeLue, entraides, zonesRisque] = await Promise.all([
       client.from('crises').select('id, titre, consigne, active, declenchee_a').eq('commune_id', commune).eq('active', true).maybeSingle(),
       client.from('demandes').select('*').eq('commune_id', commune).order('created_at', { ascending: false }).limit(300),
       client.from('lieux').select('*').eq('commune_id', commune).order('nom'),
@@ -110,6 +112,8 @@ export default function TableauDeBord({ coordinateur }: { coordinateur: Coordina
       client.from('communes').select('*').eq('id', commune).maybeSingle(),
       // Absente tant que la migration 0011 n'est pas lancée : le tableau reste utilisable
       client.from('entraides').select('id, demande_id, besoin, aidant, statut, updated_at').eq('commune_id', commune).order('created_at'),
+      // Absente tant que la migration 0012 n'est pas lancée
+      client.from('zones_risque').select('id, risque, nom, consigne, source, points').eq('commune_id', commune).order('created_at'),
     ])
     const echec = [crise, demandes, lieux, missions, reponses, volontaires, hebergements, zones, journal].find((r) => r.error)
     if (echec) {
@@ -126,6 +130,7 @@ export default function TableauDeBord({ coordinateur }: { coordinateur: Coordina
       missions: missions.data as MissionServeur[],
       reponses: reponses.data as Reponse[],
       zones: zones.data as ZoneServeur[],
+      zonesRisque: (zonesRisque.data as ZoneRisqueServeur[] | null) ?? [],
       hebergements: hebergements.data as Hebergement[],
       entraides: (entraides.data as Entraide[] | null) ?? [],
       // Seules comptent les disponibilités données pendant la crise en cours
@@ -140,7 +145,7 @@ export default function TableauDeBord({ coordinateur }: { coordinateur: Coordina
     void charger()
     const filtre = `commune_id=eq.${commune}`
     const canal = client.channel(`mairie-${commune}`)
-    for (const table of ['crises', 'demandes', 'lieux', 'missions', 'volontaires', 'hebergements', 'entraides', 'zones_danger']) {
+    for (const table of ['crises', 'demandes', 'lieux', 'missions', 'volontaires', 'hebergements', 'entraides', 'zones_danger', 'zones_risque']) {
       canal.on('postgres_changes', { event: '*', schema: 'public', table, filter: filtre }, () => void charger())
     }
     canal.on('postgres_changes', { event: '*', schema: 'public', table: 'reponses_mission' }, () => void charger())
@@ -186,7 +191,14 @@ export default function TableauDeBord({ coordinateur }: { coordinateur: Coordina
         <main className="mairie-contenu">
           <div className="mairie-colonne">
             <Compteurs demandes={donnees.demandes} />
-            <CarteMairie lieux={donnees.lieux} demandes={donnees.demandes} zones={donnees.zones} communeId={commune} />
+            <CarteMairie
+              lieux={donnees.lieux}
+              demandes={donnees.demandes}
+              zones={donnees.zones}
+              zonesRisque={donnees.zonesRisque}
+              risques={donnees.risques}
+              communeId={commune}
+            />
             <PanneauBesoins
               demandes={donnees.demandes}
               volontaires={donnees.volontaires}
@@ -504,27 +516,105 @@ function coordonneesDemande(d: DemandeServeur) {
   return m ? { lat: Number(m[1]), lng: Number(m[2]) } : null
 }
 
-type PropsCarte = { lieux: LieuServeur[]; demandes: DemandeServeur[]; zones: ZoneServeur[]; communeId: string }
+type PropsCarte = {
+  lieux: LieuServeur[]
+  demandes: DemandeServeur[]
+  zones: ZoneServeur[]
+  zonesRisque: ZoneRisqueServeur[]
+  risques: string[]
+  communeId: string
+}
 
-function CarteMairie({ lieux, demandes, zones, communeId }: PropsCarte) {
-  // Tracé d'une zone à éviter : chaque clic sur la carte ajoute un point du contour
-  const [trace, setTrace] = useState<[number, number][] | null>(null)
+// Zone tracée à la main : à éviter (crise en cours, rouge) ou exposée à un risque du TIM (permanente)
+type Trace = { type: 'danger' | 'risque'; points: [number, number][] }
+
+function CarteMairie({ lieux, demandes, zones, zonesRisque, risques, communeId }: PropsCarte) {
+  // Chaque clic sur la carte ajoute un point du contour
+  const [trace, setTrace] = useState<Trace | null>(null)
   const [nom, setNom] = useState('')
   const [consigne, setConsigne] = useState('')
+  // Zones de risque : risque concerné et document d'origine
+  const choixRisques = [...risques, ...risquesSuggeres.filter((r) => !risques.some((x) => x.toLowerCase() === r.toLowerCase()))]
+  const [risque, setRisque] = useState('')
+  const [source, setSource] = useState('TIM')
+  const [importees, setImportees] = useState<ZoneImportee[] | null>(null)
   const [message, setMessage] = useState('')
-  const ajouterPoint = useCallback((p: [number, number]) => setTrace((t) => (t ? [...t, p] : t)), [])
+  const ajouterPoint = useCallback((p: [number, number]) => setTrace((t) => (t ? { ...t, points: [...t.points, p] } : t)), [])
+  const risqueChoisi = risque || choixRisques[0] || ''
+
+  const commencer = (type: Trace['type']) => {
+    setImportees(null)
+    setMessage('')
+    setTrace({ type, points: [] })
+  }
 
   const enregistrer = async (e: FormEvent) => {
     e.preventDefault()
-    if (!trace || trace.length < 3) return
-    const { error } = await serveur!.from('zones_danger').insert({ commune_id: communeId, nom: nom.trim(), consigne: consigne.trim(), points: trace })
+    if (!trace || trace.points.length < 3) return
+    const { error } =
+      trace.type === 'danger'
+        ? await serveur!.from('zones_danger').insert({ commune_id: communeId, nom: nom.trim(), consigne: consigne.trim(), points: trace.points })
+        : await serveur!.from('zones_risque').insert({
+            commune_id: communeId,
+            risque: risqueChoisi,
+            nom: nom.trim(),
+            consigne: consigne.trim(),
+            source: source.trim() || 'TIM',
+            points: trace.points,
+          })
     if (error) {
       setMessage("Échec : la zone n'a pas été publiée.")
       return
     }
-    setMessage('Zone publiée : elle apparaît en rouge chez les habitants.')
+    setMessage(
+      trace.type === 'danger'
+        ? 'Zone publiée : elle apparaît en rouge chez les habitants.'
+        : 'Zone de risque publiée : les habitants la voient en pointillés, en veille comme en crise.',
+    )
     setTrace(null)
     setNom('')
+    setConsigne('')
+  }
+
+  // Fichier GeoJSON fourni avec le TIM, ou exporté de Géorisques / QGIS
+  const lireFichier = async (fichier: File | undefined) => {
+    if (!fichier) return
+    setTrace(null)
+    try {
+      const zonesLues = zonesDepuisGeoJSON(await fichier.text())
+      if (zonesLues.length === 0) {
+        setMessage('Aucun polygone trouvé dans ce fichier.')
+        return
+      }
+      setImportees(zonesLues.slice(0, 50))
+      setMessage(zonesLues.length > 50 ? 'Seules les 50 premières zones du fichier seront importées.' : '')
+    } catch (err) {
+      setImportees(null)
+      setMessage(
+        err instanceof Error && err.message === 'coordonnees'
+          ? 'Coordonnées non reconnues : le fichier doit être en degrés (WGS84, EPSG:4326), pas en Lambert 93.'
+          : 'Fichier illisible : choisissez un fichier GeoJSON (.geojson ou .json).',
+      )
+    }
+  }
+
+  const importer = async () => {
+    if (!importees) return
+    const lignes = importees.map((z) => ({
+      commune_id: communeId,
+      risque: risqueChoisi,
+      nom: z.nom.length >= 3 ? z.nom : `Zone ${z.nom}`,
+      consigne: consigne.trim(),
+      source: source.trim() || 'TIM',
+      points: z.points,
+    }))
+    const { error } = await serveur!.from('zones_risque').insert(lignes)
+    if (error) {
+      setMessage("Échec : les zones n'ont pas été importées. La migration 0012 est-elle lancée ?")
+      return
+    }
+    setMessage(`${lignes.length} zone${lignes.length > 1 ? 's' : ''} de risque importée${lignes.length > 1 ? 's' : ''}.`)
+    setImportees(null)
     setConsigne('')
   }
 
@@ -533,6 +623,32 @@ function CarteMairie({ lieux, demandes, zones, communeId }: PropsCarte) {
     const { error } = await serveur!.from('zones_danger').update({ active: false }).eq('id', z.id)
     setMessage(error ? 'Échec : la zone est toujours affichée.' : '')
   }
+
+  const retirerRisque = async (z: ZoneRisqueServeur) => {
+    if (!window.confirm(`Supprimer la zone de risque « ${z.nom} » ? Elle disparaîtra de la carte des habitants.`)) return
+    const { error } = await serveur!.from('zones_risque').delete().eq('id', z.id)
+    setMessage(error ? 'Échec : la zone est toujours affichée.' : '')
+  }
+
+  // Champs propres aux zones de risque, communs au tracé et à l'import
+  const champsRisque = (
+    <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+      <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 14, fontWeight: 700, flex: 1, minWidth: 160 }}>
+        Risque
+        <select className="mairie-champ" value={risqueChoisi} onChange={(e) => setRisque(e.target.value)}>
+          {choixRisques.map((r) => (
+            <option key={r} value={r}>
+              {r}
+            </option>
+          ))}
+        </select>
+      </label>
+      <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 14, fontWeight: 700, flex: 1, minWidth: 160 }}>
+        Source
+        <input className="mairie-champ" value={source} maxLength={120} placeholder="TIM 2024" onChange={(e) => setSource(e.target.value)} />
+      </label>
+    </div>
+  )
 
   const ouvertes = demandes.filter((d) => d.statut !== 'close' && d.statut !== 'aide_organisee')
   const reperes: Repere[] = [
@@ -558,7 +674,9 @@ function CarteMairie({ lieux, demandes, zones, communeId }: PropsCarte) {
       <CarteInteractive
         reperes={reperes}
         zones={zones}
-        trace={trace ?? undefined}
+        zonesRisque={zonesRisque}
+        trace={trace?.points}
+        couleurTrace={trace?.type === 'risque' ? '#0e3a52' : undefined}
         onClicCarte={trace ? ajouterPoint : undefined}
         centre={centreCommune}
         hauteur={380}
@@ -570,25 +688,44 @@ function CarteMairie({ lieux, demandes, zones, communeId }: PropsCarte) {
         <Legende couleur={couleurLieu.soins} texte="Secours" />
         <Legende couleur={couleurLieu.eau} texte="Eau" />
         <Legende couleur="#d92d20" texte="Zone à éviter" />
+        <Legende couleur="#86ddff" texte="Zone de risque (TIM)" />
       </div>
       {trace ? (
         <form onSubmit={enregistrer} style={{ display: 'flex', flexDirection: 'column', gap: 10, borderTop: '1px solid var(--bordure)', paddingTop: 12 }}>
           <p style={{ fontSize: 14, fontWeight: 700 }}>
-            Cliquez sur la carte pour tracer le contour ({trace.length} point{trace.length > 1 ? 's' : ''}, 3 minimum).
+            {trace.type === 'risque' ? 'Zone de risque du TIM : r' : 'Zone à éviter : r'}eprenez le contour en cliquant sur la carte ({trace.points.length} point
+            {trace.points.length > 1 ? 's' : ''}, 3 minimum).
           </p>
+          {trace.type === 'risque' && champsRisque}
           <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 14, fontWeight: 700 }}>
             Nom de la zone
-            <input className="mairie-champ" value={nom} maxLength={120} placeholder="Quartier du bord de rivière" onChange={(e) => setNom(e.target.value)} />
+            <input
+              className="mairie-champ"
+              value={nom}
+              maxLength={120}
+              placeholder={trace.type === 'risque' ? 'Zone inondable du bord de rivière' : 'Quartier du bord de rivière'}
+              onChange={(e) => setNom(e.target.value)}
+            />
           </label>
           <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 14, fontWeight: 700 }}>
             Consigne
-            <input className="mairie-champ" value={consigne} maxLength={300} placeholder="Ne pas circuler, même à pied." onChange={(e) => setConsigne(e.target.value)} />
+            <input
+              className="mairie-champ"
+              value={consigne}
+              maxLength={300}
+              placeholder={trace.type === 'risque' ? "En cas d'alerte crue, montez à l'étage." : 'Ne pas circuler, même à pied.'}
+              onChange={(e) => setConsigne(e.target.value)}
+            />
           </label>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            <button type="submit" className="mairie-bouton mairie-bouton--urgence" disabled={trace.length < 3 || nom.trim().length < 3}>
+            <button
+              type="submit"
+              className={trace.type === 'danger' ? 'mairie-bouton mairie-bouton--urgence' : 'mairie-bouton mairie-bouton--principal'}
+              disabled={trace.points.length < 3 || nom.trim().length < 3 || (trace.type === 'risque' && !risqueChoisi)}
+            >
               Publier la zone
             </button>
-            <button type="button" className="mairie-bouton" disabled={trace.length === 0} onClick={() => setTrace(trace.slice(0, -1))}>
+            <button type="button" className="mairie-bouton" disabled={trace.points.length === 0} onClick={() => setTrace({ ...trace, points: trace.points.slice(0, -1) })}>
               Retirer le dernier point
             </button>
             <button type="button" className="mairie-bouton" onClick={() => setTrace(null)}>
@@ -596,10 +733,47 @@ function CarteMairie({ lieux, demandes, zones, communeId }: PropsCarte) {
             </button>
           </div>
         </form>
+      ) : importees ? (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, borderTop: '1px solid var(--bordure)', paddingTop: 12 }}>
+          <p style={{ fontSize: 14, fontWeight: 700 }}>
+            {importees.length} zone{importees.length > 1 ? 's' : ''} trouvée{importees.length > 1 ? 's' : ''} : {importees.map((z) => z.nom).slice(0, 4).join(', ')}
+            {importees.length > 4 ? '…' : ''}
+          </p>
+          {champsRisque}
+          <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 14, fontWeight: 700 }}>
+            Consigne (facultative, pour toutes les zones)
+            <input className="mairie-champ" value={consigne} maxLength={300} onChange={(e) => setConsigne(e.target.value)} />
+          </label>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <button type="button" className="mairie-bouton mairie-bouton--principal" disabled={!risqueChoisi} onClick={() => void importer()}>
+              Importer sur la carte
+            </button>
+            <button type="button" className="mairie-bouton" onClick={() => setImportees(null)}>
+              Annuler
+            </button>
+          </div>
+        </div>
       ) : (
-        <button type="button" className="mairie-bouton" style={{ alignSelf: 'flex-start' }} onClick={() => setTrace([])}>
-          Tracer une zone à éviter
-        </button>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          <button type="button" className="mairie-bouton" onClick={() => commencer('danger')}>
+            Tracer une zone à éviter
+          </button>
+          <button type="button" className="mairie-bouton" onClick={() => commencer('risque')}>
+            Tracer une zone du TIM
+          </button>
+          <label className="mairie-bouton" style={{ cursor: 'pointer', position: 'relative', display: 'inline-flex', alignItems: 'center' }}>
+            Importer un fichier du TIM (GeoJSON)
+            <input
+              type="file"
+              accept=".geojson,.json,application/geo+json,application/json"
+              style={{ position: 'absolute', width: 1, height: 1, opacity: 0 }}
+              onChange={(e) => {
+                void lireFichier(e.target.files?.[0])
+                e.target.value = ''
+              }}
+            />
+          </label>
+        </div>
       )}
       {zones.map((z) => (
         <div key={z.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10 }}>
@@ -609,6 +783,21 @@ function CarteMairie({ lieux, demandes, zones, communeId }: PropsCarte) {
           </span>
           <button type="button" className="mairie-bouton" onClick={() => void retirer(z)}>
             Retirer
+          </button>
+        </div>
+      ))}
+      {zonesRisque.map((z) => (
+        <div key={z.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10 }}>
+          <span style={{ fontSize: 14 }}>
+            <strong style={{ color: 'var(--bleu-nuit)' }}>
+              {z.risque} · {z.nom}
+            </strong>
+            <span className="texte-doux">
+              {z.consigne ? ` · ${z.consigne}` : ''} · {z.source}
+            </span>
+          </span>
+          <button type="button" className="mairie-bouton" onClick={() => void retirerRisque(z)}>
+            Supprimer
           </button>
         </div>
       ))}
@@ -658,7 +847,8 @@ function PanneauRisques({ risques, communeId, onEnregistre }: { risques: string[
     <section className="mairie-panneau" aria-labelledby="titre-risques">
       <h2 id="titre-risques">Risques de la commune</h2>
       <p className="texte-doux" style={{ margin: 0 }}>
-        Affichés aux habitants hors crise pour qu'ils se préparent. Reprenez ceux de votre DICRIM.
+        Affichés aux habitants hors crise pour qu'ils se préparent. Reprenez ceux de votre TIM ou DICRIM ; les zones exposées se
+        placent sur la carte de la commune.
       </p>
       {risques.length === 0 && <p className="texte-doux">Aucun risque renseigné : la rubrique est masquée dans l'app.</p>}
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>

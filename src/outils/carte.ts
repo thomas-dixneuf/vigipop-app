@@ -57,3 +57,56 @@ export function dansZone({ lat, lng }: Coordonnees, points: [number, number][]) 
   }
   return dedans
 }
+
+// Points gardés au plus par contour importé (limite du serveur : 2000)
+const POINTS_MAX = 2000
+
+export type ZoneImportee = { nom: string; points: [number, number][] }
+
+type Geometrie = { type: string; coordinates?: unknown; geometries?: Geometrie[] }
+type Objet = { type: string; geometry?: Geometrie | null; properties?: Record<string, unknown> | null; features?: Objet[] }
+
+// Contours d'un fichier GeoJSON (export Géorisques, QGIS, préfecture) : polygones et
+// multipolygones, contour extérieur seulement. Les coordonnées doivent être en degrés (WGS84).
+export function zonesDepuisGeoJSON(texte: string): ZoneImportee[] {
+  const racine = JSON.parse(texte) as Objet
+  const objets: Objet[] =
+    racine.type === 'FeatureCollection' ? (racine.features ?? []) : racine.type === 'Feature' ? [racine] : [{ type: 'Feature', geometry: racine as Geometrie }]
+  const zones: ZoneImportee[] = []
+  objets.forEach((objet, i) => {
+    const proprietes = objet.properties ?? {}
+    const libelle = ['nom', 'name', 'NOM', 'libelle', 'LIBELLE', 'label'].map((c) => proprietes[c]).find((v) => typeof v === 'string' && v.trim())
+    const nom = typeof libelle === 'string' ? libelle.trim().slice(0, 120) : `Zone ${i + 1}`
+    const anneaux = anneauxExterieurs(objet.geometry ?? null)
+    anneaux.forEach((anneau, j) => {
+      const points = convertir(anneau)
+      if (points.length >= 3) zones.push({ nom: anneaux.length > 1 ? `${nom} (${j + 1})`.slice(0, 120) : nom, points })
+    })
+  })
+  return zones
+}
+
+function anneauxExterieurs(g: Geometrie | null): unknown[][] {
+  if (!g) return []
+  if (g.type === 'Polygon') return [(g.coordinates as unknown[][])[0]]
+  if (g.type === 'MultiPolygon') return (g.coordinates as unknown[][][]).map((p) => p[0])
+  if (g.type === 'GeometryCollection') return (g.geometries ?? []).flatMap(anneauxExterieurs)
+  return []
+}
+
+// GeoJSON : [lng, lat] ; la carte : [lat, lng]. Contour refermé : le dernier point (doublon) est retiré.
+function convertir(anneau: unknown[]): [number, number][] {
+  const points = anneau.map((c) => {
+    const [lng, lat] = c as [number, number]
+    if (typeof lat !== 'number' || typeof lng !== 'number' || Math.abs(lat) > 90 || Math.abs(lng) > 180) {
+      throw new Error('coordonnees')
+    }
+    return [Math.round(lat * 1e6) / 1e6, Math.round(lng * 1e6) / 1e6] as [number, number]
+  })
+  const [premier, dernier] = [points[0], points[points.length - 1]]
+  if (points.length > 1 && premier[0] === dernier[0] && premier[1] === dernier[1]) points.pop()
+  if (points.length <= POINTS_MAX) return points
+  // Contour trop détaillé : un point sur n, largement suffisant à l'échelle d'une commune
+  const pas = Math.ceil(points.length / POINTS_MAX)
+  return points.filter((_, k) => k % pas === 0)
+}

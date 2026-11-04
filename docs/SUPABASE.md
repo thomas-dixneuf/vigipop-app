@@ -22,7 +22,8 @@ fonctionne en mode démo local, avec un bouton « Démo » pour simuler la crise
    `0009_nom_commune.sql` (la mairie renomme sa commune, affichée en haut de l'app), puis
    `0010_corrections_tests.sql` (risques de la commune, adresse du rendez-vous des missions, message « aide organisée »,
    nom des volontaires, demandes closes à la fin de la crise), puis `0011_entraide_auto.sql` (transport et matériel
-   proposés automatiquement au volontaire le plus proche). Chaque nouveau fichier de `supabase/migrations/` se lance
+   proposés automatiquement au volontaire le plus proche), puis `0012_zones_risque.sql` (zones exposées aux risques
+   connus, reprises du TIM de la commune). Chaque nouveau fichier de `supabase/migrations/` se lance
    une seule fois, dans l'ordre des numéros.
 
 ## 2. Autoriser les habitants sans mot de passe

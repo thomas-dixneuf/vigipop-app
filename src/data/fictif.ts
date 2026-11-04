@@ -1,4 +1,4 @@
-import type { LieuServeur, MissionServeur, ZoneServeur } from '../services/serveur'
+import type { LieuServeur, MissionServeur, ZoneRisqueServeur, ZoneServeur } from '../services/serveur'
 
 // Données de démonstration : tout est fictif tant que la phase RGPD n'est pas validée.
 // Ne jamais remplacer par de vraies données d'habitants dans ce prototype.
@@ -30,6 +30,25 @@ export const zonesDemo: ZoneServeur[] = [
       [47.0601, -0.8771],
       [47.0583, -0.8752],
       [47.0561, -0.8786],
+    ],
+  },
+]
+
+// Zone inondable fictive, comme la mairie la reprendrait du TIM : visible en veille comme en crise
+export const zonesRisqueDemo: ZoneRisqueServeur[] = [
+  {
+    id: 'risque-demo',
+    risque: 'Inondation',
+    nom: 'Zone inondable de [RIVIÈRE]',
+    consigne: "En cas d'alerte crue, montez à l'étage et ne prenez pas votre voiture.",
+    source: 'TIM [ANNÉE] (fictif)',
+    points: [
+      [47.0552, -0.8862],
+      [47.0590, -0.8851],
+      [47.0612, -0.8790],
+      [47.0596, -0.8735],
+      [47.0570, -0.8728],
+      [47.0548, -0.8780],
     ],
   },
 ]

@@ -41,6 +41,16 @@ export type ZoneServeur = {
   points: [number, number][]
 }
 
+// Zone exposée à un risque connu (TIM, DICRIM) : permanente, visible en veille comme en crise
+export type ZoneRisqueServeur = {
+  id: string
+  risque: string
+  nom: string
+  consigne: string
+  source: string
+  points: [number, number][]
+}
+
 export type MissionServeur = {
   id: string
   titre: string
