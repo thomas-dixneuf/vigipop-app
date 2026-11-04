@@ -532,12 +532,9 @@ type PropsCarte = {
 // Référentiel des risques (DICRIM, TIM) : verrouillé par défaut, jamais modifiable pendant une crise.
 // Évite qu'un clic malheureux retire une information officielle de l'app des habitants.
 function useVerrou(enCrise: boolean, objet: string) {
-  const [deverrouille, setDeverrouille] = useState(false)
-  const modifiable = deverrouille && !enCrise
-  const basculer = () => {
-    if (modifiable) return setDeverrouille(false)
-    if (window.confirm(`${objet} viennent des documents officiels de la commune (DICRIM, TIM). Les modifier ?`)) setDeverrouille(true)
-  }
+  // Confirmation dans la page (les fenêtres window.confirm sont bloquées dans certains cadres intégrés)
+  const [etat, setEtat] = useState<'ferme' | 'confirmation' | 'ouvert'>('ferme')
+  const modifiable = etat === 'ouvert' && !enCrise
   const bandeau = (
     <div
       style={{
@@ -561,10 +558,23 @@ function useVerrou(enCrise: boolean, objet: string) {
             ? 'les changements sont visibles tout de suite par les habitants.'
             : 'issu du DICRIM et du TIM, protégé contre les modifications involontaires.'}
       </span>
-      {!enCrise && (
-        <button type="button" className="mairie-bouton" onClick={basculer}>
+      {!enCrise && etat !== 'confirmation' && (
+        <button type="button" className="mairie-bouton" onClick={() => setEtat(modifiable ? 'ferme' : 'confirmation')}>
           {modifiable ? 'Terminer' : 'Déverrouiller'}
         </button>
+      )}
+      {!enCrise && etat === 'confirmation' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, width: '100%' }}>
+          <strong>{objet} viennent des documents officiels de la commune (DICRIM, TIM). Les modifier ?</strong>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <button type="button" className="mairie-bouton mairie-bouton--principal" onClick={() => setEtat('ouvert')}>
+              Oui, modifier
+            </button>
+            <button type="button" className="mairie-bouton" onClick={() => setEtat('ferme')}>
+              Annuler
+            </button>
+          </div>
+        </div>
       )}
     </div>
   )
