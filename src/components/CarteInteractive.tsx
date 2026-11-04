@@ -49,13 +49,23 @@ export default function CarteInteractive({ reperes, centre, position, selection,
       maxZoom: 19,
       attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
     }).addTo(instance)
-    // Fond embarqué facultatif (maquette hors ligne, Artifact où les tuiles sont bloquées) :
-    // placé sous les tuiles, il ne se voit que si elles ne chargent pas
-    const fond = import.meta.env.VITE_FOND_CARTE as string | undefined
-    const limites = (import.meta.env.VITE_FOND_CARTE_LIMITES as string | undefined)?.split(',').map(Number)
-    if (fond && limites?.length === 4 && limites.every(Number.isFinite)) {
+    // Fonds embarqués facultatifs (maquette hors ligne, Artifact où les tuiles sont bloquées) :
+    // « fichier@sud,ouest,nord,est;… », du plus large au plus détaillé. Placés sous les tuiles,
+    // ils ne se voient que si elles ne chargent pas ; la carte reste alors dans leur emprise.
+    const fonds = ((import.meta.env.VITE_FOND_CARTE as string | undefined) ?? '')
+      .split(';')
+      .map((f) => {
+        const [fichier, limites = ''] = f.split('@')
+        const n = limites.split(',').map(Number)
+        return n.length === 4 && n.every(Number.isFinite) ? { fichier, emprise: L.latLngBounds([n[0], n[1]], [n[2], n[3]]) } : null
+      })
+      .filter((f) => f !== null)
+    if (fonds.length > 0) {
       instance.createPane('fondEmbarque').style.zIndex = '150'
-      L.imageOverlay(fond, [[limites[0], limites[1]], [limites[2], limites[3]]], { pane: 'fondEmbarque' }).addTo(instance)
+      for (const f of fonds) L.imageOverlay(f.fichier, f.emprise, { pane: 'fondEmbarque' }).addTo(instance)
+      instance.setMaxBounds(fonds[0].emprise)
+      instance.options.maxBoundsViscosity = 1
+      instance.setMinZoom(12)
     }
     calque.current = L.layerGroup().addTo(instance)
     instance.on('click', (e: L.LeafletMouseEvent) => clic.current?.([e.latlng.lat, e.latlng.lng]))
