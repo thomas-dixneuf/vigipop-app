@@ -110,3 +110,12 @@ function convertir(anneau: unknown[]): [number, number][] {
   const pas = Math.ceil(points.length / POINTS_MAX)
   return points.filter((_, k) => k % pas === 0)
 }
+
+// Couleur des zones de risque : bleu nuit pour l'inondation et les autres risques, mauve et
+// pointillés serrés pour la rupture de barrage (couleurs du DICRIM), pour les distinguer
+// même quand elles se superposent
+export function styleRisque(risque: string) {
+  return /barrage/i.test(risque)
+    ? { trait: '#6b3fa0', fond: '#d4b8f0', pointilles: '2 5', bordure: 'dotted', ordre: 0 }
+    : { trait: '#0e3a52', fond: '#86ddff', pointilles: '6 5', bordure: 'dashed', ordre: 1 }
+}

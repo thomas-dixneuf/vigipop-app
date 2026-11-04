@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
-import type { Coordonnees } from '../outils/carte.ts'
+import { styleRisque, type Coordonnees } from '../outils/carte.ts'
 import type { ZoneRisqueServeur, ZoneServeur } from '../services/serveur.ts'
 
 export type Repere = Coordonnees & {
@@ -86,8 +86,10 @@ export default function CarteInteractive({ reperes, centre, position, selection,
     groupe.clearLayers()
     // Les zones d'abord, pour que les repères restent cliquables par-dessus ;
     // les zones de risque (permanentes) sous les zones à éviter (crise en cours)
-    for (const z of zonesRisque) {
-      L.polygon(z.points, { color: '#0e3a52', weight: 2, dashArray: '6 5', fillColor: '#86ddff', fillOpacity: 0.25 })
+    // La rupture de barrage, plus étendue, sous l'inondation
+    for (const z of [...zonesRisque].sort((a, b) => styleRisque(a.risque).ordre - styleRisque(b.risque).ordre)) {
+      const style = styleRisque(z.risque)
+      L.polygon(z.points, { color: style.trait, weight: 2, dashArray: style.pointilles, fillColor: style.fond, fillOpacity: 0.3 })
         .bindTooltip(`Risque ${z.risque.toLowerCase()} : ${z.nom}`, { sticky: true })
         .addTo(groupe)
     }

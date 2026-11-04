@@ -5,7 +5,7 @@ import BarreNav from '../components/BarreNav.tsx'
 import CarteInteractive, { type Repere } from '../components/CarteInteractive.tsx'
 import Icone from '../components/Icone.tsx'
 import { centreCommune, hebergementsSolidairesDemo, libelleLieu, lieuxDemo, missionsDemo, zonesDemo, zonesRisqueDemo } from '../data/fictif.ts'
-import { couleurLieu, dansZone, distanceLisible, distanceMetres, estPlace, lienItineraire, type Coordonnees } from '../outils/carte.ts'
+import { couleurLieu, dansZone, distanceLisible, distanceMetres, estPlace, lienItineraire, styleRisque, type Coordonnees } from '../outils/carte.ts'
 import { COMMUNE_ID, serveur, type LieuServeur } from '../services/serveur.ts'
 import { useAppState } from '../state/AppState.tsx'
 
@@ -182,7 +182,7 @@ export default function Carte() {
           <section aria-label="Risques connus de la commune" style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
             {zonesRisque.map((z) => (
               <div key={z.id} style={{ display: 'flex', gap: 10, alignItems: 'flex-start', fontSize: 14, lineHeight: 1.4 }}>
-                <span aria-hidden="true" style={{ width: 14, height: 14, marginTop: 3, borderRadius: 3, background: 'rgba(134,221,255,.45)', border: '2px dashed #0e3a52', flexShrink: 0 }} />
+                <span aria-hidden="true" style={{ width: 14, height: 14, marginTop: 3, borderRadius: 3, background: styleRisque(z.risque).fond, border: `2px ${styleRisque(z.risque).bordure} ${styleRisque(z.risque).trait}`, flexShrink: 0 }} />
                 <span>
                   <strong style={{ color: 'var(--bleu-nuit)' }}>
                     Risque {z.risque.toLowerCase()} : {z.nom}
