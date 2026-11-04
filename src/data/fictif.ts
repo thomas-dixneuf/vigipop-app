@@ -203,3 +203,38 @@ export const missionsDemo: MissionServeur[] = [
     consignes: 'Gants et bottes obligatoires. Ne touchez à aucun câble électrique.',
   },
 ]
+
+// Points de rassemblement par quartier et centres d'hébergement par zone (DICRIM de Cholet, p. 24-25).
+// Le sinistré rejoint d'abord le point de rassemblement de son quartier, où ses besoins sont recensés ;
+// la cellule de crise ouvre ensuite les centres d'hébergement de sa zone (Nord ou Sud Moine).
+// Positions OpenStreetMap. Le DICRIM ne donne pas les limites des quartiers : sans quartier choisi,
+// l'adresse est rattachée au point de rassemblement le plus proche (à remplacer par le découpage du PCS).
+export type PointRassemblement = {
+  numero: string
+  quartier: string
+  nom: string
+  zone: 'nord' | 'sud'
+  lat: number
+  lng: number
+  // Lieu absent d'OpenStreetMap : position du quartier
+  approximatif?: boolean
+}
+
+export const pointsRassemblement: PointRassemblement[] = [
+  { numero: '1', quartier: 'Centre Ville', nom: 'Salle de sports Auguste Grégoire', zone: 'nord', lat: 47.06628, lng: -0.87948 },
+  { numero: '2', quartier: 'Bretagne', nom: 'École Jules Verne', zone: 'nord', lat: 47.0626, lng: -0.89807 },
+  { numero: '3', quartier: 'Tuilerie Leclerc', nom: 'Parc des Prairies', zone: 'nord', lat: 47.07163, lng: -0.8774 },
+  { numero: '4', quartier: 'Lorraine', nom: 'Salle de sports Laënnec', zone: 'nord', lat: 47.05566, lng: -0.86992 },
+  { numero: '5', quartier: 'Val de Moine Nord', nom: 'École La Bruyère', zone: 'nord', lat: 47.05033, lng: -0.8601 },
+  { numero: '5 bis', quartier: 'Val de Moine Sud', nom: 'Salle de sports du Plessis', zone: 'sud', lat: 47.03933, lng: -0.86743 },
+  { numero: '6', quartier: 'Libération', nom: 'École Saint-Louis du Breloquet', zone: 'sud', lat: 47.05335, lng: -0.88463 },
+  { numero: '7', quartier: 'Bonnevay Choletière', nom: 'École des Richardières', zone: 'sud', lat: 47.04301, lng: -0.8849 },
+  { numero: '8', quartier: 'Turbaudières Girardière', nom: 'Salle de sports Chambord', zone: 'sud', lat: 47.05187, lng: -0.89515 },
+  { numero: '9', quartier: 'Le Puy-Saint-Bonnet', nom: 'Salle Conviviale', zone: 'sud', lat: 46.99646, lng: -0.89248, approximatif: true },
+]
+
+// Centres d'hébergement d'urgence de chaque zone (identifiants de lieuxDemo)
+export const centresParZone: Record<PointRassemblement['zone'], string[]> = {
+  nord: ['rambourg', 'mocrat', 'jeune-france'],
+  sud: ['eau', 'demiannay', 'puy-saint-bonnet'],
+}

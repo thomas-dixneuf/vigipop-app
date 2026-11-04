@@ -4,6 +4,7 @@ import BarreNav from '../components/BarreNav.tsx'
 import BoutonDemo from '../components/BoutonDemo.tsx'
 import EnTete from '../components/EnTete.tsx'
 import HebergementTrouve from '../components/HebergementTrouve.tsx'
+import CarteRassemblement from '../components/CarteRassemblement.tsx'
 import Icone from '../components/Icone.tsx'
 import PropositionHebergement from '../components/PropositionHebergement.tsx'
 import SollicitationEntraide from '../components/SollicitationEntraide.tsx'
@@ -132,6 +133,8 @@ export default function AccueilCrise() {
         )}
 
         <Bandeau112 />
+
+        <CarteRassemblement />
 
         <section style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           <h2 className="titre-section">Ouvert maintenant</h2>

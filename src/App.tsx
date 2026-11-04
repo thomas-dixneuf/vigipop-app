@@ -13,6 +13,7 @@ import Pourquoi from './screens/Pourquoi.tsx'
 import Profil from './screens/Profil.tsx'
 import MesInfos from './screens/MesInfos.tsx'
 import MonRole from './screens/MonRole.tsx'
+import MonQuartier from './screens/MonQuartier.tsx'
 import Carte from './screens/Carte.tsx'
 import Notifications from './screens/Notifications.tsx'
 import Notifieur from './components/Notifieur.tsx'
@@ -36,6 +37,7 @@ export default function App() {
       <Route path="/demande" element={<AccesProtege><Confirmation /></AccesProtege>} />
       {/* La carte des secours reste consultable sans compte, avant même une crise */}
       <Route path="/carte" element={<Carte />} />
+      <Route path="/quartier" element={<AccesProtege><MonQuartier /></AccesProtege>} />
       <Route path="/profil" element={<AccesProtege><Profil /></AccesProtege>} />
       <Route path="/profil/infos" element={<AccesProtege compteObligatoire><MesInfos /></AccesProtege>} />
       {/* Protection civile ou entreprise sous convention : déclaré ici, vérifié par la mairie */}

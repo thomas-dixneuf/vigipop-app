@@ -75,6 +75,9 @@ type Etat = {
   mode: Mode
   // Alerte de la mairie ; gardée en mémoire pour rester lisible sans réseau
   alerte: Alerte | null
+  // Quartier de résidence (numéro du DICRIM) : donne le point de rassemblement et la zone d'hébergement
+  quartier: string | null
+  domicile: { adresse: string; lat: number; lng: number } | null
   lieux: LieuServeur[] | null
   // Zones à éviter tracées par la mairie (null : pas encore chargées, mode démo)
   zones: ZoneServeur[] | null
@@ -148,12 +151,15 @@ type AppStateValue = Etat & {
   effacerNotifications: (cle?: string) => void
   demanderHabilitation: (type: TypeHabilitation, details: Record<string, string>) => void
   retirerHabilitation: (type: TypeHabilitation) => void
+  choisirQuartier: (quartier: string | null, domicile?: Etat['domicile']) => void
 }
 
 const CLE_STOCKAGE = 'vigipop-demo'
 const etatInitial: Etat = {
   mode: 'veille',
   alerte: null,
+  quartier: null,
+  domicile: null,
   lieux: null,
   zones: null,
   zonesRisque: null,
@@ -640,6 +646,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
       if (h?.envoyee && serveur) void serveur.from('habilitations').delete().eq('id', h.id).then(() => undefined)
       setEtat((e) => ({ ...e, habilitations: e.habilitations.filter((x) => x.type !== type) }))
     },
+    choisirQuartier: (quartier, domicile = null) => setEtat((e) => ({ ...e, quartier, domicile })),
     effacerNotifications: (cle) =>
       setEtat((e) => {
         const effacees = e.notifications.filter((n) => cle === undefined || n.cle === cle).map((n) => n.cle)

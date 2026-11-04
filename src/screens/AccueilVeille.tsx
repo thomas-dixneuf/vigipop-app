@@ -4,6 +4,7 @@ import BoutonDemo from '../components/BoutonDemo.tsx'
 import VisiteGuidee from '../components/VisiteGuidee.tsx'
 import { useAppState } from '../state/AppState.tsx'
 import EnTete from '../components/EnTete.tsx'
+import CarteRassemblement from '../components/CarteRassemblement.tsx'
 import Icone from '../components/Icone.tsx'
 import { lieuxDemo, risques as risquesDemo } from '../data/fictif.ts'
 import { etatAlertes } from '../outils/alertes.ts'
@@ -11,7 +12,7 @@ import { serveur } from '../services/serveur.ts'
 
 export default function AccueilVeille() {
   const navigate = useNavigate()
-  const { visiteAFaire, lieux, risques, utilisateur, ressources, offresEnregistrees, apresCrise, repondreApresCrise } = useAppState()
+  const { visiteAFaire, lieux, risques, quartier, utilisateur, ressources, offresEnregistrees, apresCrise, repondreApresCrise } = useAppState()
   // Seulement ce que la mairie a renseigné (les exemples fictifs restent pour le mode démo)
   const lieuxAccueil = (serveur ? (lieux ?? []) : lieuxDemo).filter((l) => l.type === 'accueil').slice(0, 2)
   const risquesCommune = serveur ? (risques ?? []) : risquesDemo
@@ -20,6 +21,7 @@ export default function AccueilVeille() {
   const etapes = [
     { faite: !!utilisateur, texte: 'Créez votre compte', lien: '/inscription' },
     { faite: !!utilisateur?.nom?.trim(), texte: 'Complétez vos informations (nom de famille)', lien: '/profil/infos' },
+    { faite: !!quartier, texte: 'Repérez votre point de rassemblement', lien: '/quartier' },
     { faite: offresEnregistrees && ressources.length > 0, texte: 'Indiquez ce que vous pourriez offrir ou prêter', lien: '/aider' },
     { faite: etatAlertes() === 'granted', texte: 'Activez les alertes sur ce téléphone', lien: '/notifications' },
   ]
@@ -60,6 +62,8 @@ export default function AccueilVeille() {
             <span className="texte-doux">Votre mairie vous préviendra ici en cas de crise</span>
           </span>
         </section>
+
+        <CarteRassemblement />
 
         <Link
           to={prochaine?.lien ?? '/aider'}

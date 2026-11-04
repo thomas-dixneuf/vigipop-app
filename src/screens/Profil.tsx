@@ -73,6 +73,10 @@ export default function Profil() {
             Mes types d'aide (ce que je peux offrir)
             <Icone nom="fleche" taille={18} />
           </Link>
+          <Link to="/quartier" style={ligne}>
+            Mon point de rassemblement
+            <Icone nom="fleche" taille={18} />
+          </Link>
           <Link to="/profil/role" style={{ ...ligne, borderBottom: mode === 'veille' ? '1px solid var(--bleu-voile)' : 'none' }}>
             <span style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
               Protection civile, entreprise partenaire

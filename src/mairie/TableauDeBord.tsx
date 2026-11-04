@@ -224,7 +224,7 @@ export default function TableauDeBord({ coordinateur }: { coordinateur: Coordina
             {(enCrise || demandesOuvertes > 0) && <Demandes demandes={donnees.demandes} depuis={donnees.crise?.declenchee_a ?? null} />}
           </div>
           <div className="mairie-colonne">
-            <PanneauCrise crise={donnees.crise} communeId={commune} />
+            <PanneauCrise key={donnees.crise?.id ?? 'veille'} crise={donnees.crise} communeId={commune} />
             <PanneauRisques risques={donnees.risques} communeId={commune} enCrise={!!donnees.crise} onEnregistre={() => void charger()} />
             <PanneauLieux lieux={donnees.lieux} communeId={commune} />
             <PanneauVolontaires volontaires={donnees.volontaires} enCrise={!!donnees.crise} />
