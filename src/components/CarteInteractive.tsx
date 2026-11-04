@@ -66,6 +66,8 @@ export default function CarteInteractive({ reperes, centre, position, selection,
       instance.setMaxBounds(fonds[0].emprise)
       instance.options.maxBoundsViscosity = 1
       instance.setMinZoom(12)
+      // Au-delà, l'image embarquée la plus détaillée devient trop floue
+      instance.setMaxZoom(16)
     }
     calque.current = L.layerGroup().addTo(instance)
     instance.on('click', (e: L.LeafletMouseEvent) => clic.current?.([e.latlng.lat, e.latlng.lng]))
