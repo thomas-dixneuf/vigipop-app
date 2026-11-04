@@ -9,7 +9,7 @@ type Ligne = Record<string, unknown>
 type Base = Record<string, Ligne[]>
 type Evenement = { table: string; type: 'INSERT' | 'UPDATE' | 'DELETE'; lignes: Ligne[] }
 
-const CLE = 'vigipop-serveur-local'
+const CLE = 'vigipop-serveur-local-v2'
 export const COMMUNE_LOCALE = '00000000-0000-4000-8000-000000000001'
 const COORDINATEUR = 'coordinateur-cholet'
 

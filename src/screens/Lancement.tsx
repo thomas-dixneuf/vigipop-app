@@ -22,7 +22,7 @@ export default function Lancement() {
         <section role="alert" style={{ width: '100%', background: 'var(--blanc)', color: 'var(--texte)', borderRadius: 16, padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 6 }}>
           <span style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, fontWeight: 800, color: 'var(--urgence)', textTransform: 'uppercase', letterSpacing: 0.8 }}>
             <Icone nom="alerte" taille={16} epaisseur={2.4} />
-            Mode crise activé par la mairie
+            {alerte?.exercice ? 'Exercice lancé par la mairie' : 'Mode crise activé par la mairie'}
           </span>
           <span style={{ fontSize: 17, fontWeight: 800, color: 'var(--bleu-nuit)' }}>{alerte?.titre}</span>
           <span style={{ fontSize: 14, lineHeight: 1.4 }}>

@@ -20,7 +20,7 @@ export default function Notifieur() {
   const espaceMairie = pathname.startsWith('/mairie')
   const { mode, alerte, demande, disponible, ressources, utilisateur, missionServeur, mission, notifications, ajouterNotification } = useAppState()
   const [bandeau, setBandeau] = useState<Evenement | null>(null)
-  const derniereCrise = useRef<{ id: string; titre: string } | null>(null)
+  const derniereCrise = useRef<{ id: string; titre: string; exercice: boolean } | null>(null)
 
   const annoncer = useRef<(e: Evenement) => void>(() => undefined)
   useEffect(() => {
@@ -36,10 +36,10 @@ export default function Notifieur() {
     if (mode === 'crise' && alerte) {
       const id = alerte.id ?? alerte.titre
       const dejaVue = notifications.some((n) => n.cle.startsWith(`crise:${id}:`))
-      derniereCrise.current = { id, titre: alerte.titre }
+      derniereCrise.current = { id, titre: alerte.titre, exercice: !!alerte.exercice }
       annoncer.current({
         cle: `crise:${id}:${alerte.consigne}`,
-        titre: dejaVue ? 'Nouvelle consigne de la mairie' : 'Mode crise activé par la mairie',
+        titre: dejaVue ? 'Nouvelle consigne de la mairie' : alerte.exercice ? 'Exercice lancé par la mairie' : 'Mode crise activé par la mairie',
         texte: dejaVue ? alerte.consigne : `${alerte.titre} — ${alerte.consigne}`,
         lien: '/accueil',
         urgente: true,
@@ -49,8 +49,10 @@ export default function Notifieur() {
       derniereCrise.current = null
       annoncer.current({
         cle: `fin:${fin.id}`,
-        titre: 'Fin de la crise',
-        texte: `La mairie a levé l'alerte : ${fin.titre}. Si vous avez encore besoin d'aide, mettez à jour votre situation.`,
+        titre: fin.exercice ? "Fin de l'exercice" : 'Fin de la crise',
+        texte: fin.exercice
+          ? `La mairie a terminé l'exercice : ${fin.titre}. Merci de votre participation.`
+          : `La mairie a levé l'alerte : ${fin.titre}. Si vous avez encore besoin d'aide, mettez à jour votre situation.`,
         lien: '/accueil',
       })
     }

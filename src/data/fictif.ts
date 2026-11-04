@@ -7,13 +7,19 @@ import type { LieuServeur, MissionServeur, ZoneRisqueServeur, ZoneServeur } from
 export const commune = 'Cholet'
 
 // Risques repris du DICRIM de Cholet (édition septembre 2022)
+// Tous les risques du DICRIM de Cholet (3e édition, 2021), plus les installations industrielles
+// soumises à autorisation ou classées Seveso recensées par Géorisques (consulté le 04/11/2026).
 export const risques = [
   'Inondation de la Moine',
   'Rupture de barrage (Verdon, Ribou)',
   'Transport de matières dangereuses',
-  'Vents violents, canicule, grand froid',
+  'Risque industriel (Charal, Michelin, Carrefour Supply Chain)',
+  "Dépôt d'explosifs (Puy-Saint-Bonnet)",
+  'Vents violents, orages, canicule, grand froid',
   'Retrait-gonflement des argiles',
   'Séisme (aléa modéré)',
+  'Radon',
+  'Pollution des sols (SIS)',
 ]
 
 // Lieux réels de Cholet : les six centres d'hébergement d'urgence du DICRIM (p. 24) et la Croix-Rouge.

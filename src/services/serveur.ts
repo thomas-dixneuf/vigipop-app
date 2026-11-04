@@ -28,6 +28,8 @@ export type CriseServeur = {
   consigne: string
   active: boolean
   declenchee_a: string
+  // Exercice d'entraînement : même parcours qu'une vraie crise, signalé comme tel partout (migration 0013)
+  exercice?: boolean
 }
 
 export type LieuServeur = {

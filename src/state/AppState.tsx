@@ -65,7 +65,7 @@ export type Habilitation = {
   envoyee: boolean
 }
 
-export type Alerte = { titre: string; consigne: string; heure: string; id?: string }
+export type Alerte = { titre: string; consigne: string; heure: string; id?: string; exercice?: boolean }
 
 // Réponse du volontaire à la mission proposée par le coordinateur
 export type ReponseMission = 'en-attente' | 'acceptee'
@@ -286,7 +286,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
       .order('created_at')
       .then(({ data, error }) => !error && setEtat((e) => ({ ...e, zonesRisque: data as ZoneRisqueServeur[] })))
     const [crise, lieux, mission, zones] = await Promise.all([
-      serveur.from('crises').select('id, titre, consigne, active, declenchee_a').eq('commune_id', COMMUNE_ID).eq('active', true).maybeSingle(),
+      serveur.from('crises').select('*').eq('commune_id', COMMUNE_ID).eq('active', true).maybeSingle(),
       serveur.from('lieux').select('id, type, nom, details, distance, places, ouvert, adresse, lat, lng').eq('commune_id', COMMUNE_ID).order('nom'),
       serveur.from('missions').select('*').eq('commune_id', COMMUNE_ID).eq('active', true).order('created_at', { ascending: false }),
       serveur.from('zones_danger').select('id, nom, consigne, points').eq('commune_id', COMMUNE_ID).eq('active', true),
@@ -307,7 +307,9 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
         missionsRefusees: e.missionsRefusees.filter((id) => ouvertes.has(id)),
       }
       if (active) {
-        return { ...suite, mode: 'crise', alerte: { id: active.id, titre: active.titre, consigne: active.consigne, heure: heure(active.declenchee_a) } }
+        // Exercice : « EXERCICE » en tête du titre, repris par les notifications et tous les écrans
+        const titre = active.exercice ? `EXERCICE — ${active.titre}` : active.titre
+        return { ...suite, mode: 'crise', alerte: { id: active.id, titre, consigne: active.consigne, heure: heure(active.declenchee_a), exercice: !!active.exercice } }
       }
       return e.mode === 'crise' ? finDeCrise(suite) : suite
     })

@@ -171,7 +171,9 @@ export default function TableauDeBord({ coordinateur }: { coordinateur: Coordina
           </div>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          {donnees?.crise ? (
+          {donnees?.crise?.exercice ? (
+            <span className="mairie-etiquette" style={{ background: 'var(--consigne)', color: 'var(--bleu-nuit)' }}>Exercice en cours</span>
+          ) : donnees?.crise ? (
             <span className="mairie-etiquette mairie-etiquette--urgent">Mode crise actif</span>
           ) : (
             <span className="mairie-etiquette">Veille</span>
@@ -438,11 +440,16 @@ function PanneauCrise({ crise, communeId }: { crise: CriseServeur | null; commun
   const [consigne, setConsigne] = useState(crise?.consigne ?? '')
   const [confirme, setConfirme] = useState(false)
   const [message, setMessage] = useState('')
+  // Exercice d'entraînement : même parcours, signalé « EXERCICE » chez les habitants
+  const [exercice, setExercice] = useState(false)
+  const enExercice = !!crise?.exercice
+  const mot = (crise ? enExercice : exercice) ? "l'exercice" : 'la crise'
 
   const declencher = async (e: FormEvent) => {
     e.preventDefault()
     if (!confirme) return
-    const { error } = await serveur!.from('crises').insert({ commune_id: communeId, titre: titre.trim(), consigne: consigne.trim() })
+    const ligne: Record<string, unknown> = { commune_id: communeId, titre: titre.trim(), consigne: consigne.trim() }
+    const { error } = await serveur!.from('crises').insert(exercice ? { ...ligne, exercice: true } : ligne)
     setMessage(error ? "Échec du déclenchement : vérifiez la connexion." : '')
     setConfirme(false)
   }
@@ -455,17 +462,39 @@ function PanneauCrise({ crise, communeId }: { crise: CriseServeur | null; commun
 
   const terminer = async () => {
     if (!crise || !window.confirm(
-        "Terminer la crise ? Les habitants repasseront en mode veille. Les demandes encore ouvertes seront closes et chaque habitant concerné sera invité à mettre à jour sa situation s'il a encore besoin d'aide.",
+        `Terminer ${mot} ? Les habitants repasseront en mode veille. Les demandes encore ouvertes seront closes et chaque habitant concerné sera invité à mettre à jour sa situation s'il a encore besoin d'aide.`,
       )) return
     const { error } = await serveur!.from('crises').update({ active: false, terminee_a: new Date().toISOString() }).eq('id', crise.id)
-    setMessage(error ? 'Échec : la crise est toujours active.' : '')
+    setMessage(error ? `Échec : ${mot} est toujours en cours.` : '')
   }
 
   const valide = titre.trim().length >= 3 && consigne.trim().length >= 3
 
   return (
-    <section className="mairie-panneau" aria-labelledby="titre-crise" style={crise ? { borderColor: 'var(--urgence)', borderWidth: 2 } : undefined}>
-      <h2 id="titre-crise">{crise ? `Crise en cours depuis ${heure(crise.declenchee_a)}` : 'Déclencher le mode crise'}</h2>
+    <section className="mairie-panneau" aria-labelledby="titre-crise" style={crise ? { borderColor: enExercice ? 'var(--consigne)' : 'var(--urgence)', borderWidth: 2 } : undefined}>
+      <h2 id="titre-crise">
+        {crise
+          ? `${enExercice ? 'Exercice' : 'Crise'} en cours depuis ${heure(crise.declenchee_a)}`
+          : exercice
+            ? "Lancer un exercice d'entraînement"
+            : 'Déclencher le mode crise'}
+      </h2>
+      {!crise && (
+        <div className="mairie-onglets" role="tablist" aria-label="Type de déclenchement">
+          <button type="button" role="tab" aria-selected={!exercice} className={exercice ? 'mairie-bouton' : 'mairie-bouton mairie-bouton--principal'} onClick={() => setExercice(false)}>
+            Crise réelle
+          </button>
+          <button type="button" role="tab" aria-selected={exercice} className={exercice ? 'mairie-bouton mairie-bouton--principal' : 'mairie-bouton'} onClick={() => setExercice(true)}>
+            Exercice d'entraînement
+          </button>
+        </div>
+      )}
+      {!crise && exercice && (
+        <p className="texte-doux" style={{ margin: 0, lineHeight: 1.4 }}>
+          Même parcours qu'une vraie crise, pour entraîner la cellule de crise, les bénévoles et les habitants. Chez les habitants, l'alerte et les
+          notifications commencent par « EXERCICE ». Terminez l'exercice pour tout remettre en veille.
+        </p>
+      )}
       {!crise && (
         <div className="mairie-onglets" aria-label="Modèles">
           {modelesCrise.map((m) => (
@@ -498,7 +527,7 @@ function PanneauCrise({ crise, communeId }: { crise: CriseServeur | null; commun
               Mettre à jour la consigne
             </button>
             <button type="button" className="mairie-bouton" onClick={() => void terminer()}>
-              Terminer la crise
+              {enExercice ? "Terminer l'exercice" : 'Terminer la crise'}
             </button>
           </div>
         ) : (
@@ -506,10 +535,12 @@ function PanneauCrise({ crise, communeId }: { crise: CriseServeur | null; commun
             {/* Double confirmation : un déclenchement par erreur alerterait toute la commune */}
             <label style={{ display: 'flex', alignItems: 'flex-start', gap: 8, fontSize: 14, lineHeight: 1.4 }}>
               <input type="checkbox" checked={confirme} onChange={(e) => setConfirme(e.target.checked)} style={{ width: 20, height: 20, margin: 0, flexShrink: 0 }} />
-              Je confirme : tous les habitants de la commune verront cette alerte.
+              {exercice
+                ? 'Je confirme : tous les habitants de la commune verront cet exercice, signalé comme tel.'
+                : 'Je confirme : tous les habitants de la commune verront cette alerte.'}
             </label>
-            <button type="submit" className="mairie-bouton mairie-bouton--urgence" disabled={!valide || !confirme}>
-              Déclencher le mode crise
+            <button type="submit" className={exercice ? 'mairie-bouton mairie-bouton--principal' : 'mairie-bouton mairie-bouton--urgence'} disabled={!valide || !confirme}>
+              {exercice ? "Lancer l'exercice" : 'Déclencher le mode crise'}
             </button>
           </>
         )}

@@ -51,10 +51,15 @@ export default function AccueilCrise() {
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <span style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, fontWeight: 800, color: 'var(--consigne)', textTransform: 'uppercase', letterSpacing: 0.8 }}>
               <Icone nom="alerte" taille={16} epaisseur={2.4} />
-              Mode crise activé
+              {alerte?.exercice ? 'Exercice de la mairie' : 'Mode crise activé'}
             </span>
             <span style={{ fontSize: 12, color: 'var(--bleu-clair)' }}>Mairie · {alerte?.heure}</span>
           </div>
+          {alerte?.exercice && (
+            <div style={{ background: 'var(--consigne)', color: 'var(--bleu-nuit)', borderRadius: 10, padding: '8px 10px', fontSize: 14, fontWeight: 700, lineHeight: 1.35 }}>
+              Ceci est un exercice, pas une vraie alerte. Participez comme si c'était réel : vos demandes servent d'entraînement à la cellule de crise.
+            </div>
+          )}
           <div style={{ fontSize: 18, fontWeight: 800, lineHeight: 1.25 }}>{alerte?.titre}</div>
           <div style={{ fontSize: 14, lineHeight: 1.4, color: 'var(--bleu-voile)' }}>
             <strong style={{ color: 'var(--consigne)' }}>Consigne :</strong> {alerte?.consigne}
