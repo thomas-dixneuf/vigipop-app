@@ -158,6 +158,8 @@ export default function TableauDeBord({ coordinateur }: { coordinateur: Coordina
     }
   }, [client, commune, charger])
 
+  const enCrise = !!donnees?.crise
+  const demandesOuvertes = donnees ? donnees.demandes.filter((d) => d.statut !== 'close' && d.statut !== 'aide_organisee').length : 0
   return (
     <div className="mairie">
       <header className="mairie-barre">
@@ -191,7 +193,7 @@ export default function TableauDeBord({ coordinateur }: { coordinateur: Coordina
       ) : (
         <main className="mairie-contenu">
           <div className="mairie-colonne">
-            <Compteurs demandes={donnees.demandes} />
+            {enCrise && <Compteurs demandes={donnees.demandes} />}
             <CarteMairie
               lieux={donnees.lieux}
               demandes={donnees.demandes}
@@ -201,6 +203,8 @@ export default function TableauDeBord({ coordinateur }: { coordinateur: Coordina
               communeId={commune}
               enCrise={!!donnees.crise}
             />
+            {enCrise && (
+              <>
             <PanneauBesoins
               demandes={donnees.demandes}
               volontaires={donnees.volontaires}
@@ -211,7 +215,11 @@ export default function TableauDeBord({ coordinateur }: { coordinateur: Coordina
             />
             <PanneauHebergement demandes={donnees.demandes} volontaires={donnees.volontaires} hebergements={donnees.hebergements} communeId={commune} />
             <PanneauEntraides demandes={donnees.demandes} volontaires={donnees.volontaires} entraides={donnees.entraides} communeId={commune} />
-            <Demandes demandes={donnees.demandes} depuis={donnees.crise?.declenchee_a ?? null} />
+              </>
+            )}
+            {/* En veille, la gestion de crise est masquée ; seule reste une demande isolée encore ouverte
+                (incendie, personne âgée...), pour qu'elle ne passe jamais inaperçue. */}
+            {(enCrise || demandesOuvertes > 0) && <Demandes demandes={donnees.demandes} depuis={donnees.crise?.declenchee_a ?? null} />}
           </div>
           <div className="mairie-colonne">
             <PanneauCrise crise={donnees.crise} communeId={commune} />
@@ -219,6 +227,7 @@ export default function TableauDeBord({ coordinateur }: { coordinateur: Coordina
             <PanneauLieux lieux={donnees.lieux} communeId={commune} />
             <PanneauVolontaires volontaires={donnees.volontaires} enCrise={!!donnees.crise} />
             <PanneauHabilitations communeId={commune} />
+            {enCrise && (
             <PanneauMissions
               key={modeleMission?.numero ?? 0}
               modele={modeleMission}
@@ -227,6 +236,7 @@ export default function TableauDeBord({ coordinateur }: { coordinateur: Coordina
               volontaires={donnees.volontaires}
               communeId={commune}
             />
+            )}
             <PanneauJournal journal={donnees.journal} />
             <PanneauPush />
           </div>
