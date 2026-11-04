@@ -2,7 +2,7 @@ import { Link, Navigate } from 'react-router-dom'
 import HebergementTrouve from '../components/HebergementTrouve.tsx'
 import AidantsTrouves from '../components/AidantsTrouves.tsx'
 import Icone from '../components/Icone.tsx'
-import { besoins, lieuxDemo, situations } from '../data/fictif.ts'
+import { besoins, lieuxDemo, numeroSmsDemo, situations } from '../data/fictif.ts'
 import { serveur, type BesoinEntraide } from '../services/serveur.ts'
 import { useAppState } from '../state/AppState.tsx'
 
@@ -23,6 +23,21 @@ export default function Confirmation() {
 
   const situation = situations.find((s) => s.id === demande.situation)?.label
   const listeBesoins = besoins.filter((b) => demande.besoins.includes(b.id)).map((b) => b.label)
+
+  // Repli SMS : un SMS passe souvent quand Internet ne passe plus. Numéro de la cellule de crise
+  // fourni par la commune (VITE_SMS_CELLULE) ; sans numéro, l'habitant choisit le destinataire.
+  const numeroSms = (import.meta.env.VITE_SMS_CELLULE as string | undefined) ?? (serveur ? '' : numeroSmsDemo)
+  const texteSms = [
+    `VIGIPOP ${commune} réf. ${demande.reference}`,
+    situation ? `Situation : ${situation}` : '',
+    `${demande.personnes} personne${demande.personnes > 1 ? 's' : ''}${demande.personneVulnerable ? ' dont une vulnérable' : ''}`,
+    listeBesoins.length ? `Besoins : ${listeBesoins.join(', ')}` : '',
+    demande.position ? `Lieu : ${demande.position}` : '',
+    demande.prenom ? `Prénom : ${demande.prenom}` : '',
+  ]
+    .filter(Boolean)
+    .join('\n')
+  const lienSms = `sms:${numeroSms.replace(/\s/g, '')}?&body=${encodeURIComponent(texteSms)}`
 
   const partager = async () => {
     const texte = `Je suis en contact avec la cellule de crise de ${commune} via Vigipop (réf. ${demande.reference}). Situation : ${situation}.`
@@ -70,6 +85,20 @@ export default function Confirmation() {
             {listeBesoins.length ? ` · ${listeBesoins.join(', ')}` : ''}
           </p>
         </section>
+
+        {!demande.envoyee && (
+          <section className="carte" style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <span style={{ fontSize: 16, fontWeight: 800, color: 'var(--bleu-nuit)' }}>Internet ne passe pas ? Essayez par SMS</span>
+            <span className="texte-doux" style={{ lineHeight: 1.4 }}>
+              Un SMS passe souvent quand Internet est coupé. Le message est déjà rédigé, il suffit de l'envoyer.
+              {numeroSms ? '' : ' Choisissez la personne à qui l\'envoyer.'}
+            </span>
+            <a href={lienSms} className="bouton bouton--urgence" style={{ minHeight: 48, fontSize: 16 }}>
+              <Icone nom="message" taille={20} />
+              {numeroSms ? 'Envoyer par SMS à la mairie' : 'Envoyer ma demande par SMS'}
+            </a>
+          </section>
+        )}
 
         {demande.envoyee && <HebergementTrouve demande={demande.id} recherche={demande.besoins.includes('heb') && demande.statut !== 'close'} />}
         {demande.envoyee && demande.statut !== 'close' && (

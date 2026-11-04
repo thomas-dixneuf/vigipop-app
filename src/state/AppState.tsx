@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react'
-import { commune as communeDemo, missionsDemo, ressourcesParDefaut, type BesoinId, type RessourceId, type SituationId } from '../data/fictif'
+import { centreCommune, commune as communeDemo, missionsDemo, ressourcesParDefaut, type BesoinId, type RessourceId, type SituationId } from '../data/fictif'
+import { prechargerCarte } from '../outils/carteHorsLigne'
 import {
   assurerSession,
   COMMUNE_ID,
@@ -211,6 +212,9 @@ const AppStateContext = createContext<AppStateValue | null>(null)
 export function AppStateProvider({ children }: { children: ReactNode }) {
   const [etat, setEtat] = useState<Etat>(() => lireEtat())
   const [enLigne, setEnLigne] = useState(navigator.onLine)
+  // Compteur de nouvelles tentatives : relance les envois en attente même si le téléphone
+  // n'annonce jamais « réseau revenu » (réseau faible, Wi-Fi sans Internet)
+  const [essai, setEssai] = useState(0)
   // Clés déjà annoncées, lues de façon synchrone pour ne jamais notifier deux fois
   const dejaAnnoncees = useRef(new Set([...etat.notifications.map((n) => n.cle), ...etat.notificationsEffacees]))
 
@@ -241,6 +245,11 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
       window.removeEventListener('offline', maj)
     }
   }, [])
+
+  // Carte de la commune gardée sur le téléphone dès qu'il y a du réseau (veille comme crise)
+  useEffect(() => {
+    if (enLigne) void prechargerCarte(centreCommune)
+  }, [enLigne])
 
   // ─── Ce que décide la mairie : crise, lieux ouverts, mission ───
   const chargerCommune = useCallback(async () => {
@@ -350,13 +359,13 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
         })
         if (!error) marquer()
       } catch {
-        // Réseau instable : nouvel essai au prochain retour en ligne
+        // Réseau instable : nouvel essai au prochain retour en ligne ou dans 30 s
       }
     })()
     return () => {
       annule = true
     }
-  }, [demande, enLigne])
+  }, [demande, enLigne, essai])
 
   // ─── Suivi en direct du statut décidé par la mairie ───
   const idSuivi = demande?.envoyee ? demande.id : null
@@ -421,7 +430,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     return () => {
       annule = true
     }
-  }, [disponibiliteEnvoyee, enLigne, utilisateur, disponible, ressources, accueil])
+  }, [disponibiliteEnvoyee, enLigne, essai, utilisateur, disponible, ressources, accueil])
 
   // ─── Réponse à la mission proposée par la mairie ───
   const { reponsesAEnvoyer } = etat
@@ -455,7 +464,28 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     return () => {
       annule = true
     }
-  }, [aEnvoyer, enLigne, utilisateur])
+  }, [aEnvoyer, enLigne, essai, utilisateur])
+
+  // ─── Nouvel essai automatique tant qu'un envoi attend ───
+  // Toutes les 30 s, et dès que l'habitant revient sur l'app : sur iPhone, rien ne part
+  // en arrière-plan, donc chaque retour au premier plan est une occasion d'envoyer.
+  const envoiEnAttente = (!!demande && !demande.envoyee) || (!disponibiliteEnvoyee && !!utilisateur) || !!aEnvoyer
+  useEffect(() => {
+    if (!envoiEnAttente) return
+    const relancer = () => {
+      if (document.visibilityState === 'hidden') return
+      setEnLigne(navigator.onLine)
+      setEssai((n) => n + 1)
+    }
+    const minuterie = window.setInterval(relancer, 30_000)
+    document.addEventListener('visibilitychange', relancer)
+    window.addEventListener('focus', relancer)
+    return () => {
+      window.clearInterval(minuterie)
+      document.removeEventListener('visibilitychange', relancer)
+      window.removeEventListener('focus', relancer)
+    }
+  }, [envoiEnAttente])
 
   const proposables = (serveur ? etat.missions : missionsDemo).filter(
     (m) => (m.categorie === '' || etat.ressources.includes(m.categorie as RessourceId)) && !etat.missionsRefusees.includes(m.id),

@@ -8,6 +8,9 @@ export const commune = '[VOTRE COMMUNE]'
 export const risques = ['Inondation', 'Tempête', '[AUTRE RISQUE]']
 
 // Lieux de démonstration, au même format que ceux du serveur
+// Numéro SMS de la cellule de crise en mode démo : tranche réservée aux œuvres de fiction (ARCEP)
+export const numeroSmsDemo = '0639980000'
+
 // Coordonnées fictives autour du centre de la commune démo
 export const centreCommune: [number, number] = [47.0585, -0.88]
 
