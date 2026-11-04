@@ -3,6 +3,7 @@ import { Navigate, useLocation, useNavigate } from 'react-router-dom'
 import EnTeteRetour from '../components/EnTeteRetour.tsx'
 import type { EtatCode } from '../outils/formulaire.ts'
 import { useAppState } from '../state/AppState.tsx'
+import { presentation } from '../components/BoutonDemo.tsx'
 
 export default function Code() {
   const navigate = useNavigate()
@@ -55,9 +56,11 @@ export default function Code() {
           />
         </label>
 
-        <p style={{ fontSize: 13, color: 'var(--bleu-nuit)', background: 'var(--bleu-voile)', borderRadius: 12, padding: '10px 12px', lineHeight: 1.4 }}>
-          <strong>Démo :</strong> aucun SMS n'est envoyé. Tapez n'importe quel code à 6 chiffres.
-        </p>
+        {!presentation && (
+          <p style={{ fontSize: 13, color: 'var(--bleu-nuit)', background: 'var(--bleu-voile)', borderRadius: 12, padding: '10px 12px', lineHeight: 1.4 }}>
+            <strong>Démo :</strong> aucun SMS n'est envoyé. Tapez n'importe quel code à 6 chiffres.
+          </p>
+        )}
 
         <button type="button" onClick={() => setRenvoye(true)} disabled={renvoye} style={{ alignSelf: 'center', minHeight: 44, background: 'none', border: 'none', color: 'var(--bleu)', fontWeight: 700, fontSize: 15 }}>
           {renvoye ? 'Nouveau code envoyé' : "Je n'ai rien reçu, renvoyer le code"}

@@ -6,7 +6,8 @@ export default function Logo({ taille = 48, slogan = false }: { taille?: number;
       alt={slogan ? "Vigipop — Organiser l'imprévisible" : 'Vigipop'}
       width={taille}
       height={taille}
-      style={{ borderRadius: taille / 4, display: 'block' }}
+      draggable={false}
+      style={{ borderRadius: taille / 4, display: 'block', WebkitTouchCallout: 'none', userSelect: 'none' }}
     />
   )
 }
