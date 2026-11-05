@@ -2,9 +2,13 @@ import { useState, type FormEvent } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import ChampTelephone from '../components/ChampTelephone.tsx'
 import EnTeteRetour from '../components/EnTeteRetour.tsx'
+import TexteLegal from '../components/TexteLegal.tsx'
+import { conditions, confidentialite, enBrefConditions, enBrefConfidentialite } from '../data/textesLegaux.tsx'
 import { commune as communeDemo } from '../data/fictif.ts'
 import { champ, libelle, numeroValide, type EtatCode } from '../outils/formulaire.ts'
 import { useAppState } from '../state/AppState.tsx'
+
+const lienTexte = { background: 'none', border: 'none', padding: 0, minHeight: 44, color: 'var(--bleu)', fontSize: 13, fontWeight: 700, textDecoration: 'underline' } as const
 
 export default function Inscription() {
   const navigate = useNavigate()
@@ -15,6 +19,8 @@ export default function Inscription() {
   const [telephone, setTelephone] = useState(contact?.telephone ?? '')
   const [commune, setCommune] = useState('')
   const [consentement, setConsentement] = useState(false)
+  // Texte ouvert par-dessus le formulaire, pour ne pas perdre ce qui est déjà saisi
+  const [texte, setTexte] = useState<'conditions' | 'confidentialite' | null>(null)
 
   const valide = prenom.trim() !== '' && numeroValide(telephone) && consentement
 
@@ -54,8 +60,16 @@ export default function Inscription() {
             onChange={(e) => setConsentement(e.target.checked)}
             style={{ width: 20, height: 20, margin: 0, accentColor: 'var(--bleu)', flexShrink: 0 }}
           />
-          J'accepte que ma commune utilise ces informations pour me contacter en cas de crise.
+          J'accepte les conditions d'utilisation et j'ai lu comment ma commune utilise mes informations pour me joindre en cas de crise.
         </label>
+        <span style={{ display: 'flex', gap: 16, paddingLeft: 30, marginTop: -8 }}>
+          <button type="button" onClick={() => setTexte('conditions')} style={lienTexte}>
+            Conditions d'utilisation
+          </button>
+          <button type="button" onClick={() => setTexte('confidentialite')} style={lienTexte}>
+            Vos données
+          </button>
+        </span>
 
         <div style={{ flex: 1 }} />
         <button type="submit" className="bouton bouton--principal" disabled={!valide}>
@@ -71,6 +85,26 @@ export default function Inscription() {
           </Link>
         </p>
       </form>
+
+      {texte && (
+        <div role="dialog" aria-modal="true" aria-label={texte === 'conditions' ? "Conditions d'utilisation" : 'Vos données'} style={{ position: 'fixed', inset: 0, zIndex: 50, background: 'var(--fond)', overflowY: 'auto' }}>
+          <div className="ecran" style={{ minHeight: '100%' }}>
+            <header style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '20px 20px 8px' }}>
+              <h1 style={{ fontSize: 22, fontWeight: 800, color: 'var(--bleu-nuit)' }}>{texte === 'conditions' ? "Conditions d'utilisation" : 'Vos données'}</h1>
+              <button type="button" className="bouton bouton--contour" onClick={() => setTexte(null)} style={{ minHeight: 44, width: 'auto', padding: '0 16px', fontSize: 15 }}>
+                Fermer
+              </button>
+            </header>
+            <main className="contenu" style={{ paddingTop: 8 }}>
+              {texte === 'conditions' ? (
+                <TexteLegal enBref={enBrefConditions} paragraphes={conditions} />
+              ) : (
+                <TexteLegal enBref={enBrefConfidentialite} paragraphes={confidentialite} />
+              )}
+            </main>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

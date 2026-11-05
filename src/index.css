@@ -108,3 +108,6 @@ h1, h2, p { margin: 0; }
 
 /* Vue de présentation : l'app tient dans le cadre du téléphone */
 .cadre-telephone .ecran { min-height: 100%; }
+
+/* Pages « Vos données » et « Conditions d'utilisation » */
+.texte-legal ul { padding-left: 18px; display: flex; flex-direction: column; gap: 6px; }

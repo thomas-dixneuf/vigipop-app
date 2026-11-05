@@ -19,10 +19,16 @@ import Notifications from './screens/Notifications.tsx'
 import Notifieur from './components/Notifieur.tsx'
 import RaccourciCrise from './components/RaccourciCrise.tsx'
 import Signaler from './screens/Signaler.tsx'
+import Confidentialite from './screens/Confidentialite.tsx'
+import Conditions from './screens/Conditions.tsx'
+import BandeauDemo from './components/BandeauDemo.tsx'
+import { serveurLocal } from './services/serveur.ts'
 
-export default function App() {
+// dansPresentation : la vue côte à côte affiche déjà le bandeau « Démonstration » dans son en-tête
+export default function App({ dansPresentation = false }: { dansPresentation?: boolean }) {
   return (
     <>
+    {serveurLocal && !dansPresentation && <BandeauDemo />}
     <Notifieur />
     <RaccourciCrise />
     <Routes>
@@ -37,6 +43,9 @@ export default function App() {
       <Route path="/demande" element={<AccesProtege><Confirmation /></AccesProtege>} />
       {/* La carte des secours reste consultable sans compte, avant même une crise */}
       <Route path="/carte" element={<Carte />} />
+      {/* Vos données et conditions d'utilisation : lisibles par tous, avec ou sans compte */}
+      <Route path="/confidentialite" element={<Confidentialite />} />
+      <Route path="/conditions" element={<Conditions />} />
       <Route path="/quartier" element={<AccesProtege><MonQuartier /></AccesProtege>} />
       <Route path="/profil" element={<AccesProtege><Profil /></AccesProtege>} />
       <Route path="/profil/infos" element={<AccesProtege compteObligatoire><MesInfos /></AccesProtege>} />

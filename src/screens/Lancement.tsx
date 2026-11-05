@@ -70,6 +70,14 @@ export default function Lancement() {
         <a href="tel:112" style={{ ...lienClair, color: 'var(--blanc)', fontWeight: 400, fontSize: 14 }}>
           Danger immédiat ?&nbsp;<strong style={{ color: 'var(--consigne)' }}>Appelez le 112</strong>
         </a>
+        <span style={{ display: 'flex', gap: 16, justifyContent: 'center' }}>
+          <Link to="/confidentialite" state={{ retour: '/' }} style={{ ...lienClair, color: 'var(--bleu-clair)', fontSize: 13, fontWeight: 600 }}>
+            Vos données
+          </Link>
+          <Link to="/conditions" state={{ retour: '/' }} style={{ ...lienClair, color: 'var(--bleu-clair)', fontSize: 13, fontWeight: 600 }}>
+            Conditions d'utilisation
+          </Link>
+        </span>
         {!utilisateur && <BoutonDemo sombre />}
       </div>
     </div>

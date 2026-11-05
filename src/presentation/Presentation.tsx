@@ -1,6 +1,7 @@
 import { useEffect, useState, type CSSProperties } from 'react'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import App from '../App.tsx'
+import BandeauDemo from '../components/BandeauDemo.tsx'
 import Logo from '../components/Logo.tsx'
 import MairieApp from '../mairie/MairieApp.tsx'
 import { reinitialiserPresentation } from '../services/serveurLocal.ts'
@@ -77,6 +78,9 @@ export default function Presentation({ commune }: { commune: string }) {
           Réinitialiser
         </button>
       </header>
+      <div style={{ padding: large ? '0 24px 10px' : '0 12px 8px' }}>
+        <BandeauDemo sombre />
+      </div>
       <div style={{ flex: 1, minHeight: 0, display: 'flex', gap: 24, padding: large ? '0 24px 20px' : 0 }}>
         <section
           aria-label="Application habitant"
@@ -101,7 +105,7 @@ export default function Presentation({ commune }: { commune: string }) {
           >
             <div style={{ height: '100%', overflowY: 'auto' }}>
               <MemoryRouter initialEntries={['/']}>
-                <App />
+                <App dansPresentation />
               </MemoryRouter>
             </div>
           </div>
