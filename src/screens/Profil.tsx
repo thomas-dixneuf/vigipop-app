@@ -96,6 +96,17 @@ export default function Profil() {
           )}
         </section>
 
+        <section className="carte" style={{ padding: 0, borderRadius: 16 }}>
+          <Link to="/confidentialite" style={{ ...ligne, borderBottom: '1px solid var(--bleu-voile)' }}>
+            Vos données et votre vie privée
+            <Icone nom="fleche" taille={18} />
+          </Link>
+          <Link to="/conditions" style={ligne}>
+            Conditions d'utilisation
+            <Icone nom="fleche" taille={18} />
+          </Link>
+        </section>
+
         {utilisateur && (
           <button type="button" onClick={deconnecter} className="bouton bouton--contour" style={{ minHeight: 48, fontSize: 15 }}>
             Se déconnecter
