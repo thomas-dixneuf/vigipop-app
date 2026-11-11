@@ -163,9 +163,9 @@ export const communesDemo: CommuneDemo[] = [
 
 // Étapes du bouton « Simuler un déplacement » : chez soi, ville voisine abonnée, zone sans Vigipop
 export const positionsDemo: { libelle: string; position: [number, number] }[] = [
-  { libelle: 'chez moi', position: centreCommune },
-  { libelle: 'la commune voisine (exemple)', position: communesDemo[0].centre },
-  { libelle: 'une ville sans Vigipop', position: [46.58, 0.34] },
+  { libelle: 'retour chez moi', position: centreCommune },
+  { libelle: 'vers la commune voisine (exemple)', position: communesDemo[0].centre },
+  { libelle: 'vers une ville sans Vigipop', position: [46.58, 0.34] },
 ]
 
 // Hébergement solidaire chez l'habitant : un nombre, jamais d'adresse privée

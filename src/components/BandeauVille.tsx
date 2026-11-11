@@ -49,8 +49,8 @@ export default function BandeauVille({ proposer = false }: { proposer?: boolean 
       style={{ ...petitBouton, border: '1px dashed var(--texte-doux)', color: 'var(--texte-doux)', fontSize: 13 }}
       onClick={() => localiser(suivante.position)}
     >
-      {serveurLocal ? 'Simuler un déplacement : ' : 'Démo : aller à '}
-      {serveurLocal ? `aller à ${suivante.libelle}` : suivante.libelle}
+      {serveurLocal ? 'Simuler un déplacement : ' : 'Démo : '}
+      {suivante.libelle}
     </button>
   )
 

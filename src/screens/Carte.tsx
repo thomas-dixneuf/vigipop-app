@@ -139,7 +139,9 @@ export default function Carte() {
           </p>
         )}
 
+        {/* Changement de ville : la carte repart centrée sur la commune affichée */}
         <CarteInteractive
+          key={communeActiveId}
           reperes={reperes}
           zones={zones}
           zonesRisque={zonesRisque}
