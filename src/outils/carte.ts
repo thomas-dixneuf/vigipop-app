@@ -47,8 +47,13 @@ function normaliser(texte: string) {
 // Liste embarquée (chargée seulement si besoin) : tous les mots tapés doivent s'y retrouver
 async function chercherHorsLigne(texte: string, type?: 'municipality'): Promise<ResultatAdresse[]> {
   const { adressesEmbarquees, communesEmbarquees } = await import('../data/adressesEmbarquees')
-  const mots = normaliser(texte).split(/\s+/).filter(Boolean)
-  return (type ? communesEmbarquees : adressesEmbarquees).filter((a) => mots.every((m) => normaliser(a.libelle).includes(m))).slice(0, 5)
+  // « 12 bis rue Nationale » : le numéro est gardé dans le libellé, la position reste celle de la rue
+  const numero = type ? null : texte.trim().match(/^(\d+\s*(?:bis|ter)?)[\s,]+/i)
+  const mots = normaliser(numero ? texte.trim().slice(numero[0].length) : texte).split(/\s+/).filter(Boolean)
+  return (type ? communesEmbarquees : adressesEmbarquees)
+    .filter((a) => mots.every((m) => normaliser(a.libelle).includes(m)))
+    .slice(0, 5)
+    .map((a) => (numero ? { ...a, libelle: `${numero[1].trim()} ${a.libelle}` } : a))
 }
 
 // Géocodeur officiel de l'IGN, puis ancienne adresse de la Base Adresse Nationale (même format)

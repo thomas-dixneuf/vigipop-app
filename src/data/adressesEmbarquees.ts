@@ -1,15 +1,17 @@
 import type { ResultatAdresse } from '../outils/carte'
 import { centreCommune, commune, communesDemo, lieuxDemo, pointsRassemblement } from './fictif'
+import { ruesCholet } from './ruesCholet'
 
 // Liste de secours, embarquée dans l'app : utilisée quand la Base Adresse Nationale ne répond pas
 // (pas de réseau, maquette publiée sans accès à Internet). Les choix restent ainsi vérifiés.
-// Maquette Cholet : lieux du DICRIM et points de rassemblement (positions OpenStreetMap).
+// Maquette Cholet : lieux du DICRIM, points de rassemblement et rues de Cholet (positions OpenStreetMap).
 
 const [lat, lng] = centreCommune
 
 export const adressesEmbarquees: ResultatAdresse[] = [
   ...lieuxDemo.filter((l) => l.adresse && l.lat !== null && l.lng !== null).map((l) => ({ libelle: l.adresse, lat: l.lat!, lng: l.lng! })),
   ...pointsRassemblement.map((p) => ({ libelle: `${p.nom}, ${p.quartier}, 49300 Cholet`, lat: p.lat, lng: p.lng })),
+  ...ruesCholet.map(([nom, latRue, lngRue]) => ({ libelle: `${nom}, 49300 Cholet`, lat: latRue, lng: lngRue })),
 ]
 
 // Communes : la commune démo, la ville voisine fictive et les grandes villes (centre approximatif)
