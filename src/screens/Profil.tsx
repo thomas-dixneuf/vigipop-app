@@ -1,6 +1,7 @@
 import { Link, useNavigate } from 'react-router-dom'
 import BarreNav from '../components/BarreNav.tsx'
 import Icone from '../components/Icone.tsx'
+import { serveur } from '../services/serveur.ts'
 import { useAppState } from '../state/AppState.tsx'
 
 const ligne = {
@@ -26,7 +27,7 @@ const caseACocher = { width: 24, height: 24, marginTop: 2, flexShrink: 0, accent
 // Version simple du profil : la page complète (offres et prêts) viendra ensuite
 export default function Profil() {
   const navigate = useNavigate()
-  const { utilisateur, mode, lancerVisite, deconnecter, communeAffichee, geoloc, activerGeoloc, statsPassage, choisirStatsPassage } = useAppState()
+  const { utilisateur, mode, lancerVisite, deconnecter, communeAffichee, geoloc, activerGeoloc, statsPassage, choisirStatsPassage, simulerCompteEfface } = useAppState()
 
   const revoirVisite = () => {
     lancerVisite()
@@ -118,6 +119,19 @@ export default function Profil() {
         {utilisateur && (
           <button type="button" onClick={deconnecter} className="bouton bouton--contour" style={{ minHeight: 48, fontSize: 15 }}>
             Se déconnecter
+          </button>
+        )}
+        {/* Démo seulement : ce que voit un habitant dont le compte a été effacé après 3 ans sans ouverture */}
+        {utilisateur && !serveur && (
+          <button
+            type="button"
+            onClick={() => {
+              simulerCompteEfface()
+              navigate('/')
+            }}
+            style={{ alignSelf: 'center', minHeight: 44, padding: '0 16px', borderRadius: 22, border: '1px dashed var(--texte-doux)', background: 'transparent', color: 'var(--texte-doux)', fontSize: 13, fontWeight: 700 }}
+          >
+            Démo : compte effacé après 3 ans sans ouverture
           </button>
         )}
       </main>

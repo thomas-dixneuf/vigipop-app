@@ -40,6 +40,11 @@ les secours et l'alerte officielle (FR-Alert), elle ne les remplace jamais.
   avec l'app) ; vrai code de connexion activé par `VITE_CONNEXION_SMS=1` (`docs/SMS.md`).
 - **RGPD** : suppression de compte par l'habitant, effacement automatique chaque nuit (migration 0014),
   déconnexion qui ne garde que les informations publiques ; « Mon foyer » reste sur le téléphone.
+- **Comptes inactifs** (migration 0016) : l'inactivité se juge sur l'**ouverture de l'app** (signalée une fois par jour,
+  `etat_compte`), jamais sur les connexions. 3 ans sans ouverture → rappel J-30 puis J-7 (notification + SMS, file
+  `sms_a_envoyer`), puis effacement ; jamais sans rappel réellement parti, ni pendant une crise de sa commune, ni avec une
+  demande en cours. Au retour,
+  message « votre compte a été effacé » et recréation pré-remplie. La demande d'aide n'exige jamais de compte.
 - **Géolocalisation** (migration 0015) : avec l'accord de l'habitant (désactivé par défaut), l'app affiche les services
   de la commune Vigipop où il se trouve (`commune_a_proximite`, centre et rayon réglés par la mairie). La position sert
   au calcul et n'est **jamais enregistrée**. Une demande en cours reste suivie par sa commune (pas de bascule) ; les

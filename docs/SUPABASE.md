@@ -27,7 +27,8 @@ fonctionne en mode démo local, avec un bouton « Démo » pour simuler la crise
    voir `docs/SMS.md`), puis `0014_rgpd.sql` (suppression de compte par l'habitant, effacement
    automatique chaque nuit : activer d'abord l'extension **pg_cron** dans **Database → Extensions**), puis
    `0015_communes_position.sql` (centre et rayon de chaque commune : l'app affiche les services de la ville où
-   l'on se trouve, sans jamais enregistrer la position). Chaque nouveau fichier de `supabase/migrations/` se lance
+   l'on se trouve, sans jamais enregistrer la position), puis `0016_comptes_inactifs.sql` (comptes effacés après
+  3 ans sans ouverture de l'app, après deux rappels par notification et SMS ; s'ajoute à la tâche de chaque nuit). Chaque nouveau fichier de `supabase/migrations/` se lance
    une seule fois, dans l'ordre des numéros.
 
 ## 2. Autoriser les habitants sans mot de passe
