@@ -1,9 +1,22 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react'
-import { centreCommune, commune as communeDemo, missionsDemo, ressourcesParDefaut, type BesoinId, type RessourceId, type SituationId } from '../data/fictif'
+import {
+  centreCommune,
+  commune as communeDemo,
+  communesDemo,
+  missionsDemo,
+  rayonCommuneDemo,
+  ressourcesParDefaut,
+  type BesoinId,
+  type RessourceId,
+  type SituationId,
+} from '../data/fictif'
+import { distanceMetres } from '../outils/carte'
 import { prechargerCarte } from '../outils/carteHorsLigne'
 import {
   assurerSession,
   COMMUNE_ID,
+  communeAProximite,
+  type CommuneProche,
   heure,
   serveur,
   type CriseServeur,
@@ -33,6 +46,8 @@ export type Demande = {
   statut: StatutDemande
   // Ce que la mairie a prévu (« aide organisée »)
   reponseMairie?: string
+  // Commune qui traite la demande : celle où l'on se trouvait en l'envoyant (absente : sa commune)
+  communeId?: string
 }
 
 export type Utilisateur = {
@@ -105,6 +120,19 @@ type Etat = {
   offresEnregistrees: boolean
   // Crise terminée alors qu'une demande était en cours : on demande si l'aide est toujours nécessaire
   apresCrise: boolean
+  // ─── Géolocalisation (accord de l'habitant, désactivable à tout moment) ───
+  // Afficher les services Vigipop de la ville où l'on se trouve. La position reste sur le
+  // téléphone : seule la commune trouvée est gardée, jamais les coordonnées.
+  geoloc: boolean
+  // Accord SÉPARÉ et facultatif : statistiques de passage anonymes et agrégées.
+  // Prototype : rien n'est collecté ni envoyé, l'option ne fait que mémoriser le choix.
+  statsPassage: boolean
+  // Ville Vigipop visitée dont l'app affiche les services (null : sa propre commune)
+  communeVisitee: CommuneProche | null
+  // Dernière position connue hors de toute commune Vigipop
+  horsCouverture: boolean
+  // Ville visitée que l'habitant a choisi de ne pas afficher (« Revenir à ma commune »)
+  communeIgnoree: string | null
 }
 
 type AppStateValue = Etat & {
@@ -135,6 +163,18 @@ type AppStateValue = Etat & {
   repondreApresCrise: (besoinAide: boolean) => void
   repondreMission: (reponse: 'acceptee' | 'refusee') => void
   reinitialiser: () => void
+  // Commune dont l'app affiche les services, et son centre (carte, carte hors ligne)
+  communeActiveId: string
+  centreActif: [number, number]
+  // Active ou coupe la géolocalisation ; à l'activation, le téléphone demande l'autorisation
+  activerGeoloc: (actif: boolean) => void
+  // Choix séparé, facultatif, pour les statistiques de passage anonymes (rien n'est collecté ici)
+  choisirStatsPassage: (actif: boolean) => void
+  // Nouvelle recherche de la commune où l'on se trouve ; position imposée : simulation en mode démo
+  localiser: (position?: [number, number]) => void
+  // Recherche en cours, ou message si la position n'a pas pu être obtenue
+  localisation: 'en-cours' | 'refusee' | 'indisponible' | null
+  revenirMaCommune: () => void
   // Ajoute une notification si son événement n'a pas déjà été annoncé ; vrai si elle est nouvelle
   ajouterNotification: (n: Omit<NotificationApp, 'heure' | 'lue'>) => boolean
   marquerNotificationsLues: () => void
@@ -170,6 +210,11 @@ const etatInitial: Etat = {
   visiteFaite: false,
   offresEnregistrees: false,
   apresCrise: false,
+  geoloc: false,
+  statsPassage: false,
+  communeVisitee: null,
+  horsCouverture: false,
+  communeIgnoree: null,
 }
 
 // Ce qui reste sur le téléphone après une déconnexion : uniquement les informations publiques
@@ -185,7 +230,53 @@ function etatPublic(e: Etat): Etat {
     missions: e.missions,
     nomCommune: e.nomCommune,
     risques: e.risques,
+    // Réglages du téléphone et commune affichée (pas de donnée personnelle)
+    geoloc: e.geoloc,
+    statsPassage: e.statsPassage,
+    communeVisitee: e.communeVisitee,
+    horsCouverture: e.horsCouverture,
+    communeIgnoree: e.communeIgnoree,
   }
+}
+
+// Commune dont l'app affiche les services
+function idActif(e: Etat) {
+  return e.communeVisitee?.id ?? COMMUNE_ID
+}
+
+// Une demande d'aide en cours reste suivie par sa commune : on ne change pas de ville sous ses pieds
+function demandeEnCours(e: Etat) {
+  return !!e.demande && e.demande.statut !== 'close'
+}
+
+// Changement de ville : on oublie ce qui appartenait à l'autre commune (lieux, zones, alerte),
+// sans jamais effacer la demande d'aide. En mode démo, la ville fictive arrive avec ses lieux.
+function changerDeCommune(e: Etat, visitee: CommuneProche | null): Etat {
+  if ((visitee?.id ?? null) === (e.communeVisitee?.id ?? null)) return e
+  const demo = !serveur && visitee ? communesDemo.find((c) => c.id === visitee.id) : undefined
+  return {
+    ...e,
+    communeVisitee: visitee,
+    mode: 'veille',
+    alerte: null,
+    enSecurite: false,
+    lieux: demo ? demo.lieux : null,
+    zones: demo ? [] : null,
+    zonesRisque: demo ? [] : null,
+    missions: [],
+    nomCommune: demo ? demo.nom : null,
+    risques: demo ? demo.risques : null,
+  }
+}
+
+// Mode démo : communes fictives, cherchées sur le téléphone
+function communeDemoA(lat: number, lng: number): CommuneProche | null {
+  const toutes = [{ id: COMMUNE_ID, nom: communeDemo, centre: centreCommune, rayonKm: rayonCommuneDemo }, ...communesDemo]
+  const proche = toutes
+    .map((c) => ({ c, d: distanceMetres({ lat, lng }, { lat: c.centre[0], lng: c.centre[1] }) }))
+    .filter(({ c, d }) => d <= c.rayonKm * 1000)
+    .sort((a, b) => a.d - b.d)[0]
+  return proche ? { id: proche.c.id, nom: proche.c.nom, centre: proche.c.centre } : null
 }
 
 // Mode démo local : alerte fictive affichée quand on simule la crise
@@ -271,18 +362,84 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
   }, [])
 
   // Carte de la commune gardée sur le téléphone dès qu'il y a du réseau (veille comme crise)
+  const centreActif = etat.communeVisitee?.centre ?? centreCommune
+  const [latActive, lngActive] = centreActif
   useEffect(() => {
-    if (enLigne) void prechargerCarte(centreCommune)
-  }, [enLigne])
+    if (enLigne) void prechargerCarte([latActive, lngActive])
+  }, [enLigne, latActive, lngActive])
+
+  // ─── Géolocalisation : services de la ville où l'on se trouve ───
+  const [localisation, setLocalisation] = useState<AppStateValue['localisation']>(null)
+  const derniereRecherche = useRef(0)
+  // Réponse trouvée (null : zone sans Vigipop) ; la position elle-même n'est jamais gardée
+  const appliquerCommune = useCallback((trouvee: CommuneProche | null) => {
+    setEtat((e) => {
+      if (!e.geoloc || demandeEnCours(e)) return e
+      if (!trouvee) return { ...changerDeCommune(e, null), horsCouverture: true, communeIgnoree: null }
+      if (trouvee.id === COMMUNE_ID) return { ...changerDeCommune(e, null), horsCouverture: false, communeIgnoree: null }
+      if (trouvee.id === e.communeIgnoree) return e.horsCouverture ? { ...e, horsCouverture: false } : e
+      return { ...changerDeCommune(e, trouvee), horsCouverture: false, communeIgnoree: null }
+    })
+  }, [])
+  const chercherCommune = useCallback(
+    async (lat: number, lng: number) => {
+      const trouvee = serveur ? await communeAProximite(serveur, lat, lng).catch(() => undefined) : communeDemoA(lat, lng)
+      // Pas de réponse du serveur : on garde la commune affichée
+      if (trouvee !== undefined) appliquerCommune(trouvee)
+    },
+    [appliquerCommune],
+  )
+  const localiser = useCallback(
+    (position?: [number, number]) => {
+      derniereRecherche.current = Date.now()
+      if (position) {
+        setLocalisation(null)
+        void chercherCommune(position[0], position[1])
+        return
+      }
+      // GPS absent ou refusé : l'app reste sur la commune de l'habitant, rien n'est bloqué
+      if (!('geolocation' in navigator)) return setLocalisation('indisponible')
+      setLocalisation('en-cours')
+      navigator.geolocation.getCurrentPosition(
+        (p) => {
+          setLocalisation(null)
+          void chercherCommune(p.coords.latitude, p.coords.longitude)
+        },
+        (err) => setLocalisation(err.code === err.PERMISSION_DENIED ? 'refusee' : 'indisponible'),
+        // Précision de la ville suffisante : pas besoin du GPS fin, moins de batterie
+        { enableHighAccuracy: false, timeout: 15_000, maximumAge: 5 * 60_000 },
+      )
+    },
+    [chercherCommune],
+  )
+  // À l'ouverture, puis à chaque retour sur l'app (au plus toutes les 10 minutes)
+  const { geoloc } = etat
+  useEffect(() => {
+    if (!geoloc) return
+    const peutEtre = () => {
+      if (document.visibilityState === 'hidden' || Date.now() - derniereRecherche.current < 10 * 60_000) return
+      localiser()
+    }
+    const minuteur = window.setTimeout(peutEtre, 0)
+    document.addEventListener('visibilitychange', peutEtre)
+    return () => {
+      window.clearTimeout(minuteur)
+      document.removeEventListener('visibilitychange', peutEtre)
+    }
+  }, [geoloc, localiser])
 
   // ─── Ce que décide la mairie : crise, lieux ouverts, mission ───
+  const communeActiveId = idActif(etat)
   const chargerCommune = useCallback(async () => {
     if (!serveur) return
+    const id = communeActiveId
+    // Réponse arrivée après un changement de ville : ignorée
+    const pourElle = (e: Etat) => idActif(e) === id
     // Nom de la commune : à part, pour qu'un échec ne bloque jamais le reste
     void serveur
       .from('communes')
       .select('*')
-      .eq('id', COMMUNE_ID)
+      .eq('id', id)
       .maybeSingle()
       .then(({ data }) => {
         const commune = data as { nom: string; risques?: string[] } | null
@@ -290,21 +447,21 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
         const nom = commune.nom?.trim() || null
         const risques = commune.risques ?? []
         setEtat((e) =>
-          e.nomCommune === nom && JSON.stringify(e.risques) === JSON.stringify(risques) ? e : { ...e, nomCommune: nom, risques },
+          !pourElle(e) || (e.nomCommune === nom && JSON.stringify(e.risques) === JSON.stringify(risques)) ? e : { ...e, nomCommune: nom, risques },
         )
       })
     // Zones de risque du TIM : à part aussi (absentes tant que la migration 0012 n'est pas lancée)
     void serveur
       .from('zones_risque')
       .select('id, risque, nom, consigne, source, points')
-      .eq('commune_id', COMMUNE_ID)
+      .eq('commune_id', id)
       .order('created_at')
-      .then(({ data, error }) => !error && setEtat((e) => ({ ...e, zonesRisque: data as ZoneRisqueServeur[] })))
+      .then(({ data, error }) => !error && setEtat((e) => (pourElle(e) ? { ...e, zonesRisque: data as ZoneRisqueServeur[] } : e)))
     const [crise, lieux, mission, zones] = await Promise.all([
-      serveur.from('crises').select('id, titre, consigne, active, declenchee_a').eq('commune_id', COMMUNE_ID).eq('active', true).maybeSingle(),
-      serveur.from('lieux').select('id, type, nom, details, distance, places, ouvert, adresse, lat, lng').eq('commune_id', COMMUNE_ID).order('nom'),
-      serveur.from('missions').select('*').eq('commune_id', COMMUNE_ID).eq('active', true).order('created_at', { ascending: false }),
-      serveur.from('zones_danger').select('id, nom, consigne, points').eq('commune_id', COMMUNE_ID).eq('active', true),
+      serveur.from('crises').select('id, titre, consigne, active, declenchee_a').eq('commune_id', id).eq('active', true).maybeSingle(),
+      serveur.from('lieux').select('id, type, nom, details, distance, places, ouvert, adresse, lat, lng').eq('commune_id', id).order('nom'),
+      serveur.from('missions').select('*').eq('commune_id', id).eq('active', true).order('created_at', { ascending: false }),
+      serveur.from('zones_danger').select('id, nom, consigne, points').eq('commune_id', id).eq('active', true),
     ])
     // Sans réseau, on garde la dernière situation connue
     if (crise.error || lieux.error || mission.error || zones.error) return
@@ -312,6 +469,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     const missions = mission.data as MissionServeur[]
     const ouvertes = new Set(missions.map((m) => m.id))
     setEtat((e) => {
+      if (!pourElle(e)) return e
       const suite = {
         ...e,
         lieux: lieux.data as LieuServeur[],
@@ -326,7 +484,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
       }
       return e.mode === 'crise' ? finDeCrise(suite) : suite
     })
-  }, [])
+  }, [communeActiveId])
 
   useEffect(() => {
     if (!serveur) return
@@ -334,9 +492,9 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     // Chargement initial, puis à chaque changement côté mairie (asynchrone : faux positif du linter)
     // eslint-disable-next-line react/set-state-in-effect
     void chargerCommune()
-    const filtre = `commune_id=eq.${COMMUNE_ID}`
+    const filtre = `commune_id=eq.${communeActiveId}`
     const canal = client
-      .channel(`commune-${COMMUNE_ID}`)
+      .channel(`commune-${communeActiveId}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'crises', filter: filtre }, () => void chargerCommune())
       .on('postgres_changes', { event: '*', schema: 'public', table: 'lieux', filter: filtre }, () => void chargerCommune())
       .on('postgres_changes', { event: '*', schema: 'public', table: 'missions', filter: filtre }, () => void chargerCommune())
@@ -351,7 +509,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
       document.removeEventListener('visibilitychange', auRetour)
       window.removeEventListener('online', chargerCommune)
     }
-  }, [chargerCommune])
+  }, [chargerCommune, communeActiveId])
 
   // ─── Envoi (et renvoi) de la demande d'aide ───
   const demande = etat.demande
@@ -371,7 +529,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
         await assurerSession(client)
         const { error } = await client.from('demandes').upsert({
           id: demande.id,
-          commune_id: COMMUNE_ID,
+          commune_id: demande.communeId ?? COMMUNE_ID,
           reference: demande.reference,
           situation: demande.situation,
           besoins: demande.besoins,
@@ -511,7 +669,8 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     }
   }, [envoiEnAttente])
 
-  const proposables = (serveur ? etat.missions : missionsDemo).filter(
+  // En visite, les missions de l'autre ville ne sont pas proposées : on est volontaire chez soi
+  const proposables = (etat.communeVisitee ? [] : serveur ? etat.missions : missionsDemo).filter(
     (m) => (m.categorie === '' || etat.ressources.includes(m.categorie as RessourceId)) && !etat.missionsRefusees.includes(m.id),
   )
   const missionServeur = proposables.find((m) => m.id === etat.missionAcceptee) ?? proposables[0] ?? null
@@ -520,7 +679,22 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     ...etat,
     missionServeur,
     mission: missionServeur && missionServeur.id === etat.missionAcceptee ? 'acceptee' : 'en-attente',
-    communeAffichee: etat.nomCommune || etat.utilisateur?.commune || communeDemo,
+    communeAffichee: etat.nomCommune || etat.communeVisitee?.nom || etat.utilisateur?.commune || communeDemo,
+    communeActiveId,
+    centreActif,
+    localisation,
+    localiser,
+    // Couper la géolocalisation ramène aussitôt l'app sur sa commune
+    activerGeoloc: (actif) => {
+      if (actif) derniereRecherche.current = 0
+      setLocalisation(null)
+      setEtat((e) =>
+        actif ? { ...e, geoloc: true } : { ...changerDeCommune(e, null), geoloc: false, statsPassage: false, horsCouverture: false, communeIgnoree: null },
+      )
+    },
+    choisirStatsPassage: (actif) => setEtat((e) => ({ ...e, statsPassage: actif })),
+    revenirMaCommune: () =>
+      setEtat((e) => ({ ...changerDeCommune(e, null), communeIgnoree: e.communeVisitee?.id ?? e.communeIgnoree })),
     // Mode démo local uniquement : avec le serveur, c'est la mairie qui déclenche la crise
     basculerMode: () =>
       setEtat((e) => (e.mode === 'veille' ? { ...e, mode: 'crise', alerte: alerteDemo, enSecurite: false } : finDeCrise(e))),
@@ -532,7 +706,14 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
         apresCrise: false,
         contact: e.utilisateur || (!demande.prenom && !demande.telephone) ? e.contact : { prenom: demande.prenom, telephone: demande.telephone },
         // « Ma situation a changé » : même demande, mise à jour côté mairie
-        demande: { ...demande, id: id ?? crypto.randomUUID(), statut: id && e.demande?.id === id ? e.demande.statut : 'transmise', envoyee: false },
+        demande: {
+          ...demande,
+          id: id ?? crypto.randomUUID(),
+          statut: id && e.demande?.id === id ? e.demande.statut : 'transmise',
+          envoyee: false,
+          // La commune où l'on se trouve traite la demande ; une mise à jour garde la même
+          communeId: id && e.demande?.id === id ? e.demande.communeId : idActif(e),
+        },
       })),
     // La visite guidée n'est proposée d'office qu'une fois par téléphone
     connecter: (utilisateur, nouveauCompte) =>

@@ -56,6 +56,40 @@ export const zonesRisqueDemo: ZoneRisqueServeur[] = [
   },
 ]
 
+// Géolocalisation (mode démo) : une seconde commune Vigipop fictive, pour montrer ce qui change
+// quand on visite une autre ville. Rayon en km autour du centre.
+export const rayonCommuneDemo = 6
+
+export type CommuneDemo = {
+  id: string
+  nom: string
+  centre: [number, number]
+  rayonKm: number
+  risques: string[]
+  lieux: LieuServeur[]
+}
+
+export const communesDemo: CommuneDemo[] = [
+  {
+    id: 'demo-voisine',
+    nom: '[VILLE VOISINE]',
+    centre: [47.4736, -0.5541],
+    rayonKm: 8,
+    risques: ['Crue', 'Tempête'],
+    lieux: [
+      { id: 'voisine-accueil', type: 'accueil', nom: '[PALAIS DES SPORTS]', details: 'ouvert 24 h/24', distance: '900 m', places: 120, ouvert: true, adresse: '[ADRESSE DU PALAIS DES SPORTS]', lat: 47.4762, lng: -0.5498 },
+      { id: 'voisine-soins', type: 'soins', nom: '[POSTE DE SECOURS DU CENTRE]', details: 'premiers soins', distance: '1,1 km', places: null, ouvert: true, adresse: '[ADRESSE DU POSTE]', lat: 47.4711, lng: -0.5587 },
+    ],
+  },
+]
+
+// Étapes du bouton « Simuler un déplacement » : chez soi, ville voisine abonnée, zone sans Vigipop
+export const positionsDemo: { libelle: string; position: [number, number] }[] = [
+  { libelle: 'chez moi', position: centreCommune },
+  { libelle: '[VILLE VOISINE]', position: communesDemo[0].centre },
+  { libelle: 'une ville sans Vigipop', position: [46.58, 0.34] },
+]
+
 // Hébergement solidaire chez l'habitant : un nombre, jamais d'adresse privée
 export const hebergementsSolidairesDemo = 3
 

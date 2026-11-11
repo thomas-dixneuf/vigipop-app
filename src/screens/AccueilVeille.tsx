@@ -1,5 +1,6 @@
 import { Link, useNavigate } from 'react-router-dom'
 import BarreNav from '../components/BarreNav.tsx'
+import BandeauVille from '../components/BandeauVille.tsx'
 import BoutonDemo from '../components/BoutonDemo.tsx'
 import VisiteGuidee from '../components/VisiteGuidee.tsx'
 import { useAppState } from '../state/AppState.tsx'
@@ -11,10 +12,10 @@ import { serveur } from '../services/serveur.ts'
 
 export default function AccueilVeille() {
   const navigate = useNavigate()
-  const { visiteAFaire, lieux, risques, utilisateur, ressources, offresEnregistrees, apresCrise, repondreApresCrise } = useAppState()
+  const { visiteAFaire, lieux, risques, utilisateur, ressources, offresEnregistrees, apresCrise, repondreApresCrise, communeVisitee } = useAppState()
   // Seulement ce que la mairie a renseigné (les exemples fictifs restent pour le mode démo)
-  const lieuxAccueil = (serveur ? (lieux ?? []) : lieuxDemo).filter((l) => l.type === 'accueil').slice(0, 2)
-  const risquesCommune = serveur ? (risques ?? []) : risquesDemo
+  const lieuxAccueil = (lieux ?? (serveur ? [] : lieuxDemo)).filter((l) => l.type === 'accueil').slice(0, 2)
+  const risquesCommune = risques ?? (serveur ? [] : risquesDemo)
 
   // Préparation : chaque étape vaut autant ; la prochaine non faite est proposée
   const etapes = [
@@ -51,13 +52,17 @@ export default function AccueilVeille() {
           </section>
         )}
 
+        <BandeauVille proposer />
+
         <section data-visite="alerte" style={{ display: 'flex', alignItems: 'center', gap: 12, background: 'var(--bleu-voile)', borderRadius: 16, padding: '14px 16px' }}>
           <span style={{ width: 40, height: 40, borderRadius: 20, background: 'var(--blanc)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--bleu)' }}>
             <Icone nom="bouclier" />
           </span>
           <span style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
             <span style={{ fontSize: 16, fontWeight: 800, color: 'var(--bleu-nuit)' }}>Aucune alerte en cours</span>
-            <span className="texte-doux">Votre mairie vous préviendra ici en cas de crise</span>
+            <span className="texte-doux">
+              {communeVisitee ? `La mairie de ${communeVisitee.nom} vous préviendra ici en cas de crise` : 'Votre mairie vous préviendra ici en cas de crise'}
+            </span>
           </span>
         </section>
 
@@ -87,7 +92,7 @@ export default function AccueilVeille() {
 
         {risquesCommune.length > 0 && (
           <section style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            <h2 className="titre-section">Les risques de ma commune</h2>
+            <h2 className="titre-section">{communeVisitee ? `Les risques à ${communeVisitee.nom}` : 'Les risques de ma commune'}</h2>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
               {risquesCommune.map((r) => (
                 <span
@@ -124,7 +129,7 @@ export default function AccueilVeille() {
         >
           <Icone nom="telephone" couleur="var(--danger)" epaisseur={2} />
           <span>
-            Pas de crise en cours sur votre commune. <strong style={{ color: 'var(--danger)' }}>En cas d'urgence, appelez le 112.</strong>
+            Pas de crise en cours {communeVisitee ? 'ici' : 'sur votre commune'}. <strong style={{ color: 'var(--danger)' }}>En cas d'urgence, appelez le 112.</strong>
           </span>
         </a>
 

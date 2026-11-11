@@ -41,9 +41,13 @@ type Hebergement = { id: string; demande_id: string; hebergeur: string; personne
 type Entraide = { id: string; demande_id: string; besoin: BesoinEntraide; aidant: string; statut: StatutHebergement; updated_at: string }
 type Evenement = { id: number; action: string; details: Record<string, string>; created_at: string }
 
+type PositionCommune = { lat: number; lng: number; rayon_km: number }
+
 type Donnees = {
   crise: CriseServeur | null
   risques: string[]
+  // Centre et rayon de la commune (migration 0015) ; absent : pas encore placée
+  position?: PositionCommune | null
   demandes: DemandeServeur[]
   lieux: LieuServeur[]
   missions: MissionServeur[]
@@ -134,6 +138,10 @@ export default function TableauDeBord({ coordinateur }: { coordinateur: Coordina
     const lues: Donnees = {
       crise: criseActive,
       risques: (communeLue.data as { risques?: string[] } | null)?.risques ?? [],
+      position: (() => {
+        const c = communeLue.data as { lat?: number | null; lng?: number | null; rayon_km?: number | null } | null
+        return c?.lat != null && c?.lng != null ? { lat: c.lat, lng: c.lng, rayon_km: Number(c.rayon_km ?? 5) } : null
+      })(),
       demandes: demandes.data as DemandeServeur[],
       lieux: lieux.data as LieuServeur[],
       missions: missions.data as MissionServeur[],
@@ -225,6 +233,7 @@ export default function TableauDeBord({ coordinateur }: { coordinateur: Coordina
               zonesRisque={donnees.zonesRisque}
               risques={donnees.risques}
               communeId={commune}
+              centre={donnees.position ? [donnees.position.lat, donnees.position.lng] : centreCommune}
             />
             <PanneauBesoins
               demandes={donnees.demandes}
@@ -241,6 +250,7 @@ export default function TableauDeBord({ coordinateur }: { coordinateur: Coordina
           <div className="mairie-colonne">
             <PanneauCrise crise={donnees.crise} communeId={commune} />
             <PanneauRisques risques={donnees.risques} communeId={commune} onEnregistre={() => void charger()} />
+            <PanneauPosition position={donnees.position ?? null} communeId={commune} onEnregistre={() => void charger()} />
             <PanneauLieux lieux={donnees.lieux} communeId={commune} />
             <PanneauVolontaires volontaires={donnees.volontaires} enCrise={!!donnees.crise} />
             <PanneauMissions
@@ -558,12 +568,13 @@ type PropsCarte = {
   zonesRisque: ZoneRisqueServeur[]
   risques: string[]
   communeId: string
+  centre: [number, number]
 }
 
 // Zone tracée à la main : à éviter (crise en cours, rouge) ou exposée à un risque du TIM (permanente)
 type Trace = { type: 'danger' | 'risque'; points: [number, number][] }
 
-function CarteMairie({ lieux, demandes, zones, zonesRisque, risques, communeId }: PropsCarte) {
+function CarteMairie({ lieux, demandes, zones, zonesRisque, risques, communeId, centre }: PropsCarte) {
   // Chaque clic sur la carte ajoute un point du contour
   const [trace, setTrace] = useState<Trace | null>(null)
   const [nom, setNom] = useState('')
@@ -713,7 +724,7 @@ function CarteMairie({ lieux, demandes, zones, zonesRisque, risques, communeId }
         trace={trace?.points}
         couleurTrace={trace?.type === 'risque' ? '#0e3a52' : undefined}
         onClicCarte={trace ? ajouterPoint : undefined}
-        centre={centreCommune}
+        centre={centre}
         hauteur={380}
       />
       <div className="texte-doux" style={{ display: 'flex', gap: 14, flexWrap: 'wrap', fontSize: 13 }}>
@@ -924,6 +935,54 @@ function PanneauRisques({ risques, communeId, onEnregistre }: { risques: string[
           ))}
         </div>
       )}
+      {message && (
+        <p role="status" style={{ fontSize: 14 }}>
+          {message}
+        </p>
+      )}
+    </section>
+  )
+}
+
+// Centre et rayon de la commune : un visiteur dans ce rayon voit les services de la commune
+// (géolocalisation acceptée par l'habitant ; sa position n'est jamais enregistrée)
+function PanneauPosition({ position, communeId, onEnregistre }: { position: PositionCommune | null; communeId: string; onEnregistre: () => void }) {
+  const [centre, setCentre] = useState<ResultatAdresse | null>(null)
+  const [rayon, setRayon] = useState(String(position?.rayon_km ?? 5))
+  const [message, setMessage] = useState('')
+  const enregistrer = async (e: FormEvent) => {
+    e.preventDefault()
+    const km = Number(rayon.replace(',', '.'))
+    if (!(km >= 0.5 && km <= 50)) return setMessage('Rayon entre 0,5 et 50 km.')
+    const modifs = centre ? { lat: centre.lat, lng: centre.lng, rayon_km: km } : { rayon_km: km }
+    const { data, error } = await serveur!.from('communes').update(modifs).eq('id', communeId).select('id')
+    if (error || !data?.length) return setMessage('Non enregistré. Lancez d’abord la migration 0015 dans Supabase.')
+    setMessage('Enregistré.')
+    setCentre(null)
+    onEnregistre()
+  }
+  return (
+    <section className="mairie-panneau" aria-labelledby="titre-position">
+      <h2 id="titre-position">Visiteurs géolocalisés</h2>
+      <p className="texte-doux" style={{ margin: 0 }}>
+        Une personne de passage qui a activé la localisation voit vos lieux, vos risques et vos alertes dans ce rayon. Sa position
+        reste sur son téléphone : elle n'est jamais enregistrée.
+      </p>
+      <p style={{ margin: 0, fontSize: 14 }}>
+        {position
+          ? `Centre placé · rayon ${String(position.rayon_km).replace('.', ',')} km`
+          : 'Commune pas encore placée : les visiteurs ne voient pas vos services.'}
+      </p>
+      <form onSubmit={(e) => void enregistrer(e)} style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        <ChampAdresse commune onChoix={setCentre} libelleChamp={position ? 'Déplacer le centre (facultatif)' : 'Centre : nom de la commune'} />
+        <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 14, fontWeight: 700, maxWidth: 160 }}>
+          Rayon (km)
+          <input className="mairie-champ" inputMode="decimal" value={rayon} onChange={(e) => setRayon(e.target.value)} />
+        </label>
+        <button type="submit" className="mairie-bouton mairie-bouton--principal" disabled={!position && !centre} style={{ alignSelf: 'flex-start' }}>
+          Enregistrer
+        </button>
+      </form>
       {message && (
         <p role="status" style={{ fontSize: 14 }}>
           {message}
