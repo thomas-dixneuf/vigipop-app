@@ -40,6 +40,12 @@ les secours et l'alerte officielle (FR-Alert), elle ne les remplace jamais.
   avec l'app) ; vrai code de connexion activé par `VITE_CONNEXION_SMS=1` (`docs/SMS.md`).
 - **RGPD** : suppression de compte par l'habitant, effacement automatique chaque nuit (migration 0014),
   déconnexion qui ne garde que les informations publiques ; « Mon foyer » reste sur le téléphone.
+- **Géolocalisation** (migration 0015) : avec l'accord de l'habitant (désactivé par défaut), l'app affiche les services
+  de la commune Vigipop où il se trouve (`commune_a_proximite`, centre et rayon réglés par la mairie). La position sert
+  au calcul et n'est **jamais enregistrée**. Une demande en cours reste suivie par sa commune (pas de bascule) ; les
+  missions et l'abonnement aux alertes restent sur sa commune. Hors couverture : « cette ville n'utilise pas encore
+  Vigipop », le 112 reste affiché. Les **statistiques de passage** sont un accord séparé, facultatif, jamais coché
+  d'office : rien n'est collecté ni revendu tant que le cadre (agrégation, seuils, avis CNIL) n'est pas validé.
 - **Mairie hors ligne** : dernière liste gardée sur l'ordinateur (effacée à la déconnexion), impression
   et export des demandes, bilan de crise sans donnée nominative.
 - Accessibilité : zones tactiles ≥ 44 px, vrais `<button>` et `<a>`, contrastes AA.

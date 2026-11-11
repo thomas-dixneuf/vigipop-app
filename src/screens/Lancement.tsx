@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import BoutonDemo from '../components/BoutonDemo.tsx'
 import Icone from '../components/Icone.tsx'
 import Logo from '../components/Logo.tsx'
@@ -7,7 +7,8 @@ import { useAppState } from '../state/AppState.tsx'
 const lienClair = { color: 'var(--cyan)', fontSize: 15, fontWeight: 700, minHeight: 44, display: 'flex', alignItems: 'center' } as const
 
 export default function Lancement() {
-  const { utilisateur, mode, alerte } = useAppState()
+  const navigate = useNavigate()
+  const { utilisateur, mode, alerte, geoloc, activerGeoloc } = useAppState()
   // Sans compte, seul le mode crise ouvre l'app (accès d'urgence)
   const urgenceSansCompte = !utilisateur && mode === 'crise'
 
@@ -63,6 +64,19 @@ export default function Lancement() {
             <Link to="/carte" style={lienClair}>
               Voir la carte des secours
             </Link>
+            {/* De passage, ou sa ville n'a pas Vigipop : la carte montre les services de la ville où l'on est */}
+            {!geoloc && (
+              <button
+                type="button"
+                style={{ ...lienClair, background: 'none', border: 'none', textAlign: 'center', justifyContent: 'center' }}
+                onClick={() => {
+                  activerGeoloc(true)
+                  navigate('/carte')
+                }}
+              >
+                De passage ? Voir les services de la ville où je suis
+              </button>
+            )}
           </>
         )}
 
