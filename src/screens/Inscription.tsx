@@ -9,7 +9,8 @@ import { envoyerCode } from '../services/codeSms.ts'
 
 export default function Inscription() {
   const navigate = useNavigate()
-  const suite = (useLocation().state as { suite?: string } | null)?.suite
+  const etatNav = useLocation().state as { suite?: string; compteEfface?: boolean } | null
+  const suite = etatNav?.suite
   // Ce qui a été saisi sans compte (demande d'aide) est repris
   const { contact } = useAppState()
   const [prenom, setPrenom] = useState(contact?.prenom ?? '')
@@ -44,7 +45,9 @@ export default function Inscription() {
       <form onSubmit={(e) => void envoyer(e)} className="contenu" style={{ paddingTop: 16 }}>
         {contact && (
           <p role="status" style={{ background: 'var(--bleu-voile)', color: 'var(--bleu-nuit)', borderRadius: 12, padding: '10px 14px', fontSize: 14, lineHeight: 1.4 }}>
-            Nous avons repris les informations de votre demande d'aide. Vérifiez-les et complétez.
+            {etatNav?.compteEfface
+              ? 'Nous avons repris votre prénom et votre numéro. Vérifiez-les et complétez.'
+              : "Nous avons repris les informations de votre demande d'aide. Vérifiez-les et complétez."}
           </p>
         )}
         <label style={libelle}>
