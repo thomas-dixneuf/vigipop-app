@@ -16,7 +16,7 @@ export default function TexteLegal({ enBref, paragraphes }: { enBref: string; pa
           <div style={{ fontSize: 14, lineHeight: 1.55 }}>{p.contenu}</div>
         </section>
       ))}
-      <p className="texte-doux">Dernière mise à jour : 5 novembre 2026 (projet).</p>
+      <p className="texte-doux">Dernière mise à jour : 11 novembre 2026 (projet).</p>
     </div>
   )
 }

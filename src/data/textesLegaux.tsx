@@ -30,7 +30,13 @@ export const confidentialite: Paragraphe[] = [
         <li>Votre prénom, votre numéro de téléphone et votre commune : pour vous connecter par code SMS et pour que la mairie puisse vous rappeler.</li>
         <li>
           Votre demande d'aide (situation, adresse ou position, nombre de personnes, besoins) : pour que la mairie
-          organise les secours et l'aide. Votre position n'est lue qu'au moment où vous envoyez une demande, jamais en continu.
+          organise les secours et l'aide. Votre position n'est envoyée avec une demande que si vous la choisissez.
+        </li>
+        <li>
+          Votre position, si vous autorisez la localisation à la première ouverture de l'app : pour vous montrer votre
+          commune, votre point de rassemblement et les lieux ouverts près de vous, et préremplir une demande d'aide.
+          Elle sert seulement à trouver votre commune et n'est jamais enregistrée. Vous pouvez refuser (« Plus tard »)
+          ou la couper à tout moment dans « Mon profil » ; une demande d'aide reste toujours possible sans elle.
         </li>
         <li>
           Si une personne de votre foyer ne peut pas se déplacer seule, ou a besoin de médicaments : pour qu'elle soit
@@ -62,7 +68,10 @@ export const confidentialite: Paragraphe[] = [
         Les agents de la Ville habilités à la gestion de crise ; les volontaires, seulement pour ce qu'il faut savoir
         d'une mission qu'ils ont acceptée ; l'équipe Vigipop, seulement pour la maintenance. Prestataires techniques :
         Supabase (base de données, serveurs dans l'Union européenne), OVH (hébergement de l'app, France) et un
-        prestataire d'envoi de SMS européen.
+        prestataire d'envoi de SMS européen. Quand vous tapez une commune ou une adresse, le texte saisi est envoyé
+        au service d'adresses de l'État (Géoplateforme de l'IGN, Base Adresse Nationale) pour proposer des adresses
+        officielles ; Vigipop ne le conserve pas. Sans réseau, une liste embarquée dans l'app est utilisée et rien ne
+        quitte le téléphone.
       </>
     ),
   },
@@ -80,7 +89,7 @@ export const confidentialite: Paragraphe[] = [
     titre: 'Sur votre téléphone',
     contenu: (
       <>
-        L'app garde votre session et, hors connexion, la demande en attente d'envoi. Aucun cookie publicitaire ni
+        L'app garde votre session, votre choix sur la localisation et, hors connexion, la demande en attente d'envoi. Aucun cookie publicitaire ni
         outil de mesure d'audience. À la déconnexion, seules les informations publiques (lieux ouverts, consignes)
         restent sur le téléphone.
       </>
