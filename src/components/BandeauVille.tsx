@@ -17,25 +17,36 @@ const petitBouton = {
 } as const
 
 // Services de la ville où l'on se trouve : proposition d'activer la localisation, ville visitée,
-// ou zone sans Vigipop. proposer : affiche la carte d'activation quand la localisation est coupée.
+// ou zone sans Vigipop. proposer : petit bouton de rappel tant que la localisation est coupée.
 export default function BandeauVille({ proposer = false }: { proposer?: boolean }) {
   const { geoloc, activerGeoloc, localisation, localiser, communeVisitee, horsCouverture, revenirMaCommune, demande } = useAppState()
 
   if (!geoloc) {
     if (!proposer) return null
+    // Petit rappel, tant que la localisation n'est pas activée (le détail est dans le profil)
     return (
-      <section className="carte" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-        <strong style={{ fontSize: 16, color: 'var(--bleu-nuit)', display: 'flex', alignItems: 'center', gap: 8 }}>
-          <Icone nom="pin" taille={18} /> En visite dans une autre ville ?
-        </strong>
-        <span className="texte-doux" style={{ lineHeight: 1.4 }}>
-          Activez la localisation : Vigipop affichera les lieux d'accueil, les risques et les alertes de la ville où vous êtes, si
-          elle utilise Vigipop. Votre position sert seulement à trouver la ville : elle n'est jamais enregistrée.
-        </span>
-        <button type="button" style={petitBouton} onClick={() => activerGeoloc(true)}>
-          Activer la localisation
-        </button>
-      </section>
+      <button
+        type="button"
+        onClick={() => activerGeoloc(true)}
+        aria-label="En visite dans une autre ville ? Activer la localisation pour voir ses services Vigipop"
+        style={{
+          alignSelf: 'flex-start',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 8,
+          minHeight: 44,
+          padding: '0 14px',
+          borderRadius: 22,
+          border: '1px solid var(--bordure)',
+          background: 'var(--blanc)',
+          color: 'var(--bleu-nuit)',
+          fontSize: 14,
+          fontWeight: 700,
+        }}
+      >
+        <Icone nom="pin" taille={16} />
+        En visite ailleurs ? <span style={{ color: 'var(--bleu)', textDecoration: 'underline' }}>Activer la localisation</span>
+      </button>
     )
   }
 
