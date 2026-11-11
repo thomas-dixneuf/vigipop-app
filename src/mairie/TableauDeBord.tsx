@@ -255,7 +255,7 @@ function Compteurs({ demandes }: { demandes: DemandeServeur[] }) {
     ['À traiter', demandes.filter((d) => d.statut === 'transmise').length],
     ['Prises en charge', demandes.filter((d) => d.statut === 'prise_en_charge').length],
     ['Personnes concernées', personnes],
-    ['Vulnérables', ouvertes.filter((d) => d.personne_vulnerable).length],
+    ['Aide au déplacement', ouvertes.filter((d) => d.personne_vulnerable).length],
   ] as const
   return (
     <section className="mairie-compteurs" aria-label="Synthèse">
@@ -339,7 +339,7 @@ function Demandes({ demandes, depuis }: { demandes: DemandeServeur[]; depuis: st
             </div>
             <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
               {urgent && <span className="mairie-etiquette mairie-etiquette--urgent">Prioritaire</span>}
-              {d.personne_vulnerable && <span className="mairie-etiquette mairie-etiquette--urgent">Personne vulnérable</span>}
+              {d.personne_vulnerable && <span className="mairie-etiquette mairie-etiquette--urgent">Ne peut pas se déplacer seule</span>}
               <span className="mairie-etiquette">
                 {d.personnes} personne{d.personnes > 1 ? 's' : ''}
               </span>
@@ -1359,7 +1359,7 @@ function PanneauHebergement({ demandes, volontaires, hebergements, communeId }: 
                 {d.reference} · {d.personnes} personne{d.personnes > 1 ? 's' : ''}
                 {d.prenom ? ` · ${d.prenom}` : ''}
               </strong>
-              {d.personne_vulnerable && <span className="mairie-etiquette mairie-etiquette--urgent" style={{ alignSelf: 'flex-start' }}>Personne vulnérable</span>}
+              {d.personne_vulnerable && <span className="mairie-etiquette mairie-etiquette--urgent" style={{ alignSelf: 'flex-start' }}>Ne peut pas se déplacer seule</span>}
               <HebergementDemande demande={d} volontaires={volontaires} hebergements={hebergements} communeId={communeId} />
             </article>
           ))}

@@ -84,7 +84,7 @@ export default function SollicitationEntraide() {
                 </strong>
                 <span style={{ fontSize: 14 }}>
                   {s.distance_km !== null ? `À environ ${String(s.distance_km).replace('.', ',')} km de vous.` : 'Distance inconnue.'}
-                  {s.personne_vulnerable ? ' Dont une personne vulnérable.' : ''}
+                  {s.personne_vulnerable ? ' Dont une personne qui ne peut pas se déplacer seule.' : ''}
                 </span>
                 <span className="texte-doux" style={{ lineHeight: 1.4 }}>
                   Si vous acceptez, vous recevrez le prénom, le numéro et le lieu de la personne, et elle recevra votre prénom et votre numéro.

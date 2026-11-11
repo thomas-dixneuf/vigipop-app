@@ -33,7 +33,7 @@ export const confidentialite: Paragraphe[] = [
           organise les secours et l'aide. Votre position n'est lue qu'au moment où vous envoyez une demande, jamais en continu.
         </li>
         <li>
-          Si vous signalez une personne vulnérable dans votre foyer, ou un besoin de médicaments : pour qu'elle soit
+          Si une personne de votre foyer ne peut pas se déplacer seule, ou a besoin de médicaments : pour qu'elle soit
           prise en charge en priorité. Seuls les agents habilités de la mairie voient cette information.
         </li>
         <li>
@@ -50,7 +50,7 @@ export const confidentialite: Paragraphe[] = [
     contenu: (
       <>
         La mission d'intérêt public de la commune en matière de sauvegarde de la population (article 6.1.e du RGPD).
-        Pour l'information sur une personne vulnérable : la protection de ses intérêts vitaux (article 9.2.c). Pour
+        Pour l'information sur une personne qui ne peut pas se déplacer seule : la protection de ses intérêts vitaux (article 9.2.c). Pour
         le volontariat : votre accord, que vous pouvez retirer à tout moment depuis l'app.
       </>
     ),

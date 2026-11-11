@@ -70,7 +70,7 @@ export default function PropositionHebergement() {
                 <strong style={{ fontSize: 18, lineHeight: 1.3, color: 'var(--bleu-nuit)' }}>
                   Pouvez-vous accueillir {nb} sinistrée{p.personnes > 1 ? 's' : ''} chez vous ?
                 </strong>
-                {p.personne_vulnerable && <span style={{ fontSize: 14 }}>Dont une personne vulnérable.</span>}
+                {p.personne_vulnerable && <span style={{ fontSize: 14 }}>Dont une personne qui ne peut pas se déplacer seule.</span>}
                 <span className="texte-doux" style={{ lineHeight: 1.4 }}>
                   Si vous acceptez, la personne recevra votre prénom, votre adresse et votre numéro, et vous recevrez les siens.
                 </span>

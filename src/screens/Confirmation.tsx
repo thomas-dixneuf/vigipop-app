@@ -66,7 +66,7 @@ export default function Confirmation() {
           )}
           <p className="texte-doux" style={{ borderTop: '1px solid var(--bordure)', paddingTop: 10, lineHeight: 1.4 }}>
             {situation} · {demande.personnes} personne{demande.personnes > 1 ? 's' : ''}
-            {demande.personneVulnerable ? ' dont une vulnérable' : ''}
+            {demande.personneVulnerable ? ' dont une qui ne peut pas se déplacer seule' : ''}
             {listeBesoins.length ? ` · ${listeBesoins.join(', ')}` : ''}
           </p>
         </section>

@@ -168,7 +168,7 @@ export default function Signaler() {
           </div>
           <label style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 14, minHeight: 44 }}>
             <input type="checkbox" checked={vulnerable} onChange={(e) => setVulnerable(e.target.checked)} style={{ width: 20, height: 20, accentColor: 'var(--bleu)' }} />
-            Dont une personne âgée, handicapée ou un enfant en bas âge
+            Dont une personne qui ne peut pas se déplacer seule
           </label>
         </section>
 
