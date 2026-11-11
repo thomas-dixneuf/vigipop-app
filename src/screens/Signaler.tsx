@@ -1,3 +1,4 @@
+import ChampAdresse from '../components/ChampAdresse.tsx'
 import { useEffect, useState } from 'react'
 import ChampTelephone from '../components/ChampTelephone.tsx'
 import { Navigate, useNavigate } from 'react-router-dom'
@@ -126,17 +127,17 @@ export default function Signaler() {
               </span>
             )}
             {position.etat === 'indisponible' && (
-              <label style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 6, fontSize: 14, fontWeight: 700 }}>
-                GPS indisponible : indiquez votre adresse
-                <input
-                  type="text"
-                  value={adresseSaisie}
-                  onChange={(e) => setAdresseSaisie(e.target.value)}
-                  placeholder="12 rue des Lilas"
-                  autoComplete="street-address"
-                  style={{ height: 48, border: '2px solid var(--bordure)', borderRadius: 12, padding: '0 12px', fontSize: 16 }}
+              <div style={{ flex: 1 }}>
+                {/* Liste d'adresses officielles ; sans réseau, le texte tapé part quand même (jamais bloquant) */}
+                <ChampAdresse
+                  variante="app"
+                  libelleChamp="GPS indisponible : indiquez votre adresse"
+                  valeurInitiale={adresseSaisie}
+                  verifieeInitialement={false}
+                  onTexte={setAdresseSaisie}
+                  onChoix={(r) => r && setAdresseSaisie(r.libelle)}
                 />
-              </label>
+              </div>
             )}
           </div>
         </section>

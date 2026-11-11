@@ -1178,7 +1178,7 @@ function PanneauLieux({ lieux, communeId }: { lieux: LieuServeur[]; communeId: s
               ))}
             </select>
           </label>
-          <ChampAdresse onChoix={setAdresse} />
+          <ChampAdresse onChoix={setAdresse} obligatoire />
           <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 14, fontWeight: 700 }}>
             Précisions (horaires, services)
             <input className="mairie-champ" value={lieu.details} maxLength={140} onChange={(e) => setLieu({ ...lieu, details: e.target.value })} />
@@ -1640,6 +1640,7 @@ type PropsMissions = { missions: MissionServeur[]; reponses: Reponse[]; volontai
 function PanneauMissions({ missions, reponses, volontaires, communeId, modele }: PropsMissions) {
   const [ouvert, setOuvert] = useState(!!modele)
   const [mission, setMission] = useState(modele ? { ...missionVide, titre: modele.titre, categorie: modele.categorie } : missionVide)
+  const [texteAdresse, setTexteAdresse] = useState('')
   const [adresse, setAdresse] = useState<ResultatAdresse | null>(null)
   const [message, setMessage] = useState('')
 
@@ -1656,6 +1657,7 @@ function PanneauMissions({ missions, reponses, volontaires, communeId, modele }:
     setMessage(`Mission proposée aux volontaires qui offrent : ${libelleRessource(mission.categorie)}.`)
     setMission(missionVide)
     setAdresse(null)
+    setTexteAdresse('')
     setOuvert(false)
   }
 
@@ -1665,7 +1667,9 @@ function PanneauMissions({ missions, reponses, volontaires, communeId, modele }:
     setMessage(error ? 'Échec : la mission est toujours ouverte.' : '')
   }
 
-  const valide = mission.titre.trim().length >= 3 && mission.rendez_vous.trim() !== '' && mission.lieu.trim() !== ''
+  // Adresse du rendez-vous facultative, mais vérifiée si elle est saisie
+  const valide =
+    mission.titre.trim().length >= 3 && mission.rendez_vous.trim() !== '' && mission.lieu.trim() !== '' && (adresse !== null || texteAdresse.trim() === '')
 
   return (
     <section className="mairie-panneau" aria-labelledby="titre-missions">
@@ -1721,7 +1725,7 @@ function PanneauMissions({ missions, reponses, volontaires, communeId, modele }:
               />
             </label>
           ))}
-          <ChampAdresse onChoix={setAdresse} libelleChamp="Adresse du rendez-vous (pour la carte et l'itinéraire)" />
+          <ChampAdresse onChoix={setAdresse} onTexte={setTexteAdresse} libelleChamp="Adresse du rendez-vous (pour la carte et l'itinéraire)" />
           <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 14, fontWeight: 700 }}>
             Consignes de sécurité
             <textarea className="mairie-champ" value={mission.consignes} maxLength={400} onChange={(e) => setMission({ ...mission, consignes: e.target.value })} />

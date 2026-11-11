@@ -42,6 +42,10 @@ les secours et l'alerte officielle (FR-Alert), elle ne les remplace jamais.
   missions et l'abonnement aux alertes restent sur sa commune. Hors couverture : « cette ville n'utilise pas encore
   Vigipop », le 112 reste affiché. Les **statistiques de passage** sont un accord séparé, facultatif, jamais coché
   d'office : rien n'est collecté ni revendu tant que le cadre (agrégation, seuils, avis CNIL) n'est pas validé.
+- **Adresses vérifiées** : toute saisie de commune ou d'adresse passe par `ChampAdresse` (liste du géocodeur officiel
+  IGN/BAN ; sans réponse, liste embarquée `src/data/adressesEmbarquees.ts`). Inscription, profil, foyer, hébergement et
+  mairie exigent un choix dans la liste ; le signalement accepte le texte tapé (jamais bloquant).
+- **Localisation proposée au lancement** (une fois, refusable avec « Plus tard », jamais en mode crise sans compte).
 - Accessibilité : zones tactiles ≥ 44 px, vrais `<button>` et `<a>`, contrastes AA.
 
 ## Charte

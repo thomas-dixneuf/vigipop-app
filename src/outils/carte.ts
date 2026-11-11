@@ -35,16 +35,48 @@ export function estPlace(l: LieuServeur): l is LieuServeur & Coordonnees {
 
 export type ResultatAdresse = { libelle: string; lat: number; lng: number }
 
-// Base Adresse Nationale (data.gouv.fr) : adresses officielles françaises, sans clé
+// Recherche sans accents ni majuscules : « eglise » trouve « Église »
+function normaliser(texte: string) {
+  return texte
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[’'-]/g, ' ')
+}
+
+// Liste embarquée (chargée seulement si besoin) : tous les mots tapés doivent s'y retrouver
+async function chercherHorsLigne(texte: string, type?: 'municipality'): Promise<ResultatAdresse[]> {
+  const { adressesEmbarquees, communesEmbarquees } = await import('../data/adressesEmbarquees')
+  const mots = normaliser(texte).split(/\s+/).filter(Boolean)
+  return (type ? communesEmbarquees : adressesEmbarquees).filter((a) => mots.every((m) => normaliser(a.libelle).includes(m))).slice(0, 5)
+}
+
+// Géocodeur officiel de l'IGN, puis ancienne adresse de la Base Adresse Nationale (même format)
+const SERVICES_ADRESSE = ['https://data.geopf.fr/geocodage/search/', 'https://api-adresse.data.gouv.fr/search/']
+
+// Base Adresse Nationale : adresses officielles françaises, sans clé. Sans réponse (pas de réseau,
+// maquette hors ligne), la liste embarquée prend le relais : le choix reste vérifié.
 export async function chercherAdresse(texte: string, type?: 'municipality'): Promise<ResultatAdresse[]> {
-  if (texte.trim().length < 3) return []
+  if (texte.trim().length < 2) return []
   const filtre = type ? `&type=${type}` : ''
-  const reponse = await fetch(`https://api-adresse.data.gouv.fr/search/?q=${encodeURIComponent(texte)}&limit=5${filtre}`)
-  if (!reponse.ok) return []
-  const donnees = (await reponse.json()) as {
-    features: { properties: { label: string }; geometry: { coordinates: [number, number] } }[]
+  for (const service of SERVICES_ADRESSE) {
+    try {
+      const reponse = await fetch(`${service}?q=${encodeURIComponent(texte)}&limit=5${filtre}`, { signal: AbortSignal.timeout(4000) })
+      if (!reponse.ok) continue
+      const donnees = (await reponse.json()) as {
+        features: { properties: { label: string; postcode?: string; type?: string }; geometry: { coordinates: [number, number] } }[]
+      }
+      return donnees.features.map((f) => ({
+        // Commune : code postal ajouté pour distinguer les homonymes
+        libelle: type && f.properties.postcode ? `${f.properties.label} (${f.properties.postcode})` : f.properties.label,
+        lng: f.geometry.coordinates[0],
+        lat: f.geometry.coordinates[1],
+      }))
+    } catch {
+      // Service injoignable : on essaie le suivant
+    }
   }
-  return donnees.features.map((f) => ({ libelle: f.properties.label, lng: f.geometry.coordinates[0], lat: f.geometry.coordinates[1] }))
+  return chercherHorsLigne(texte, type)
 }
 
 // La position est-elle dans le polygone ? (lancer de rayon, suffisant à l'échelle d'une commune)

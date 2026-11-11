@@ -21,6 +21,8 @@ export default function MesInfos() {
   const [nom, setNom] = useState(utilisateur?.nom ?? '')
   const [telephone, setTelephone] = useState(utilisateur?.telephone ?? '')
   const [commune, setCommune] = useState(utilisateur?.commune ?? '')
+  // Faux dès que le texte change sans choix dans la liste officielle
+  const [communeVerifiee, setCommuneVerifiee] = useState(true)
   const [enregistre, setEnregistre] = useState(retourDuCode)
 
   if (!utilisateur) return null
@@ -28,13 +30,14 @@ export default function MesInfos() {
   const nouveauNumero = chiffres(telephone) !== chiffres(utilisateur.telephone)
   const modifie =
     nouveauNumero || prenom.trim() !== utilisateur.prenom || nom.trim() !== (utilisateur.nom ?? '') || commune.trim() !== utilisateur.commune
-  const valide = prenom.trim() !== '' && numeroValide(telephone) && commune.trim() !== ''
+  const valide = prenom.trim() !== '' && numeroValide(telephone) && commune.trim() !== '' && communeVerifiee
 
   const annuler = () => {
     setPrenom(utilisateur.prenom)
     setNom(utilisateur.nom ?? '')
     setTelephone(utilisateur.telephone)
     setCommune(utilisateur.commune)
+    setCommuneVerifiee(true)
     setEdition(false)
   }
 
@@ -105,11 +108,15 @@ export default function MesInfos() {
             <ChampAdresse
               variante="app"
               commune
+              obligatoire
               libelleChamp="Ma commune"
               valeurInitiale={utilisateur.commune}
               verifieeInitialement
               onTexte={setCommune}
-              onChoix={(r) => r && setCommune(r.libelle)}
+              onChoix={(r) => {
+                setCommuneVerifiee(!!r)
+                if (r) setCommune(r.libelle)
+              }}
             />
             <button type="submit" className="bouton bouton--principal" disabled={!valide || !modifie}>
               {nouveauNumero ? 'Recevoir le code' : 'Enregistrer'}
