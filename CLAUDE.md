@@ -36,6 +36,12 @@ les secours et l'alerte officielle (FR-Alert), elle ne les remplace jamais.
 - **Notifications** : centre de notifications dans l'app, alertes du téléphone, push app fermée
   (`docs/NOTIFICATIONS.md`). Clé privée VAPID uniquement dans les secrets Supabase, jamais dans
   le dépôt ni dans une conversation. Complète FR-Alert, ne le remplace jamais.
+- **Géolocalisation** (migration 0015) : avec l'accord de l'habitant (désactivé par défaut), l'app affiche les services
+  de la commune Vigipop où il se trouve (`commune_a_proximite`, centre et rayon réglés par la mairie). La position sert
+  au calcul et n'est **jamais enregistrée**. Une demande en cours reste suivie par sa commune (pas de bascule) ; les
+  missions et l'abonnement aux alertes restent sur sa commune. Hors couverture : « cette ville n'utilise pas encore
+  Vigipop », le 112 reste affiché. Les **statistiques de passage** sont un accord séparé, facultatif, jamais coché
+  d'office : rien n'est collecté ni revendu tant que le cadre (agrégation, seuils, avis CNIL) n'est pas validé.
 - Accessibilité : zones tactiles ≥ 44 px, vrais `<button>` et `<a>`, contrastes AA.
 
 ## Charte

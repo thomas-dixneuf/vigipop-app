@@ -159,6 +159,16 @@ export type AidantServeur = {
   telephone: string
 }
 
+// Commune Vigipop où se trouve le téléphone (migration 0015). La position sert au calcul et
+// n'est enregistrée nulle part. null : zone sans Vigipop ; undefined : pas de réponse (réseau, migration absente).
+export type CommuneProche = { id: string; nom: string; centre: [number, number] }
+export async function communeAProximite(client: SupabaseClient, lat: number, lng: number): Promise<CommuneProche | null | undefined> {
+  const { data, error } = await client.rpc('commune_a_proximite', { p_lat: lat, p_lng: lng })
+  if (error) return undefined
+  const ligne = (data as { id: string; nom: string; lat: number; lng: number }[] | null)?.[0]
+  return ligne ? { id: ligne.id, nom: ligne.nom, centre: [ligne.lat, ligne.lng] } : null
+}
+
 export function lienTelephone(numero: string) {
   return `tel:${numero.replace(/[\s.-]/g, '')}`
 }

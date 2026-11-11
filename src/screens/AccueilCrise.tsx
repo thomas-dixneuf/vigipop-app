@@ -10,6 +10,7 @@ import PropositionHebergement from '../components/PropositionHebergement.tsx'
 import SollicitationEntraide from '../components/SollicitationEntraide.tsx'
 import AidantsTrouves from '../components/AidantsTrouves.tsx'
 import { libelleLieu, lieuxDemo } from '../data/fictif.ts'
+import BandeauVille from '../components/BandeauVille.tsx'
 import { serveur, type BesoinEntraide } from '../services/serveur.ts'
 import { useAppState } from '../state/AppState.tsx'
 
@@ -66,6 +67,8 @@ export default function AccueilCrise() {
             <strong style={{ color: 'var(--consigne)' }}>Consigne :</strong> {alerte?.consigne}
           </div>
         </section>
+
+        <BandeauVille />
 
         <PropositionHebergement />
         <SollicitationEntraide />

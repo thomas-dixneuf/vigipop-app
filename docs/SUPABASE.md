@@ -23,7 +23,9 @@ fonctionne en mode démo local, avec un bouton « Démo » pour simuler la crise
    `0010_corrections_tests.sql` (risques de la commune, adresse du rendez-vous des missions, message « aide organisée »,
    nom des volontaires, demandes closes à la fin de la crise), puis `0011_entraide_auto.sql` (transport et matériel
    proposés automatiquement au volontaire le plus proche), puis `0012_zones_risque.sql` (zones exposées aux risques
-   connus, reprises du TIM de la commune). Chaque nouveau fichier de `supabase/migrations/` se lance
+   connus, reprises du TIM de la commune). Maquette Cholet : `0013_exercice.sql` (exercice d'entraînement), puis
+   `0015_communes_position.sql` (centre et rayon de chaque commune : l'app affiche les services de la ville où
+   l'on se trouve, sans jamais enregistrer la position). Chaque nouveau fichier de `supabase/migrations/` se lance
    une seule fois, dans l'ordre des numéros.
 
 ## 2. Autoriser les habitants sans mot de passe

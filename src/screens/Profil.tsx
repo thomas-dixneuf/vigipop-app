@@ -20,10 +20,13 @@ const ligne = {
   textAlign: 'left',
 } as const
 
+const interrupteur = { display: 'flex', gap: 12, alignItems: 'flex-start', fontSize: 15, lineHeight: 1.4, minHeight: 44 } as const
+const caseACocher = { width: 24, height: 24, marginTop: 2, flexShrink: 0, accentColor: 'var(--bleu)' } as const
+
 // Version simple du profil : la page complète (offres et prêts) viendra ensuite
 export default function Profil() {
   const navigate = useNavigate()
-  const { utilisateur, mode, lancerVisite, deconnecter, communeAffichee, habilitations } = useAppState()
+  const { utilisateur, mode, lancerVisite, deconnecter, communeAffichee, habilitations, geoloc, activerGeoloc, statsPassage, choisirStatsPassage } = useAppState()
   const verifies = habilitations.filter((h) => h.statut === 'verifiee').length
   const enAttente = habilitations.filter((h) => h.statut === 'a_verifier').length
 
@@ -105,6 +108,39 @@ export default function Profil() {
             Conditions d'utilisation
             <Icone nom="fleche" taille={18} />
           </Link>
+        </section>
+
+        <section className="carte" aria-labelledby="titre-localisation" style={{ display: 'flex', flexDirection: 'column', gap: 12, padding: 16 }}>
+          <h2 id="titre-localisation" style={{ fontSize: 16, fontWeight: 800, color: 'var(--bleu-nuit)' }}>
+            Localisation
+          </h2>
+          <label style={interrupteur}>
+            <input type="checkbox" checked={geoloc} onChange={(e) => activerGeoloc(e.target.checked)} style={caseACocher} />
+            <span style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+              <strong>Services de la ville où je suis</strong>
+              <span className="texte-doux">
+                En visite, Vigipop affiche les lieux, risques et alertes de la ville si elle l'utilise. La position sert seulement à trouver
+                la ville et n'est jamais enregistrée.
+              </span>
+            </span>
+          </label>
+          {/* Accord distinct, jamais coché d'office, sans effet sur le service : à valider avec la CNIL avant tout usage réel */}
+          <label style={{ ...interrupteur, opacity: geoloc ? 1 : 0.6 }}>
+            <input
+              type="checkbox"
+              checked={geoloc && statsPassage}
+              disabled={!geoloc}
+              onChange={(e) => choisirStatsPassage(e.target.checked)}
+              style={caseACocher}
+            />
+            <span style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+              <strong>Statistiques de fréquentation anonymes (facultatif)</strong>
+              <span className="texte-doux">
+                Aider les communes à connaître la fréquentation de certains lieux, par des chiffres regroupés : jamais votre identité ni
+                votre trajet. Sans effet sur le service. Prototype : rien n'est collecté.
+              </span>
+            </span>
+          </label>
         </section>
 
         {utilisateur && (

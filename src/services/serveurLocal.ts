@@ -1,5 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
-import { commune, lieuxDemo, missionsDemo, risques, zonesDemo, zonesRisqueDemo } from '../data/fictif.ts'
+import { centreCommune, commune, communesDemo, lieuxDemo, rayonCommuneDemo, missionsDemo, risques, zonesDemo, zonesRisqueDemo } from '../data/fictif.ts'
 
 // Serveur local de présentation (VITE_SERVEUR_LOCAL=1) : imite le client Supabase dans le navigateur,
 // pour relier l'app habitant et l'espace mairie sur un même ordinateur, sans réseau.
@@ -9,7 +9,7 @@ type Ligne = Record<string, unknown>
 type Base = Record<string, Ligne[]>
 type Evenement = { table: string; type: 'INSERT' | 'UPDATE' | 'DELETE'; lignes: Ligne[] }
 
-const CLE = 'vigipop-serveur-local-v3'
+const CLE = 'vigipop-serveur-local-v4'
 export const COMMUNE_LOCALE = '00000000-0000-4000-8000-000000000001'
 const COORDINATEUR = 'coordinateur-cholet'
 
@@ -37,9 +37,16 @@ function baseInitiale(): Base {
   const c = COMMUNE_LOCALE
   const cree = maintenant(-60 * 24)
   return {
-    communes: [{ id: c, nom: commune, risques }],
+    // Centre et rayon (migration 0015) : la géolocalisation trouve la commune où l'on se trouve
+    communes: [
+      { id: c, nom: commune, risques, lat: centreCommune[0], lng: centreCommune[1], rayon_km: rayonCommuneDemo },
+      ...communesDemo.map((v) => ({ id: v.id, nom: v.nom, risques: v.risques, lat: v.centre[0], lng: v.centre[1], rayon_km: v.rayonKm })),
+    ],
     coordinateurs: [{ user_id: COORDINATEUR, nom: 'Cellule de crise communale', commune_id: c, communes: { nom: commune } }],
-    lieux: lieuxDemo.map((l) => ({ ...l, commune_id: c, created_at: cree })),
+    lieux: [
+      ...lieuxDemo.map((l) => ({ ...l, commune_id: c, created_at: cree })),
+      ...communesDemo.flatMap((v) => v.lieux.map((l) => ({ ...l, commune_id: v.id, created_at: cree }))),
+    ],
     zones_risque: zonesRisqueDemo.map((z) => ({ ...z, commune_id: c, created_at: cree })),
     // Zone à éviter du scénario : préparée, affichée seulement pendant la crise
     zones_danger: zonesDemo.map((z) => ({ ...z, id: 'zone-moine', commune_id: c, active: false, created_at: cree })),
@@ -292,7 +299,23 @@ class Requete implements PromiseLike<Resultat> {
 }
 
 // Fonctions du serveur appelées par l'app : réponses vides, sauf le nombre de foyers solidaires
-function rpc(nom: string) {
+// et la commune Vigipop la plus proche (même calcul que commune_a_proximite, migration 0015)
+function rpc(nom: string, args?: Record<string, unknown>) {
+  if (nom === 'commune_a_proximite') {
+    const lat = Number(args?.p_lat)
+    const lng = Number(args?.p_lng)
+    const rad = Math.PI / 180
+    const km = (c: Ligne) => {
+      const dLat = (Number(c.lat) - lat) * rad
+      const dLng = (Number(c.lng) - lng) * rad
+      const h = Math.sin(dLat / 2) ** 2 + Math.cos(lat * rad) * Math.cos(Number(c.lat) * rad) * Math.sin(dLng / 2) ** 2
+      return 2 * 6371 * Math.asin(Math.sqrt(h))
+    }
+    const proche = base.communes
+      .filter((c) => c.lat != null && c.lng != null && km(c) <= Number(c.rayon_km ?? 0))
+      .sort((a, b) => km(a) - km(b))[0]
+    return Promise.resolve({ data: proche ? [{ id: proche.id, nom: proche.nom, lat: proche.lat, lng: proche.lng }] : [], error: null })
+  }
   const valeurs: Record<string, unknown> = { hebergements_solidaires: 3 }
   return Promise.resolve({ data: nom in valeurs ? valeurs[nom] : [], error: null })
 }

@@ -4,9 +4,10 @@ import Bandeau112 from '../components/Bandeau112.tsx'
 import BarreNav from '../components/BarreNav.tsx'
 import CarteInteractive, { type Repere } from '../components/CarteInteractive.tsx'
 import Icone from '../components/Icone.tsx'
-import { centreCommune, hebergementsSolidairesDemo, libelleLieu, lieuxDemo, missionsDemo, zonesDemo, zonesRisqueDemo } from '../data/fictif.ts'
+import BandeauVille from '../components/BandeauVille.tsx'
+import { hebergementsSolidairesDemo, libelleLieu, lieuxDemo, missionsDemo, zonesDemo, zonesRisqueDemo } from '../data/fictif.ts'
 import { couleurLieu, dansZone, distanceLisible, distanceMetres, estPlace, lienItineraire, styleRisque, type Coordonnees } from '../outils/carte.ts'
-import { COMMUNE_ID, serveur, type LieuServeur } from '../services/serveur.ts'
+import { serveur, type LieuServeur } from '../services/serveur.ts'
 import { useAppState } from '../state/AppState.tsx'
 
 type Filtre = 'tous' | LieuServeur['type']
@@ -21,7 +22,7 @@ const filtres: [Filtre, string][] = [
 const aucunLieu: LieuServeur[] = []
 
 export default function Carte() {
-  const { mode, lieux, zones: zonesServeur, zonesRisque: zonesRisqueServeur, missions, communeAffichee } = useAppState()
+  const { mode, lieux, zones: zonesServeur, zonesRisque: zonesRisqueServeur, missions, communeAffichee, communeActiveId, centreActif, communeVisitee } = useAppState()
   // Arrivée depuis une mission acceptée : son point de rendez-vous est mis en avant
   const idMission = (useLocation().state as { mission?: string } | null)?.mission
   const mission = idMission ? (serveur ? missions : missionsDemo).find((m) => m.id === idMission) ?? null : null
@@ -51,11 +52,11 @@ export default function Carte() {
     if (!serveur || !enCrise) return
     const client = serveur
     const charger = () =>
-      void client.rpc('hebergements_solidaires', { p_commune: COMMUNE_ID }).then(({ data, error }) => !error && setSolidaires(data as number))
+      void client.rpc('hebergements_solidaires', { p_commune: communeActiveId }).then(({ data, error }) => !error && setSolidaires(data as number))
     charger()
     const minuteur = window.setInterval(charger, 60000)
     return () => window.clearInterval(minuteur)
-  }, [enCrise])
+  }, [enCrise, communeActiveId])
 
   const tous = lieux ?? (serveur ? aucunLieu : lieuxDemo)
   // En veille, on montre où se trouveront les lieux ; en crise, ouverts d'abord
@@ -119,6 +120,8 @@ export default function Carte() {
           ))}
         </div>
 
+        <BandeauVille />
+
         {zoneActuelle && (
           <p role="alert" style={{ background: 'var(--danger)', color: 'var(--blanc)', borderRadius: 14, padding: '12px 14px', fontSize: 15, lineHeight: 1.4 }}>
             <strong>Vous êtes dans une zone à éviter : {zoneActuelle.nom}.</strong>
@@ -140,7 +143,7 @@ export default function Carte() {
           reperes={reperes}
           zones={zones}
           zonesRisque={zonesRisque}
-          centre={centreCommune}
+          centre={centreActif}
           position={position}
           selection={selection}
           onSelection={choisir}
@@ -196,7 +199,7 @@ export default function Carte() {
           </section>
         )}
 
-        {enCrise && solidaires !== null && (
+        {enCrise && solidaires !== null && !(communeVisitee && !serveur) && (
           <section className="carte" style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
             <span style={{ color: 'var(--bleu)', flexShrink: 0 }}>
               <Icone nom="accueil" taille={24} />

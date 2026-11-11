@@ -132,6 +132,42 @@ export const zonesRisqueDemo: ZoneRisqueServeur[] = [
   },
 ]
 
+// Géolocalisation (mode démo) : une seconde commune Vigipop fictive, pour montrer ce qui change
+// quand on visite une autre ville. Rayon en km autour du centre (Cholet et ses communes associées).
+// La voisine est placée à l'est de Cholet mais reste un exemple : aucune commune réelle n'est nommée,
+// pour ne pas laisser croire qu'elle utilise Vigipop.
+export const rayonCommuneDemo = 8
+
+export type CommuneDemo = {
+  id: string
+  nom: string
+  centre: [number, number]
+  rayonKm: number
+  risques: string[]
+  lieux: LieuServeur[]
+}
+
+export const communesDemo: CommuneDemo[] = [
+  {
+    id: 'demo-voisine',
+    nom: 'Commune voisine (exemple)',
+    centre: [47.0098, -0.7437],
+    rayonKm: 3,
+    risques: ['Inondation', 'Tempête'],
+    lieux: [
+      { id: 'voisine-accueil', type: 'accueil', nom: 'Salle des sports (exemple)', details: "centre d'accueil · exemple de démonstration", distance: '400 m', places: 60, ouvert: true, adresse: '', lat: 47.0112, lng: -0.7465 },
+      { id: 'voisine-soins', type: 'soins', nom: 'Poste de secours (exemple)', details: 'premiers soins · exemple de démonstration', distance: '600 m', places: null, ouvert: true, adresse: '', lat: 47.0085, lng: -0.7401 },
+    ],
+  },
+]
+
+// Étapes du bouton « Simuler un déplacement » : chez soi, ville voisine abonnée, zone sans Vigipop
+export const positionsDemo: { libelle: string; position: [number, number] }[] = [
+  { libelle: 'chez moi', position: centreCommune },
+  { libelle: 'la commune voisine (exemple)', position: communesDemo[0].centre },
+  { libelle: 'une ville sans Vigipop', position: [46.58, 0.34] },
+]
+
 // Hébergement solidaire chez l'habitant : un nombre, jamais d'adresse privée
 export const hebergementsSolidairesDemo = 3
 
