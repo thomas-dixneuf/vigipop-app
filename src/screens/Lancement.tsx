@@ -8,16 +8,17 @@ const lienClair = { color: 'var(--cyan)', fontSize: 15, fontWeight: 700, minHeig
 
 export default function Lancement() {
   const navigate = useNavigate()
-  const { utilisateur, mode, alerte, geoloc, activerGeoloc } = useAppState()
+  const { utilisateur, mode, alerte, geoloc, activerGeoloc, geolocProposee, repondreGeoloc } = useAppState()
   // Sans compte, seul le mode crise ouvre l'app (accès d'urgence)
   const urgenceSansCompte = !utilisateur && mode === 'crise'
+  const propositionGeoloc = !urgenceSansCompte && !geoloc && !geolocProposee
 
   return (
     <div
       className="ecran ecran--sombre"
-      style={{ alignItems: 'center', justifyContent: 'space-between', padding: `${urgenceSansCompte ? 32 : 96}px 28px 32px`, gap: 24 }}
+      style={{ alignItems: 'center', justifyContent: 'space-between', padding: `${urgenceSansCompte || propositionGeoloc ? 32 : 96}px 28px 32px`, gap: 24 }}
     >
-      <Logo taille={urgenceSansCompte ? 160 : 280} slogan />
+      <Logo taille={urgenceSansCompte || propositionGeoloc ? 160 : 280} slogan />
 
       {urgenceSansCompte ? (
         <section role="alert" style={{ width: '100%', background: 'var(--blanc)', color: 'var(--texte)', borderRadius: 16, padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 6 }}>
@@ -29,6 +30,26 @@ export default function Lancement() {
           <span style={{ fontSize: 14, lineHeight: 1.4 }}>
             Vous pouvez demander de l'aide <strong>sans créer de compte</strong>.
           </span>
+        </section>
+      ) : propositionGeoloc ? (
+        // Dès la première ouverture : refusable, et jamais un passage obligé (le 112 reste en dessous)
+        <section
+          aria-labelledby="titre-geoloc"
+          style={{ width: '100%', background: 'var(--blanc)', color: 'var(--texte)', borderRadius: 16, padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 8 }}
+        >
+          <strong id="titre-geoloc" style={{ fontSize: 17, color: 'var(--bleu-nuit)', display: 'flex', alignItems: 'center', gap: 8 }}>
+            <Icone nom="pin" taille={18} /> Autoriser la localisation ?
+          </strong>
+          <span style={{ fontSize: 14, lineHeight: 1.4 }}>
+            Vigipop vous montre les lieux d'accueil et les alertes de la commune où vous êtes, même en visite. Votre position sert
+            seulement à trouver la commune : elle n'est jamais enregistrée.
+          </span>
+          <button type="button" className="bouton bouton--principal" onClick={() => repondreGeoloc(true)}>
+            Autoriser la localisation
+          </button>
+          <button type="button" className="bouton bouton--contour" onClick={() => repondreGeoloc(false)}>
+            Plus tard
+          </button>
         </section>
       ) : (
         <p style={{ textAlign: 'center', fontSize: 17, lineHeight: 1.5, color: 'var(--bleu-voile)', maxWidth: 300 }}>
@@ -65,7 +86,7 @@ export default function Lancement() {
               Voir la carte des secours
             </Link>
             {/* De passage, ou sa ville n'a pas Vigipop : la carte montre les services de la ville où l'on est */}
-            {!geoloc && (
+            {!geoloc && geolocProposee && (
               <button
                 type="button"
                 style={{ ...lienClair, background: 'none', border: 'none', textAlign: 'center', justifyContent: 'center' }}

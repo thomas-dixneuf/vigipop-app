@@ -1,8 +1,8 @@
 import { useState, type FormEvent } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
+import ChampAdresse from '../components/ChampAdresse.tsx'
 import ChampTelephone from '../components/ChampTelephone.tsx'
 import EnTeteRetour from '../components/EnTeteRetour.tsx'
-import { commune as communeDemo } from '../data/fictif.ts'
 import { champ, libelle, numeroValide, type EtatCode } from '../outils/formulaire.ts'
 import { useAppState } from '../state/AppState.tsx'
 import { envoyerCode } from '../services/codeSms.ts'
@@ -14,12 +14,13 @@ export default function Inscription() {
   const { contact } = useAppState()
   const [prenom, setPrenom] = useState(contact?.prenom ?? '')
   const [telephone, setTelephone] = useState(contact?.telephone ?? '')
-  const [commune, setCommune] = useState('')
+  // Commune choisie dans la liste officielle (jamais un nom tapé au hasard)
+  const [commune, setCommune] = useState<string | null>(null)
   const [consentement, setConsentement] = useState(false)
   const [envoi, setEnvoi] = useState(false)
   const [erreur, setErreur] = useState('')
 
-  const valide = prenom.trim() !== '' && numeroValide(telephone) && consentement
+  const valide = prenom.trim() !== '' && numeroValide(telephone) && commune !== null && consentement
 
   const envoyer = async (e: FormEvent) => {
     e.preventDefault()
@@ -30,7 +31,7 @@ export default function Inscription() {
     const resultat = await envoyerCode(telephone, true)
     setEnvoi(false)
     if ('erreur' in resultat) return setErreur(resultat.erreur)
-    const etat: EtatCode = { prenom: prenom.trim(), telephone, commune: commune.trim() || communeDemo, nouveauCompte: true, suite, typeCode: resultat.type }
+    const etat: EtatCode = { prenom: prenom.trim(), telephone, commune: commune ?? '', nouveauCompte: true, suite, typeCode: resultat.type }
     navigate('/code', { state: etat })
   }
 
@@ -52,10 +53,7 @@ export default function Inscription() {
           <input type="text" value={prenom} onChange={(e) => setPrenom(e.target.value)} placeholder="Prénom" autoComplete="given-name" style={champ} />
         </label>
         <ChampTelephone valeur={telephone} onChange={setTelephone} />
-        <label style={libelle}>
-          Ma commune
-          <input type="text" value={commune} onChange={(e) => setCommune(e.target.value)} placeholder={communeDemo} autoComplete="address-level2" style={champ} />
-        </label>
+        <ChampAdresse variante="app" commune obligatoire libelleChamp="Ma commune" onChoix={(r) => setCommune(r?.libelle ?? null)} />
         <label style={{ display: 'flex', alignItems: 'flex-start', gap: 10, fontSize: 13, lineHeight: 1.4, color: 'var(--texte-doux)' }}>
           <input
             type="checkbox"

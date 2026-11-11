@@ -133,6 +133,8 @@ type Etat = {
   horsCouverture: boolean
   // Ville visitée que l'habitant a choisi de ne pas afficher (« Revenir à ma commune »)
   communeIgnoree: string | null
+  // Localisation déjà proposée au lancement (acceptée ou « Plus tard ») : jamais reproposée d'office
+  geolocProposee: boolean
 }
 
 type AppStateValue = Etat & {
@@ -175,6 +177,8 @@ type AppStateValue = Etat & {
   // Recherche en cours, ou message si la position n'a pas pu être obtenue
   localisation: 'en-cours' | 'refusee' | 'indisponible' | null
   revenirMaCommune: () => void
+  // Réponse à la proposition du lancement : vrai = autoriser (le téléphone demande alors l'accord)
+  repondreGeoloc: (autoriser: boolean) => void
   // Ajoute une notification si son événement n'a pas déjà été annoncé ; vrai si elle est nouvelle
   ajouterNotification: (n: Omit<NotificationApp, 'heure' | 'lue'>) => boolean
   marquerNotificationsLues: () => void
@@ -215,6 +219,7 @@ const etatInitial: Etat = {
   communeVisitee: null,
   horsCouverture: false,
   communeIgnoree: null,
+  geolocProposee: false,
 }
 
 // Ce qui reste sur le téléphone après une déconnexion : uniquement les informations publiques
@@ -236,6 +241,7 @@ function etatPublic(e: Etat): Etat {
     communeVisitee: e.communeVisitee,
     horsCouverture: e.horsCouverture,
     communeIgnoree: e.communeIgnoree,
+    geolocProposee: e.geolocProposee,
   }
 }
 
@@ -691,6 +697,10 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
       setEtat((e) =>
         actif ? { ...e, geoloc: true } : { ...changerDeCommune(e, null), geoloc: false, statsPassage: false, horsCouverture: false, communeIgnoree: null },
       )
+    },
+    repondreGeoloc: (autoriser) => {
+      if (autoriser) derniereRecherche.current = 0
+      setEtat((e) => ({ ...e, geolocProposee: true, geoloc: autoriser || e.geoloc }))
     },
     choisirStatsPassage: (actif) => setEtat((e) => ({ ...e, statsPassage: actif })),
     revenirMaCommune: () =>
