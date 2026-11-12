@@ -14,6 +14,7 @@ import {
   type LieuServeur,
   type MissionServeur,
   type BesoinEntraide,
+  type GesteSecours,
   type StatutDemande,
   type StatutHebergement,
   type ZoneRisqueServeur,
@@ -21,7 +22,9 @@ import {
 } from '../services/serveur.ts'
 import { couleurLieu, distanceLisible, distanceMetres, estPlace, zonesDepuisGeoJSON, type ResultatAdresse, type ZoneImportee } from '../outils/carte.ts'
 
-export type Coordinateur = { nom: string; communeId: string; communeNom: string }
+// role « secours » : pompiers, police, gendarmerie, SAMU. Ils voient la carte et les demandes,
+// notent leurs interventions et proposent des zones à éviter ; la crise, les alertes et les missions restent à la mairie.
+export type Coordinateur = { nom: string; communeId: string; communeNom: string; role: 'mairie' | 'secours' }
 
 type Reponse = { mission_id: string; prenom: string; reponse: 'acceptee' | 'refusee' }
 type Volontaire = {
@@ -55,6 +58,8 @@ type Donnees = {
   hebergements: Hebergement[]
   entraides: Entraide[]
   zones: ZoneServeur[]
+  // Zones à éviter proposées par les secours, en attente de validation par la mairie
+  propositions: ZoneServeur[]
   zonesRisque: ZoneRisqueServeur[]
   journal: Evenement[]
 }
@@ -93,18 +98,34 @@ const libelleAction: Record<string, string> = {
   entraide_acceptee: 'Aide acceptée',
   entraide_refusee: 'Aide refusée',
   entraide_annulee: 'Aide annulée',
+  secours_prise: 'Pris en charge par les secours',
+  secours_evacuee: 'Personne évacuée',
+  secours_orientee: 'Personne orientée',
+  secours_note: 'Note des secours',
+  secours_numero: 'Numéro consulté par les secours',
+  zone_proposee: 'Zone à éviter proposée',
+  zone_validee: 'Zone proposée validée',
+  zone_refusee: 'Zone proposée refusée',
+}
+
+const libelleGeste: Record<GesteSecours, string> = {
+  prise: 'Pris en charge',
+  evacuee: 'Évacuée',
+  orientee: 'Orientée',
+  note: 'Note',
 }
 
 export default function TableauDeBord({ coordinateur }: { coordinateur: Coordinateur }) {
   const client = serveur!
   const commune = coordinateur.communeId
+  const secours = coordinateur.role === 'secours'
   const [donnees, setDonnees] = useState<Donnees | null>(null)
   const [erreur, setErreur] = useState('')
   // Mission pré-remplie depuis le tableau des besoins
   const [modeleMission, setModeleMission] = useState<ModeleMission | null>(null)
 
   const charger = useCallback(async () => {
-    const [crise, demandes, lieux, missions, reponses, volontaires, hebergements, zones, journal, communeLue, entraides, zonesRisque] = await Promise.all([
+    const [crise, demandes, lieux, missions, reponses, volontaires, hebergements, zones, journal, communeLue, entraides, zonesRisque, propositions] = await Promise.all([
       client.from('crises').select('id, titre, consigne, active, declenchee_a').eq('commune_id', commune).eq('active', true).maybeSingle(),
       client.from('demandes').select('*').eq('commune_id', commune).order('created_at', { ascending: false }).limit(300),
       client.from('lieux').select('*').eq('commune_id', commune).order('nom'),
@@ -119,6 +140,8 @@ export default function TableauDeBord({ coordinateur }: { coordinateur: Coordina
       client.from('entraides').select('id, demande_id, besoin, aidant, statut, updated_at').eq('commune_id', commune).order('created_at'),
       // Absente tant que la migration 0012 n'est pas lancée
       client.from('zones_risque').select('id, risque, nom, consigne, source, points').eq('commune_id', commune).order('created_at'),
+      // Zones proposées par les secours (inactives tant que la mairie ne les a pas validées)
+      client.from('zones_danger').select('*').eq('commune_id', commune).eq('active', false).order('created_at'),
     ])
     const echec = [crise, demandes, lieux, missions, reponses, volontaires, hebergements, zones, journal].find((r) => r.error)
     if (echec) {
@@ -139,6 +162,7 @@ export default function TableauDeBord({ coordinateur }: { coordinateur: Coordina
       missions: missions.data as MissionServeur[],
       reponses: reponses.data as Reponse[],
       zones: zones.data as ZoneServeur[],
+      propositions: ((propositions.data as ZoneServeur[] | null) ?? []).filter((z) => !!z.proposee_par),
       zonesRisque: (zonesRisque.data as ZoneRisqueServeur[] | null) ?? [],
       hebergements: hebergements.data as Hebergement[],
       entraides: (entraides.data as Entraide[] | null) ?? [],
@@ -174,8 +198,10 @@ export default function TableauDeBord({ coordinateur }: { coordinateur: Coordina
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <Logo taille={40} />
           <div style={{ display: 'flex', flexDirection: 'column' }}>
-            <NomCommune communeId={commune} nomInitial={coordinateur.communeNom} />
-            <span style={{ fontSize: 13, color: 'var(--bleu-clair)' }}>Cellule de crise · {coordinateur.nom}</span>
+            {secours ? <strong>Vigipop · {coordinateur.communeNom}</strong> : <NomCommune communeId={commune} nomInitial={coordinateur.communeNom} />}
+            <span style={{ fontSize: 13, color: 'var(--bleu-clair)' }}>
+              {secours ? 'Partenaire secours' : 'Cellule de crise'} · {coordinateur.nom}
+            </span>
           </div>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
@@ -200,6 +226,31 @@ export default function TableauDeBord({ coordinateur }: { coordinateur: Coordina
 
       {!donnees ? (
         <p style={{ padding: 24 }}>Chargement…</p>
+      ) : secours ? (
+        <main className="mairie-contenu">
+          <div className="mairie-colonne">
+            {enCrise && <Compteurs demandes={donnees.demandes} />}
+            <CarteMairie
+              lieux={donnees.lieux}
+              demandes={donnees.demandes}
+              zones={donnees.zones}
+              propositions={donnees.propositions}
+              zonesRisque={donnees.zonesRisque}
+              risques={donnees.risques}
+              communeId={commune}
+              enCrise={enCrise}
+              centre={donnees.position ? [donnees.position.lat, donnees.position.lng] : centreCommune}
+              partenaire={coordinateur.nom}
+            />
+            {(enCrise || demandesOuvertes > 0) && (
+              <Demandes demandes={donnees.demandes} depuis={donnees.crise?.declenchee_a ?? null} partenaire={coordinateur.nom} lieux={donnees.lieux} communeId={commune} />
+            )}
+          </div>
+          <div className="mairie-colonne">
+            <PanneauPartenaire crise={donnees.crise} />
+            <PanneauJournal journal={donnees.journal} />
+          </div>
+        </main>
       ) : (
         <main className="mairie-contenu">
           <div className="mairie-colonne">
@@ -208,6 +259,7 @@ export default function TableauDeBord({ coordinateur }: { coordinateur: Coordina
               lieux={donnees.lieux}
               demandes={donnees.demandes}
               zones={donnees.zones}
+              propositions={donnees.propositions}
               zonesRisque={donnees.zonesRisque}
               risques={donnees.risques}
               communeId={commune}
@@ -283,9 +335,33 @@ type Filtre = 'a-traiter' | 'en-cours' | 'terminees'
 
 // Demandes terminées : celles de la crise en cours, ou des dernières 48 h hors crise.
 // À la fin d'une crise, le serveur clôt les demandes encore ouvertes (migration 0010).
-function Demandes({ demandes, depuis }: { demandes: DemandeServeur[]; depuis: string | null }) {
+const gestesSecours: { type: GesteSecours; bouton: string; champ: string; exemple: string }[] = [
+  { type: 'prise', bouton: 'Pris en charge par les secours', champ: 'Équipe ou engin', exemple: 'VSAV Cholet, équipe 3' },
+  { type: 'evacuee', bouton: 'Personne évacuée', champ: 'Évacuée vers', exemple: 'CHU de Cholet' },
+  { type: 'orientee', bouton: 'Orientée vers un lieu', champ: "Lieu d'accueil", exemple: 'Salle Paul-Valéry' },
+  { type: 'note', bouton: 'Ajouter une note', champ: 'Note pour la cellule de crise', exemple: 'Accès impossible par la rue Nationale' },
+]
+
+function Demandes({
+  demandes,
+  depuis,
+  partenaire,
+  lieux = [],
+  communeId,
+}: {
+  demandes: DemandeServeur[]
+  depuis: string | null
+  // Nom du partenaire secours connecté ; absent : cellule de crise
+  partenaire?: string
+  lieux?: LieuServeur[]
+  communeId?: string
+}) {
   const [filtre, setFiltre] = useState<Filtre>('a-traiter')
   const [organisation, setOrganisation] = useState<{ id: string; texte: string } | null>(null)
+  const [geste, setGeste] = useState<{ id: string; type: GesteSecours; texte: string } | null>(null)
+  // Numéros affichés à la demande du partenaire (chaque consultation est inscrite au journal)
+  const [numerosVus, setNumerosVus] = useState<string[]>([])
+  const lieuxOuverts = lieux.filter((l) => l.ouvert)
   const [ouverture] = useState(() => Date.now())
   const limite = depuis ?? new Date(ouverture - 48 * 3600 * 1000).toISOString()
   const visibles = demandes
@@ -300,6 +376,29 @@ function Demandes({ demandes, depuis }: { demandes: DemandeServeur[]; depuis: st
 
   const changerStatut = async (id: string, statut: StatutDemande) => {
     await serveur!.from('demandes').update({ statut }).eq('id', id)
+  }
+
+  // Geste d'un partenaire secours : ajouté au suivi de la demande, inscrit au journal avec son nom
+  const noterGeste = async (e: FormEvent) => {
+    e.preventDefault()
+    const d = demandes.find((x) => x.id === geste?.id)
+    if (!geste || !d || !partenaire || geste.texte.trim().length < 2) return
+    const texte = geste.texte.trim()
+    const suivi = [...(d.suivi_secours ?? []), { type: geste.type, par: partenaire, texte, quand: new Date().toISOString() }]
+    const modif: Partial<DemandeServeur> = { suivi_secours: suivi }
+    // Pris en charge : la cellule n'envoie pas de volontaire en double. Évacuée ou orientée : l'habitant est prévenu.
+    if (geste.type === 'prise' && d.statut === 'transmise') modif.statut = 'prise_en_charge'
+    if (geste.type === 'evacuee' || geste.type === 'orientee') {
+      modif.statut = 'aide_organisee'
+      modif.reponse_mairie = `Les secours vous ont ${geste.type === 'evacuee' ? 'évacué' : 'orienté'} vers : ${texte}.`
+    }
+    const { error } = await serveur!.from('demandes').update(modif).eq('id', d.id)
+    if (!error) setGeste(null)
+  }
+
+  const voirNumero = async (d: DemandeServeur) => {
+    setNumerosVus((v) => [...v, d.id])
+    await serveur!.from('journal').insert({ commune_id: communeId, action: 'secours_numero', details: { reference: d.reference, par: partenaire } })
   }
 
   // « Aide organisée » : la mairie dit à l'habitant ce qui est prévu ; il le lit dans l'app
@@ -350,6 +449,7 @@ function Demandes({ demandes, depuis }: { demandes: DemandeServeur[]; depuis: st
             <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
               {urgent && <span className="mairie-etiquette mairie-etiquette--urgent">Prioritaire</span>}
               {d.personne_vulnerable && <span className="mairie-etiquette mairie-etiquette--urgent">Ne peut pas se déplacer seule</span>}
+              {d.suivi_secours?.some((g) => g.type !== 'note') && <span className="mairie-etiquette mairie-etiquette--ok">Secours engagés</span>}
               <span className="mairie-etiquette">
                 {d.personnes} personne{d.personnes > 1 ? 's' : ''}
               </span>
@@ -371,7 +471,15 @@ function Demandes({ demandes, depuis }: { demandes: DemandeServeur[]; depuis: st
             </div>
             <div style={{ fontSize: 14 }}>
               Contact :{' '}
-              {d.telephone ? (
+              {d.telephone && partenaire && !numerosVus.includes(d.id) ? (
+                <>
+                  {d.prenom || 'Sans prénom'} ·{' '}
+                  <button type="button" className="mairie-bouton" onClick={() => void voirNumero(d)}>
+                    Afficher le numéro
+                  </button>{' '}
+                  <span className="texte-doux">(consultation inscrite au journal)</span>
+                </>
+              ) : d.telephone ? (
                 <>
                   {d.prenom || 'Sans prénom'} ·{' '}
                   <a href={`tel:${d.telephone.replace(/[\s.-]/g, '')}`} style={{ fontWeight: 700 }}>
@@ -387,7 +495,61 @@ function Demandes({ demandes, depuis }: { demandes: DemandeServeur[]; depuis: st
                 <strong>Message envoyé à l'habitant :</strong> {d.reponse_mairie}
               </div>
             )}
-            {organisation?.id === d.id ? (
+            {(d.suivi_secours?.length ?? 0) > 0 && (
+              <ul style={{ margin: 0, padding: '8px 10px', listStyle: 'none', fontSize: 14, background: 'var(--bleu-voile)', borderRadius: 8, display: 'flex', flexDirection: 'column', gap: 4 }}>
+                {d.suivi_secours!.map((g, i) => (
+                  <li key={i}>
+                    <strong>{libelleGeste[g.type]}</strong> · {g.texte} <span className="texte-doux">({g.par}, {heure(g.quand)})</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+            {partenaire ? (
+              geste?.id === d.id ? (
+                <form onSubmit={(e) => void noterGeste(e)} style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 14, fontWeight: 700 }}>
+                    {gestesSecours.find((g) => g.type === geste.type)?.champ}
+                    <input
+                      className="mairie-champ"
+                      value={geste.texte}
+                      maxLength={200}
+                      autoFocus
+                      list={geste.type === 'orientee' ? 'lieux-ouverts' : undefined}
+                      placeholder={`Ex. : ${gestesSecours.find((g) => g.type === geste.type)?.exemple}`}
+                      onChange={(e) => setGeste({ ...geste, texte: e.target.value })}
+                    />
+                  </label>
+                  {(geste.type === 'evacuee' || geste.type === 'orientee') && (
+                    <p className="texte-doux" style={{ fontSize: 13, margin: 0 }}>
+                      L'habitant lira dans l'app : « Les secours vous ont {geste.type === 'evacuee' ? 'évacué' : 'orienté'} vers : … ».
+                    </p>
+                  )}
+                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                    <button type="submit" className="mairie-bouton mairie-bouton--principal" disabled={geste.texte.trim().length < 2}>
+                      Enregistrer
+                    </button>
+                    <button type="button" className="mairie-bouton" onClick={() => setGeste(null)}>
+                      Annuler
+                    </button>
+                  </div>
+                </form>
+              ) : (
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                  {gestesSecours
+                    .filter((g) => d.statut !== 'close' || g.type === 'note')
+                    .map((g) => (
+                      <button
+                        key={g.type}
+                        type="button"
+                        className={g.type === 'prise' && d.statut === 'transmise' ? 'mairie-bouton mairie-bouton--principal' : 'mairie-bouton'}
+                        onClick={() => setGeste({ id: d.id, type: g.type, texte: '' })}
+                      >
+                        {g.bouton}
+                      </button>
+                    ))}
+                </div>
+              )
+            ) : organisation?.id === d.id ? (
               <form onSubmit={(e) => void organiser(e)} style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 14, fontWeight: 700 }}>
                   Ce qui est prévu (envoyé à l'habitant)
@@ -441,6 +603,13 @@ function Demandes({ demandes, depuis }: { demandes: DemandeServeur[]; depuis: st
           </article>
         )
       })}
+      {partenaire && (
+        <datalist id="lieux-ouverts">
+          {lieuxOuverts.map((l) => (
+            <option key={l.id} value={l.nom} />
+          ))}
+        </datalist>
+      )}
     </section>
   )
 }
@@ -574,11 +743,14 @@ type PropsCarte = {
   lieux: LieuServeur[]
   demandes: DemandeServeur[]
   zones: ZoneServeur[]
+  propositions: ZoneServeur[]
   zonesRisque: ZoneRisqueServeur[]
   risques: string[]
   communeId: string
   enCrise: boolean
   centre: [number, number]
+  // Partenaire secours connecté : il propose des zones à éviter, la mairie les valide
+  partenaire?: string
 }
 
 // Référentiel des risques (DICRIM, TIM) : verrouillé par défaut, jamais modifiable pendant une crise.
@@ -636,7 +808,10 @@ function useVerrou(enCrise: boolean, objet: string) {
 // Zone tracée à la main : à éviter (crise en cours, rouge) ou exposée à un risque du TIM (permanente)
 type Trace = { type: 'danger' | 'risque'; points: [number, number][] }
 
-function CarteMairie({ lieux, demandes, zones, zonesRisque, risques, communeId, enCrise, centre }: PropsCarte) {
+function CarteMairie({ lieux, demandes, zones, propositions, zonesRisque, risques, communeId, enCrise, centre, partenaire }: PropsCarte) {
+  // Zone proposée affichée en pointillés sur la carte (la première par défaut)
+  const [apercu, setApercu] = useState<string | null>(null)
+  const zoneApercue = propositions.find((z) => z.id === apercu) ?? propositions[0]
   const verrou = useVerrou(enCrise, 'Les zones de risque')
   // Chaque clic sur la carte ajoute un point du contour
   const [trace, setTrace] = useState<Trace | null>(null)
@@ -661,7 +836,16 @@ function CarteMairie({ lieux, demandes, zones, zonesRisque, risques, communeId, 
     e.preventDefault()
     if (!trace || trace.points.length < 3) return
     const { error } =
-      trace.type === 'danger'
+      partenaire
+        ? await serveur!.from('zones_danger').insert({
+            commune_id: communeId,
+            nom: nom.trim(),
+            consigne: consigne.trim(),
+            points: trace.points,
+            active: false,
+            proposee_par: partenaire,
+          })
+        : trace.type === 'danger'
         ? await serveur!.from('zones_danger').insert({ commune_id: communeId, nom: nom.trim(), consigne: consigne.trim(), points: trace.points })
         : await serveur!.from('zones_risque').insert({
             commune_id: communeId,
@@ -676,7 +860,9 @@ function CarteMairie({ lieux, demandes, zones, zonesRisque, risques, communeId, 
       return
     }
     setMessage(
-      trace.type === 'danger'
+      partenaire
+        ? 'Zone envoyée à la cellule de crise : elle apparaîtra chez les habitants une fois validée.'
+        : trace.type === 'danger'
         ? 'Zone publiée : elle apparaît en rouge chez les habitants.'
         : 'Zone de risque publiée : les habitants la voient en pointillés, en veille comme en crise.',
     )
@@ -733,6 +919,18 @@ function CarteMairie({ lieux, demandes, zones, zonesRisque, risques, communeId, 
     setMessage(error ? 'Échec : la zone est toujours affichée.' : '')
   }
 
+  // Zone proposée par les secours : la mairie la publie telle quelle ou la refuse
+  const valider = async (z: ZoneServeur) => {
+    const { error } = await serveur!.from('zones_danger').update({ active: true }).eq('id', z.id)
+    setMessage(error ? "Échec : la zone n'a pas été publiée." : 'Zone validée : elle apparaît en rouge chez les habitants.')
+  }
+
+  const refuser = async (z: ZoneServeur) => {
+    if (!window.confirm(`Refuser la zone « ${z.nom} » proposée par ${z.proposee_par} ?`)) return
+    const { error } = await serveur!.from('zones_danger').delete().eq('id', z.id)
+    setMessage(error ? 'Échec : la proposition est toujours là.' : '')
+  }
+
   const retirerRisque = async (z: ZoneRisqueServeur) => {
     if (!window.confirm(`Supprimer la zone de risque « ${z.nom} » ? Elle disparaîtra de la carte des habitants.`)) return
     const { error } = await serveur!.from('zones_risque').delete().eq('id', z.id)
@@ -784,8 +982,8 @@ function CarteMairie({ lieux, demandes, zones, zonesRisque, risques, communeId, 
         reperes={reperes}
         zones={zones}
         zonesRisque={zonesRisque}
-        trace={trace?.points}
-        couleurTrace={trace?.type === 'risque' ? '#0e3a52' : undefined}
+        trace={trace?.points ?? zoneApercue?.points}
+        couleurTrace={trace?.type === 'risque' ? '#0e3a52' : trace ? undefined : '#c2410c'}
         onClicCarte={trace ? ajouterPoint : undefined}
         centre={centre}
         hauteur={380}
@@ -798,11 +996,12 @@ function CarteMairie({ lieux, demandes, zones, zonesRisque, risques, communeId, 
         <Legende couleur={couleurLieu.eau} texte="Eau" />
         <Legende couleur="#d92d20" texte="Zone à éviter" />
         <Legende couleur="#86ddff" texte="Zone de risque (TIM)" />
+        {propositions.length > 0 && <Legende couleur="#c2410c" texte="Zone proposée (pointillés)" />}
       </div>
       {trace ? (
         <form onSubmit={enregistrer} style={{ display: 'flex', flexDirection: 'column', gap: 10, borderTop: '1px solid var(--bordure)', paddingTop: 12 }}>
           <p style={{ fontSize: 14, fontWeight: 700 }}>
-            {trace.type === 'risque' ? 'Zone de risque du TIM : r' : 'Zone à éviter : r'}eprenez le contour en cliquant sur la carte ({trace.points.length} point
+            {trace.type === 'risque' ? 'Zone de risque du TIM : r' : partenaire ? 'Zone à éviter proposée à la mairie : r' : 'Zone à éviter : r'}eprenez le contour en cliquant sur la carte ({trace.points.length} point
             {trace.points.length > 1 ? 's' : ''}, 3 minimum).
           </p>
           {trace.type === 'risque' && champsRisque}
@@ -832,7 +1031,7 @@ function CarteMairie({ lieux, demandes, zones, zonesRisque, risques, communeId, 
               className={trace.type === 'danger' ? 'mairie-bouton mairie-bouton--urgence' : 'mairie-bouton mairie-bouton--principal'}
               disabled={trace.points.length < 3 || nom.trim().length < 3 || (trace.type === 'risque' && !risqueChoisi)}
             >
-              Publier la zone
+              {partenaire ? 'Envoyer à la cellule de crise' : 'Publier la zone'}
             </button>
             <button type="button" className="mairie-bouton" disabled={trace.points.length === 0} onClick={() => setTrace({ ...trace, points: trace.points.slice(0, -1) })}>
               Retirer le dernier point
@@ -861,6 +1060,12 @@ function CarteMairie({ lieux, demandes, zones, zonesRisque, risques, communeId, 
               Annuler
             </button>
           </div>
+        </div>
+      ) : partenaire ? (
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          <button type="button" className="mairie-bouton" onClick={() => commencer('danger')}>
+            Proposer une zone à éviter
+          </button>
         </div>
       ) : (
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
@@ -894,12 +1099,40 @@ function CarteMairie({ lieux, demandes, zones, zonesRisque, risques, communeId, 
             <strong style={{ color: 'var(--danger)' }}>{z.nom}</strong>
             {z.consigne ? <span className="texte-doux"> · {z.consigne}</span> : null}
           </span>
-          <button type="button" className="mairie-bouton" onClick={() => void retirer(z)}>
-            Retirer
-          </button>
+          {!partenaire && (
+            <button type="button" className="mairie-bouton" onClick={() => void retirer(z)}>
+              Retirer
+            </button>
+          )}
         </div>
       ))}
-      {zonesRisque.length > 0 && verrou.bandeau}
+      {propositions.map((z) => (
+        <div key={z.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, flexWrap: 'wrap', borderLeft: '4px dashed #c2410c', paddingLeft: 10 }}>
+          <span style={{ fontSize: 14 }}>
+            <strong>Proposée par {z.proposee_par}</strong> · {z.nom}
+            {z.consigne ? <span className="texte-doux"> · {z.consigne}</span> : null}
+            {partenaire && <span className="texte-doux"> · en attente de validation par la mairie</span>}
+          </span>
+          <span style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            {propositions.length > 1 && (
+              <button type="button" className="mairie-bouton" aria-pressed={zoneApercue?.id === z.id} onClick={() => setApercu(z.id)}>
+                Voir
+              </button>
+            )}
+            {!partenaire && (
+              <>
+                <button type="button" className="mairie-bouton mairie-bouton--urgence" onClick={() => void valider(z)}>
+                  Valider et publier
+                </button>
+                <button type="button" className="mairie-bouton" onClick={() => void refuser(z)}>
+                  Refuser
+                </button>
+              </>
+            )}
+          </span>
+        </div>
+      ))}
+      {zonesRisque.length > 0 && !partenaire && verrou.bandeau}
       {zonesRisque.map((z) => (
         <div key={z.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10 }}>
           <span style={{ fontSize: 14 }}>
@@ -910,7 +1143,7 @@ function CarteMairie({ lieux, demandes, zones, zonesRisque, risques, communeId, 
               {z.consigne ? ` · ${z.consigne}` : ''} · {z.source}
             </span>
           </span>
-          {verrou.modifiable && (
+          {verrou.modifiable && !partenaire && (
             <button type="button" className="mairie-bouton" onClick={() => void retirerRisque(z)}>
               Supprimer
             </button>
@@ -1753,6 +1986,37 @@ function PanneauMissions({ missions, reponses, volontaires, communeId, modele }:
   )
 }
 
+// Ce que voit et peut faire un partenaire secours : la consigne en lecture seule et ses droits
+function PanneauPartenaire({ crise }: { crise: CriseServeur | null }) {
+  return (
+    <section className="mairie-panneau" aria-labelledby="titre-partenaire">
+      <h2 id="titre-partenaire">Accès partenaire secours</h2>
+      {crise ? (
+        <div style={{ background: 'var(--consigne)', color: 'var(--bleu-nuit)', borderRadius: 8, padding: '8px 10px', fontSize: 14 }}>
+          <strong>{crise.titre}</strong>
+          <br />
+          {crise.consigne}
+        </div>
+      ) : (
+        <p className="texte-doux" style={{ fontSize: 14 }}>
+          Aucune crise en cours. Les demandes isolées encore ouvertes restent visibles.
+        </p>
+      )}
+      <p style={{ fontSize: 14, margin: 0, fontWeight: 700 }}>Vous pouvez</p>
+      <ul style={{ margin: 0, paddingLeft: 18, fontSize: 14, lineHeight: 1.6 }}>
+        <li>marquer une demande prise en charge par vos équipes ;</li>
+        <li>indiquer qu'une personne est évacuée ou orientée vers un lieu ;</li>
+        <li>laisser une note à la cellule de crise ;</li>
+        <li>proposer une zone à éviter, publiée après validation de la mairie.</li>
+      </ul>
+      <p className="texte-doux" style={{ fontSize: 13, margin: 0 }}>
+        Déclencher ou terminer la crise, alerter les habitants et solliciter des volontaires restent réservés à la mairie. Les numéros des
+        habitants s'affichent à la demande. Chacun de vos gestes est inscrit au journal, avec votre nom et l'heure.
+      </p>
+    </section>
+  )
+}
+
 function PanneauJournal({ journal }: { journal: Evenement[] }) {
   return (
     <section className="mairie-panneau" aria-labelledby="titre-journal">
@@ -1763,7 +2027,11 @@ function PanneauJournal({ journal }: { journal: Evenement[] }) {
           <li key={j.id} style={{ fontSize: 13 }}>
             <span className="texte-doux">{heure(j.created_at)}</span> · {libelleAction[j.action] ?? j.action}
             {j.details.demande ? ` ${j.details.demande} → ${libelleStatut[j.details.vers as StatutDemande] ?? j.details.vers}` : ''}
+            {!j.details.demande && j.details.reference ? ` ${j.details.reference}` : ''}
+            {j.action === 'statut_demande' && j.details.statut ? ` → ${libelleStatut[j.details.statut as StatutDemande] ?? j.details.statut}` : ''}
             {j.details.titre && j.action !== 'statut_demande' ? ` : ${j.details.titre}` : ''}
+            {j.details.texte ? ` : ${j.details.texte}` : ''}
+            {j.details.par ? <span className="texte-doux"> ({j.details.par})</span> : null}
           </li>
         ))}
       </ul>

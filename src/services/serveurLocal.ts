@@ -12,6 +12,9 @@ type Evenement = { table: string; type: 'INSERT' | 'UPDATE' | 'DELETE'; lignes: 
 const CLE = 'vigipop-serveur-local-v4'
 export const COMMUNE_LOCALE = '00000000-0000-4000-8000-000000000001'
 const COORDINATEUR = 'coordinateur-cholet'
+// Accès partenaire secours (pompiers, police, SAMU) : gestes limités, tous inscrits au journal
+const PARTENAIRE = 'partenaire-secours-cholet'
+const estEmailSecours = (email: string) => /sdis|pompier|police|gendarm|samu|secours/i.test(email)
 
 const maintenant = (decalageMinutes = 0) => new Date(Date.now() + decalageMinutes * 60000).toISOString()
 const identifiant = () => crypto.randomUUID()
@@ -42,7 +45,10 @@ function baseInitiale(): Base {
       { id: c, nom: commune, risques, lat: centreCommune[0], lng: centreCommune[1], rayon_km: rayonCommuneDemo },
       ...communesDemo.map((v) => ({ id: v.id, nom: v.nom, risques: v.risques, lat: v.centre[0], lng: v.centre[1], rayon_km: v.rayonKm })),
     ],
-    coordinateurs: [{ user_id: COORDINATEUR, nom: 'Cellule de crise communale', commune_id: c, communes: { nom: commune } }],
+    coordinateurs: [
+      { user_id: COORDINATEUR, nom: 'Cellule de crise communale', role: 'mairie', commune_id: c, communes: { nom: commune } },
+      { user_id: PARTENAIRE, nom: 'SDIS 49 · officier de liaison', role: 'secours', commune_id: c, communes: { nom: commune } },
+    ],
     lieux: [
       ...lieuxDemo.map((l) => ({ ...l, commune_id: c, created_at: cree })),
       ...communesDemo.flatMap((v) => v.lieux.map((l) => ({ ...l, commune_id: v.id, created_at: cree }))),
@@ -82,7 +88,8 @@ function baseInitiale(): Base {
 function lire(): Base {
   try {
     const brut = localStorage.getItem(CLE)
-    if (brut) return { ...baseInitiale(), ...JSON.parse(brut) }
+    // Les comptes de démonstration suivent toujours le code (ajout du partenaire secours)
+    if (brut) return { ...baseInitiale(), ...JSON.parse(brut), coordinateurs: baseInitiale().coordinateurs }
   } catch {
     // Stockage indisponible : base en mémoire
   }
@@ -245,6 +252,7 @@ class Requete implements PromiseLike<Resultat> {
       resultat = lignes.filter(garde)
       base[t] = lignes.filter((l) => !garde(l))
       ev.push({ table: t, type: 'DELETE', lignes: resultat })
+      for (const z of resultat) if (t === 'zones_danger' && z.proposee_par && !z.active) ev.push(journal('zone_refusee', { titre: z.nom, par: z.proposee_par }))
     } else if (this.ecriture.type === 'update') {
       const modif = this.ecriture.valeur as Ligne
       resultat = []
@@ -258,7 +266,12 @@ class Requete implements PromiseLike<Resultat> {
       for (const n of resultat) {
         if (t === 'crises' && modif.active === false) ev.push(...aFinDeCrise(n))
         else if (t === 'crises') ev.push(journal('crise_modifiee', { titre: n.titre }))
-        if (t === 'demandes' && modif.statut) ev.push(journal('statut_demande', { reference: n.reference, statut: n.statut }))
+        if (t === 'demandes' && Array.isArray(modif.suivi_secours)) {
+          // Geste d'un partenaire secours : une seule ligne au journal, avec son nom
+          const geste = modif.suivi_secours.at(-1) as Ligne | undefined
+          if (geste) ev.push(journal(`secours_${geste.type}`, { reference: n.reference, par: geste.par, texte: geste.texte }))
+        } else if (t === 'demandes' && modif.statut) ev.push(journal('statut_demande', { reference: n.reference, statut: n.statut }))
+        if (t === 'zones_danger' && modif.active === true && n.proposee_par) ev.push(journal('zone_validee', { titre: n.nom, par: n.proposee_par }))
       }
     } else {
       const valeurs = ([] as Ligne[]).concat(this.ecriture.valeur ?? [])
@@ -272,12 +285,20 @@ class Requete implements PromiseLike<Resultat> {
           ev.push({ table: t, type: 'UPDATE', lignes: [n] })
         } else {
           if (t === 'crises' && base.crises.some((c) => c.active)) continue
+          // Écriture directe au journal (ex. numéro consulté par un partenaire secours)
+          if (t === 'journal') {
+            const e = journal(String(v.action), (v.details as Record<string, unknown>) ?? {})
+            resultat.push(e.lignes[0])
+            ev.push(e)
+            continue
+          }
           const n = completer(t, v)
           if (t === 'demandes' && !n.reference) n.reference = reference()
           base[t] = [...(base[t] ?? []), n]
           resultat.push(n)
           ev.push({ table: t, type: 'INSERT', lignes: [n] })
           if (t === 'crises') ev.push(...aDeclenchement(n))
+          if (t === 'zones_danger' && n.proposee_par) ev.push(journal('zone_proposee', { titre: n.nom, par: n.proposee_par }))
         }
       }
     }
@@ -379,8 +400,12 @@ export function creerServeurLocal(role: 'habitant' | 'mairie'): SupabaseClient {
         changer({ user: { id: identifiant(), is_anonymous: true } })
         return Promise.resolve({ data: { user: session!.user, session }, error: null })
       },
-      signInWithPassword: () => {
-        changer({ user: { id: COORDINATEUR, is_anonymous: false, email: 'cellule.crise@cholet.fr' } })
+      signInWithPassword: ({ email }: { email: string }) => {
+        changer(
+          estEmailSecours(email)
+            ? { user: { id: PARTENAIRE, is_anonymous: false, email: 'officier.liaison@sdis49.fr' } }
+            : { user: { id: COORDINATEUR, is_anonymous: false, email: 'cellule.crise@cholet.fr' } },
+        )
         return Promise.resolve({ data: { user: session!.user, session }, error: null })
       },
       signOut: () => {

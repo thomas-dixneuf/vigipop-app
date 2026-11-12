@@ -2,7 +2,7 @@ import { useEffect, useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import type { Session } from '@supabase/supabase-js'
 import Logo from '../components/Logo.tsx'
-import { serveurMairie as serveur } from '../services/serveur.ts'
+import { serveurLocal, serveurMairie as serveur } from '../services/serveur.ts'
 import TableauDeBord, { type Coordinateur } from './TableauDeBord.tsx'
 import './mairie.css'
 
@@ -29,14 +29,16 @@ export default function MairieApp() {
     let annule = false
     void serveur
       .from('coordinateurs')
-      .select('nom, commune_id, communes(nom)')
+      .select('*, communes(nom)')
       .eq('user_id', session.user.id)
       .maybeSingle()
       .then(({ data }) => {
         if (annule) return
         if (!data) return setCoordinateur('refuse')
         const commune = data.communes as unknown as { nom: string } | null
-        setCoordinateur({ nom: data.nom, communeId: data.commune_id, communeNom: commune?.nom ?? '' })
+        // role « secours » : pompiers, police, SAMU (gestes limités) ; absent : cellule de crise
+        const role = (data as { role?: string }).role === 'secours' ? 'secours' : 'mairie'
+        setCoordinateur({ nom: data.nom, communeId: data.commune_id, communeNom: commune?.nom ?? '', role })
       })
     return () => {
       annule = true
@@ -94,6 +96,14 @@ function ConnexionMairie() {
   const [erreur, setErreur] = useState('')
   const [envoi, setEnvoi] = useState(false)
 
+  const entrer = async (adresse: string, mot: string) => {
+    setEnvoi(true)
+    setErreur('')
+    const { error } = await serveur!.auth.signInWithPassword({ email: adresse.trim(), password: mot })
+    setEnvoi(false)
+    if (error) setErreur('E-mail ou mot de passe incorrect.')
+  }
+
   const connecter = async (e: FormEvent) => {
     e.preventDefault()
     setEnvoi(true)
@@ -105,7 +115,21 @@ function ConnexionMairie() {
 
   return (
     <Cadre>
-      <h1 style={{ fontSize: 22, fontWeight: 800, color: 'var(--bleu-nuit)' }}>Connexion coordinateur</h1>
+      <h1 style={{ fontSize: 22, fontWeight: 800, color: 'var(--bleu-nuit)' }}>Connexion</h1>
+      <p style={{ fontSize: 14, lineHeight: 1.5, margin: 0 }}>
+        Cellule de crise de la commune, ou partenaire secours (pompiers, police, gendarmerie, SAMU) avec un accès limité.
+      </p>
+      {serveurLocal && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <span style={{ fontSize: 13, fontWeight: 700 }}>Démonstration : entrer sans mot de passe</span>
+          <button type="button" className="mairie-bouton mairie-bouton--principal" disabled={envoi} onClick={() => void entrer('cellule.crise@cholet.fr', 'demo')}>
+            Cellule de crise communale
+          </button>
+          <button type="button" className="mairie-bouton" disabled={envoi} onClick={() => void entrer('officier.liaison@sdis49.fr', 'demo')}>
+            Partenaire secours (SDIS 49)
+          </button>
+        </div>
+      )}
       <form onSubmit={connecter} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
         <label style={{ display: 'flex', flexDirection: 'column', gap: 6, fontWeight: 700, fontSize: 14 }}>
           E-mail

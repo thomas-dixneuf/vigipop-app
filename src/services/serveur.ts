@@ -50,6 +50,9 @@ export type ZoneServeur = {
   nom: string
   consigne: string
   points: [number, number][]
+  // Proposée par un partenaire secours : invisible des habitants tant que la mairie ne l'a pas validée
+  active?: boolean
+  proposee_par?: string | null
 }
 
 // Zone exposée à un risque connu (TIM, DICRIM) : permanente, visible en veille comme en crise
@@ -80,6 +83,9 @@ export type MissionServeur = {
   lng?: number | null
 }
 
+export type GesteSecours = 'prise' | 'evacuee' | 'orientee' | 'note'
+export type SuiviSecours = { type: GesteSecours; par: string; texte: string; quand: string }
+
 export type DemandeServeur = {
   id: string
   reference: string
@@ -93,6 +99,8 @@ export type DemandeServeur = {
   statut: StatutDemande
   // Ce que la mairie a prévu, lu par l'habitant (migration 0010)
   reponse_mairie?: string
+  // Gestes des partenaires secours (pompiers, police, SAMU) sur cette demande
+  suivi_secours?: SuiviSecours[]
   created_at: string
   updated_at: string
 }
