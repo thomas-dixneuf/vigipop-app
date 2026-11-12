@@ -1,4 +1,5 @@
 import BarreNav from '../components/BarreNav.tsx'
+import Bandeau112 from '../components/Bandeau112.tsx'
 import ChampAdresse from '../components/ChampAdresse.tsx'
 import EnTeteRetour from '../components/EnTeteRetour.tsx'
 import { pointsRassemblement } from '../data/fictif.ts'
@@ -41,6 +42,7 @@ export default function MonQuartier() {
       </EnTeteRetour>
 
       <main className="contenu" style={{ paddingTop: 12 }}>
+        <Bandeau112 />
         {point && (
           <section className="carte" style={{ display: 'flex', flexDirection: 'column', gap: 10, borderColor: 'var(--bleu)', borderWidth: 2 }}>
             <span style={{ fontSize: 12, fontWeight: 800, color: 'var(--bleu)', textTransform: 'uppercase', letterSpacing: 0.6 }}>

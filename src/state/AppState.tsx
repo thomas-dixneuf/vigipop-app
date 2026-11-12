@@ -18,6 +18,7 @@ import {
   type CommuneProche,
   heure,
   serveur,
+  serveurLocal,
   type CriseServeur,
   type LieuServeur,
   type MissionServeur,
@@ -162,7 +163,11 @@ type AppStateValue = Etat & {
   connecter: (utilisateur: Utilisateur, nouveauCompte: boolean) => void
   lancerVisite: () => void
   terminerVisite: () => void
+  // Déconnexion : efface du téléphone tout ce qui est personnel (RGPD)
   deconnecter: () => void
+  // Droit à l'effacement : supprime le compte et ses données (serveur puis téléphone).
+  // Renvoie un message d'erreur, ou null si c'est fait.
+  supprimerCompte: () => Promise<string | null>
   // Mise à jour des informations personnelles depuis le profil
   modifierUtilisateur: (modifs: Partial<Utilisateur>) => void
   basculerRessource: (id: RessourceId) => void
@@ -235,6 +240,26 @@ const etatInitial: Etat = {
   horsCouverture: false,
   communeIgnoree: null,
   geolocProposee: false,
+}
+
+// Ce qui reste sur le téléphone après une déconnexion : les informations publiques de la commune
+// (crise, lieux, zones, risques) et les réglages de l'appareil. Tout ce qui est personnel est effacé.
+function etatPublic(e: Etat): Etat {
+  return {
+    ...etatInitial,
+    mode: e.mode,
+    alerte: e.alerte,
+    lieux: e.lieux,
+    zones: e.zones,
+    zonesRisque: e.zonesRisque,
+    missions: e.missions,
+    nomCommune: e.nomCommune,
+    risques: e.risques,
+    visiteFaite: e.visiteFaite,
+    geoloc: e.geoloc,
+    geolocProposee: e.geolocProposee,
+    communeVisitee: e.communeVisitee,
+  }
 }
 
 // Commune dont l'app affiche les services
@@ -767,7 +792,30 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
       setEtat((e) => ({ ...e, utilisateur, dernierUtilisateur: utilisateur, contact: null, visiteAFaire: nouveauCompte && !e.visiteFaite })),
     lancerVisite: () => setEtat((e) => ({ ...e, visiteAFaire: true })),
     terminerVisite: () => setEtat((e) => ({ ...e, visiteAFaire: false, visiteFaite: true })),
-    deconnecter: () => setEtat((e) => ({ ...e, utilisateur: null, visiteAFaire: false })),
+    deconnecter: () => {
+      if (serveur) void serveur.auth.signOut().catch(() => undefined)
+      setEtat((e) => ({
+        ...etatPublic(e),
+        // Maquette : le téléphone joue le rôle du serveur et se souvient du compte pour « J'ai déjà un compte »
+        dernierUtilisateur: e.dernierUtilisateur,
+      }))
+    },
+    supprimerCompte: async () => {
+      if (serveur) {
+        try {
+          const { data } = await serveur.auth.getSession()
+          if (data.session) {
+            const { error } = await serveur.rpc('supprimer_mon_compte', serveurLocal && etat.demande ? { p_demande: etat.demande.id } : undefined)
+            if (error) return "La suppression n'a pas abouti. Réessayez dans un instant."
+          }
+          await serveur.auth.signOut().catch(() => undefined)
+        } catch {
+          return 'Il faut du réseau pour supprimer votre compte sur le serveur. Réessayez dès que possible.'
+        }
+      }
+      setEtat((e) => ({ ...etatPublic(e), dernierUtilisateur: null }))
+      return null
+    },
     modifierUtilisateur: (modifs) =>
       setEtat((e) => {
         if (!e.utilisateur) return e

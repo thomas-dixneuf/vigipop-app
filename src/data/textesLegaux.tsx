@@ -65,7 +65,9 @@ export const confidentialite: Paragraphe[] = [
     titre: 'Qui y a accès',
     contenu: (
       <>
-        Les agents de la Ville habilités à la gestion de crise ; les volontaires, seulement pour ce qu'il faut savoir
+        Les agents de la Ville habilités à la gestion de crise ; les services de secours partenaires de la Ville
+        (pompiers, police, gendarmerie, SAMU), avec leur propre compte, pour organiser l'aide pendant une crise : ils ne voient
+        votre numéro que s'ils l'affichent, et chaque consultation est enregistrée avec leur nom ; les volontaires, seulement pour ce qu'il faut savoir
         d'une mission qu'ils ont acceptée ; l'équipe Vigipop, seulement pour la maintenance. Prestataires techniques :
         Supabase (base de données, serveurs dans l'Union européenne), OVH (hébergement de l'app, France) et un
         prestataire d'envoi de SMS européen. Quand vous tapez une commune ou une adresse, le texte saisi est envoyé
@@ -80,7 +82,8 @@ export const confidentialite: Paragraphe[] = [
     contenu: (
       <>
         Votre demande d'aide est effacée 30 jours après sa clôture. Votre compte et votre fiche de volontaire sont
-        gardés jusqu'à leur suppression, ou effacés après 3 ans sans connexion. Les alertes reçues sont effacées
+        gardés jusqu'à leur suppression, ou effacés après 3 ans sans ouverture de l'app, après deux rappels (un mois puis une semaine avant).
+        Jamais pendant une crise, ni tant qu'une demande d'aide est en cours. Les alertes reçues sont effacées
         après 7 jours. Le bilan d'une crise ne garde que des nombres, sans nom ni numéro.
       </>
     ),

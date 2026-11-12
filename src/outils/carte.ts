@@ -1,4 +1,5 @@
 import type { LieuServeur } from '../services/serveur.ts'
+import { centreCommune } from '../data/fictif.ts'
 
 export type Coordonnees = { lat: number; lng: number }
 
@@ -63,7 +64,8 @@ const SERVICES_ADRESSE = ['https://data.geopf.fr/geocodage/search/', 'https://ap
 // maquette hors ligne), la liste embarquée prend le relais : le choix reste vérifié.
 export async function chercherAdresse(texte: string, type?: 'municipality'): Promise<ResultatAdresse[]> {
   if (texte.trim().length < 2) return []
-  const filtre = type ? `&type=${type}` : ''
+  // Adresse : les résultats proches de la commune d'abord (« 12 rue Nationale » à Cholet, pas à Lille)
+  const filtre = type ? `&type=${type}` : `&lat=${centreCommune[0]}&lon=${centreCommune[1]}`
   for (const service of SERVICES_ADRESSE) {
     try {
       const reponse = await fetch(`${service}?q=${encodeURIComponent(texte)}&limit=5${filtre}`, { signal: AbortSignal.timeout(4000) })

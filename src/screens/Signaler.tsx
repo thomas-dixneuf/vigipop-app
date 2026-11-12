@@ -1,4 +1,6 @@
 import ChampAdresse from '../components/ChampAdresse.tsx'
+import Bandeau112 from '../components/Bandeau112.tsx'
+import { nouvelleReference } from '../outils/reference.ts'
 import { useEffect, useState } from 'react'
 import ChampTelephone from '../components/ChampTelephone.tsx'
 import { Navigate, useNavigate } from 'react-router-dom'
@@ -17,9 +19,6 @@ function heureActuelle() {
   return new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
 }
 
-function nouvelleReference() {
-  return `VG-${Math.floor(1000 + Math.random() * 9000)}`
-}
 
 export default function Signaler() {
   const navigate = useNavigate()
@@ -91,6 +90,8 @@ export default function Signaler() {
       </EnTeteRetour>
 
       <main className="contenu" style={{ gap: 18, paddingTop: 10 }}>
+        {/* Le 112 reste visible sur tout le parcours sinistré */}
+        {situation !== 'blesse' && <Bandeau112 texte="Vigipop prévient la mairie, pas les secours." />}
         <section style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           <h2 style={{ fontSize: 15, fontWeight: 800, color: 'var(--bleu-nuit)' }}>1. Ma situation</h2>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 8 }}>

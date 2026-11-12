@@ -1,4 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { nouvelleReference } from '../outils/reference.ts'
 import { centreCommune, commune, communesDemo, lieuxDemo, rayonCommuneDemo, missionsDemo, risques, zonesDemo, zonesRisqueDemo } from '../data/fictif.ts'
 
 // Serveur local de présentation (VITE_SERVEUR_LOCAL=1) : imite le client Supabase dans le navigateur,
@@ -126,8 +127,7 @@ function journal(action: string, details: Record<string, unknown>): Evenement {
   return { table: 'journal', type: 'INSERT', lignes: [ligne] }
 }
 
-let compteurReference = 1040
-const reference = () => `VGP-${++compteurReference}`
+const reference = nouvelleReference
 
 // Ce que ferait le serveur autour d'une crise : zones, volontaires, premières demandes, journal
 function aDeclenchement(crise: Ligne): Evenement[] {
@@ -327,7 +327,23 @@ class Requete implements PromiseLike<Resultat> {
 
 // Fonctions du serveur appelées par l'app : réponses vides, sauf le nombre de foyers solidaires
 // et la commune Vigipop la plus proche (même calcul que commune_a_proximite, migration 0015)
-function rpc(nom: string, args?: Record<string, unknown>) {
+function rpc(nom: string, args?: Record<string, unknown>, uid?: string) {
+  // Droit à l'effacement : la demande et tout ce que ce compte a déposé disparaissent aussi côté mairie
+  if (nom === 'supprimer_mon_compte') {
+    const ev: Evenement[] = []
+    const retirer = (table: string, garde: (l: Ligne) => boolean) => {
+      const partis = (base[table] ?? []).filter(garde)
+      if (partis.length === 0) return
+      base[table] = base[table].filter((l) => !garde(l))
+      ev.push({ table, type: 'DELETE', lignes: partis })
+    }
+    retirer('demandes', (l) => l.id === args?.p_demande)
+    retirer('hebergements', (l) => l.demande_id === args?.p_demande || l.hebergeur === uid)
+    retirer('entraides', (l) => l.demande_id === args?.p_demande || l.aidant === uid)
+    if (uid) for (const t of ['volontaires', 'reponses_mission', 'habilitations']) retirer(t, (l) => l.auteur === uid)
+    enregistrer(ev)
+    return Promise.resolve({ data: null, error: null })
+  }
   if (nom === 'commune_a_proximite') {
     const lat = Number(args?.p_lat)
     const lng = Number(args?.p_lng)
@@ -389,7 +405,7 @@ export function creerServeurLocal(role: 'habitant' | 'mairie'): SupabaseClient {
   }
   const client = {
     from: (table: string) => new Requete(table),
-    rpc,
+    rpc: (nom: string, args?: Record<string, unknown>) => rpc(nom, args, session?.user.id),
     channel: () => canal(),
     removeChannel: (c: { retirer: () => void }) => {
       c.retirer()

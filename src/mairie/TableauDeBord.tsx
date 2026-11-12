@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, type FormEvent } from 'react'
+import { createContext, useCallback, useContext, useEffect, useState, type FormEvent } from 'react'
 import CarteInteractive, { type Repere } from '../components/CarteInteractive.tsx'
 import Logo from '../components/Logo.tsx'
 import ChampAdresse from '../components/ChampAdresse.tsx'
@@ -75,6 +75,38 @@ const libelleStatut: Record<StatutDemande, string> = {
   prise_en_charge: 'Prise en charge',
   aide_organisee: 'Aide organisée',
   close: 'Close',
+}
+
+// Qui consulte le tableau : un partenaire secours voit les numéros (habitants comme volontaires) à la demande,
+// et chaque consultation est inscrite au journal
+const ContexteAcces = createContext<{ partenaire?: string; communeId: string }>({ communeId: '' })
+
+function LienAppel({ telephone, libelle, sujet }: { telephone: string; libelle: string; sujet: string }) {
+  const { partenaire, communeId } = useContext(ContexteAcces)
+  const [visible, setVisible] = useState(!partenaire)
+  if (!visible)
+    return (
+      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+        <button
+          type="button"
+          className="mairie-bouton"
+          onClick={() => {
+            setVisible(true)
+            void serveur!.from('journal').insert({ commune_id: communeId, action: 'secours_numero', details: { reference: sujet, par: partenaire } })
+          }}
+        >
+          Afficher le numéro
+        </button>
+        <span className="texte-doux" style={{ fontSize: 13 }}>
+          consultation inscrite au journal
+        </span>
+      </span>
+    )
+  return (
+    <a href={lienTelephone(telephone)} className="mairie-bouton" style={{ textDecoration: 'none', alignSelf: 'flex-start' }}>
+      {libelle}
+    </a>
+  )
 }
 
 const modelesCrise = [
@@ -181,7 +213,7 @@ export default function TableauDeBord({ coordinateur }: { coordinateur: Coordina
     void charger()
     const filtre = `commune_id=eq.${commune}`
     const canal = client.channel(`mairie-${commune}`)
-    for (const table of ['crises', 'demandes', 'lieux', 'missions', 'volontaires', 'hebergements', 'entraides', 'zones_danger', 'zones_risque']) {
+    for (const table of ['crises', 'demandes', 'lieux', 'missions', 'volontaires', 'hebergements', 'entraides', 'zones_danger', 'zones_risque', 'journal']) {
       canal.on('postgres_changes', { event: '*', schema: 'public', table, filter: filtre }, () => void charger())
     }
     canal.on('postgres_changes', { event: '*', schema: 'public', table: 'reponses_mission' }, () => void charger())
@@ -196,6 +228,7 @@ export default function TableauDeBord({ coordinateur }: { coordinateur: Coordina
   const enCrise = !!donnees?.crise
   const demandesOuvertes = donnees ? donnees.demandes.filter((d) => d.statut !== 'close' && d.statut !== 'aide_organisee').length : 0
   return (
+    <ContexteAcces.Provider value={{ partenaire: secours ? coordinateur.nom : undefined, communeId: commune }}>
     <div className="mairie">
       <header className="mairie-barre">
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
@@ -203,7 +236,7 @@ export default function TableauDeBord({ coordinateur }: { coordinateur: Coordina
           <div style={{ display: 'flex', flexDirection: 'column' }}>
             {secours ? <strong>Vigipop · {coordinateur.communeNom}</strong> : <NomCommune communeId={commune} nomInitial={coordinateur.communeNom} />}
             <span style={{ fontSize: 13, color: 'var(--bleu-clair)' }}>
-              {secours ? 'Partenaire secours' : 'Cellule de crise'} · {coordinateur.nom}
+              {secours ? `Partenaire secours · ${coordinateur.nom}` : coordinateur.nom}
             </span>
           </div>
         </div>
@@ -262,7 +295,7 @@ export default function TableauDeBord({ coordinateur }: { coordinateur: Coordina
             {/* En veille, la gestion de crise est masquée ; seule reste une demande isolée encore ouverte
                 (incendie, personne âgée...), pour qu'elle ne passe jamais inaperçue. */}
             {(enCrise || demandesOuvertes > 0) && (
-              <Demandes demandes={donnees.demandes} depuis={donnees.crise?.declenchee_a ?? null} partenaire={secours ? coordinateur.nom : undefined} lieux={donnees.lieux} communeId={commune} />
+              <Demandes demandes={donnees.demandes} depuis={donnees.crise?.declenchee_a ?? null} partenaire={secours ? coordinateur.nom : undefined} lieux={donnees.lieux} />
             )}
           </div>
           <div className="mairie-colonne">
@@ -296,6 +329,7 @@ export default function TableauDeBord({ coordinateur }: { coordinateur: Coordina
         </main>
       )}
     </div>
+    </ContexteAcces.Provider>
   )
 }
 
@@ -337,20 +371,16 @@ function Demandes({
   depuis,
   partenaire,
   lieux = [],
-  communeId,
 }: {
   demandes: DemandeServeur[]
   depuis: string | null
   // Nom du partenaire secours connecté ; absent : cellule de crise
   partenaire?: string
   lieux?: LieuServeur[]
-  communeId?: string
 }) {
   const [filtre, setFiltre] = useState<Filtre>('a-traiter')
   const [organisation, setOrganisation] = useState<{ id: string; texte: string } | null>(null)
   const [geste, setGeste] = useState<{ id: string; type: GesteSecours; texte: string } | null>(null)
-  // Numéros affichés à la demande du partenaire (chaque consultation est inscrite au journal)
-  const [numerosVus, setNumerosVus] = useState<string[]>([])
   const lieuxOuverts = lieux.filter((l) => l.ouvert)
   const [ouverture] = useState(() => Date.now())
   const limite = depuis ?? new Date(ouverture - 48 * 3600 * 1000).toISOString()
@@ -396,10 +426,6 @@ function Demandes({
     setGeste(null)
   }
 
-  const voirNumero = async (d: DemandeServeur) => {
-    setNumerosVus((v) => [...v, d.id])
-    await serveur!.from('journal').insert({ commune_id: communeId, action: 'secours_numero', details: { reference: d.reference, par: partenaire } })
-  }
 
   // « Aide organisée » : la mairie dit à l'habitant ce qui est prévu ; il le lit dans l'app
   const organiser = async (e: FormEvent) => {
@@ -471,20 +497,9 @@ function Demandes({
             </div>
             <div style={{ fontSize: 14 }}>
               Contact :{' '}
-              {d.telephone && partenaire && !numerosVus.includes(d.id) ? (
+              {d.telephone ? (
                 <>
-                  {d.prenom || 'Sans prénom'} ·{' '}
-                  <button type="button" className="mairie-bouton" onClick={() => void voirNumero(d)}>
-                    Afficher le numéro
-                  </button>{' '}
-                  <span className="texte-doux">(consultation inscrite au journal)</span>
-                </>
-              ) : d.telephone ? (
-                <>
-                  {d.prenom || 'Sans prénom'} ·{' '}
-                  <a href={`tel:${d.telephone.replace(/[\s.-]/g, '')}`} style={{ fontWeight: 700 }}>
-                    Appeler le {d.telephone}
-                  </a>
+                  {d.prenom || 'Sans prénom'} · <LienAppel telephone={d.telephone} libelle={`Appeler le ${d.telephone}`} sujet={d.reference} />
                 </>
               ) : (
                 <span className="texte-doux">{d.prenom ? `${d.prenom} · ` : ''}aucun numéro laissé</span>
@@ -1466,7 +1481,7 @@ function PanneauBesoins({ demandes, volontaires, onMission }: PropsBesoins) {
         Demandes ouvertes par besoin, face aux volontaires disponibles qui peuvent y répondre.
       </p>
       <div style={{ overflowX: 'auto' }}>
-        <table className="mairie-tableau" style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
+        <table className="mairie-tableau tableau-besoins" style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
           <thead>
             <tr style={{ textAlign: 'left' }}>
               <th scope="col">Besoin</th>
@@ -1487,9 +1502,9 @@ function PanneauBesoins({ demandes, volontaires, onMission }: PropsBesoins) {
                   <th scope="row" style={{ padding: '8px 6px 8px 0', textAlign: 'left' }}>
                     {listeBesoins.find((x) => x.id === b.id)?.label ?? b.id}
                   </th>
-                  <td style={{ padding: 6, fontWeight: concernees.length ? 800 : 400 }}>{concernees.length}</td>
-                  <td style={{ padding: 6 }}>{personnes}</td>
-                  <td style={{ padding: 6, color: manque ? 'var(--urgence-fonce)' : undefined, fontWeight: manque ? 800 : 400 }}>
+                  <td data-libelle="Demandes" style={{ padding: 6, fontWeight: concernees.length ? 800 : 400 }}>{concernees.length}</td>
+                  <td data-libelle="Personnes" style={{ padding: 6 }}>{personnes}</td>
+                  <td data-libelle="Volontaires" style={{ padding: 6, color: manque ? 'var(--urgence-fonce)' : undefined, fontWeight: manque ? 800 : 400 }}>
                     {aidants}
                     <span className="texte-doux" style={{ fontWeight: 400 }}> ({b.aides.map(libelleRessource).join(', ')})</span>
                   </td>
@@ -1680,11 +1695,7 @@ function PanneauHebergement({ demandes, volontaires, hebergements, communeId }: 
                     {h.statut === 'proposee' ? ' · réponse attendue' : ''}
                   </span>
                 ))}
-                {v.telephone && (
-                  <a href={lienTelephone(v.telephone)} style={{ fontSize: 14, fontWeight: 700 }}>
-                    Appeler le {v.telephone}
-                  </a>
-                )}
+                {v.telephone && <LienAppel telephone={v.telephone} libelle={`Appeler le ${v.telephone}`} sujet={`volontaire ${v.prenom || ''}`.trim()} />}
               </article>
             )
           })}
@@ -1745,11 +1756,7 @@ function HebergementDemande({ demande, volontaires, hebergements, communeId }: {
           {enCours.statut === 'acceptee' ? ' · coordonnées échangées avec la personne' : ''}
         </span>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          {v?.telephone && (
-            <a href={lienTelephone(v.telephone)} className="mairie-bouton" style={{ textDecoration: 'none' }}>
-              Appeler l'hébergeur
-            </a>
-          )}
+          {v?.telephone && <LienAppel telephone={v.telephone} libelle="Appeler l'hébergeur" sujet={`hébergeur ${v.prenom || ''}`.trim()} />}
           <button type="button" className="mairie-bouton" onClick={() => void changer(enCours)}>
             Changer de foyer
           </button>

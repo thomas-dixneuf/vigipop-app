@@ -124,7 +124,7 @@ export default function Confirmation() {
       </main>
 
       <footer style={{ padding: '0 20px calc(24px + env(safe-area-inset-bottom))' }}>
-        <a href="tel:112" className="carte" style={{ textDecoration: 'none', display: 'block', textAlign: 'center', fontSize: 14, color: 'var(--texte)' }}>
+        <a href="tel:112" className="carte" style={{ textDecoration: 'none', display: 'block', minHeight: 44, textAlign: 'center', fontSize: 14, color: 'var(--texte)' }}>
           Si la situation s'aggrave : <strong style={{ color: 'var(--danger)' }}>appelez le 112</strong>
         </a>
       </footer>

@@ -111,3 +111,12 @@ h1, h2, p { margin: 0; }
 
 /* Pages « Vos données » et « Conditions d'utilisation » */
 .texte-legal ul { padding-left: 18px; display: flex; flex-direction: column; gap: 6px; }
+
+/* Boutons de zoom des cartes : zone tactile d'au moins 44 px */
+.leaflet-container .leaflet-bar a,
+.leaflet-container.leaflet-touch .leaflet-bar a {
+  width: 44px;
+  height: 44px;
+  line-height: 44px;
+  font-size: 22px;
+}

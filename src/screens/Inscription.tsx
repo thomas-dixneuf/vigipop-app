@@ -19,11 +19,10 @@ export default function Inscription() {
   const [telephone, setTelephone] = useState(contact?.telephone ?? '')
   // Commune choisie dans la liste officielle (jamais un nom tapé au hasard)
   const [commune, setCommune] = useState<string | null>(null)
-  const [consentement, setConsentement] = useState(false)
   // Texte ouvert par-dessus le formulaire, pour ne pas perdre ce qui est déjà saisi
   const [texte, setTexte] = useState<'conditions' | 'confidentialite' | null>(null)
 
-  const valide = prenom.trim() !== '' && numeroValide(telephone) && commune !== null && consentement
+  const valide = prenom.trim() !== '' && numeroValide(telephone) && commune !== null
 
   const envoyer = (e: FormEvent) => {
     e.preventDefault()
@@ -51,16 +50,12 @@ export default function Inscription() {
         </label>
         <ChampTelephone valeur={telephone} onChange={setTelephone} />
         <ChampAdresse variante="app" commune obligatoire libelleChamp="Ma commune" onChoix={(r) => setCommune(r?.libelle ?? null)} />
-        <label style={{ display: 'flex', alignItems: 'flex-start', gap: 10, fontSize: 13, lineHeight: 1.4, color: 'var(--texte-doux)' }}>
-          <input
-            type="checkbox"
-            checked={consentement}
-            onChange={(e) => setConsentement(e.target.checked)}
-            style={{ width: 20, height: 20, margin: 0, accentColor: 'var(--bleu)', flexShrink: 0 }}
-          />
-          J'accepte les conditions d'utilisation et j'ai lu comment ma commune utilise mes informations pour me joindre en cas de crise.
-        </label>
-        <span style={{ display: 'flex', gap: 16, paddingLeft: 30, marginTop: -8 }}>
+        {/* Information, pas consentement : la mairie traite ces données pour une mission d'intérêt public (RGPD 6.1.e) */}
+        <p style={{ fontSize: 13, lineHeight: 1.4, color: 'var(--texte-doux)', margin: 0 }}>
+          En créant votre compte, vous acceptez les conditions d'utilisation. Votre commune utilise votre prénom et votre numéro
+          pour vous joindre en cas de crise ; vous pouvez les modifier ou supprimer votre compte à tout moment.
+        </p>
+        <span style={{ display: 'flex', gap: 16, marginTop: -8 }}>
           <button type="button" onClick={() => setTexte('conditions')} style={lienTexte}>
             Conditions d'utilisation
           </button>

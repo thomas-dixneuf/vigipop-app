@@ -13,7 +13,7 @@ import { serveur } from '../services/serveur.ts'
 
 export default function AccueilVeille() {
   const navigate = useNavigate()
-  const { visiteAFaire, lieux, risques, quartier, utilisateur, ressources, offresEnregistrees, apresCrise, repondreApresCrise, communeVisitee } = useAppState()
+  const { visiteAFaire, lieux, risques, quartier, utilisateur, ressources, offresEnregistrees, apresCrise, repondreApresCrise, communeVisitee, demande } = useAppState()
   // Seulement ce que la mairie a renseigné (les exemples fictifs restent pour le mode démo)
   const lieuxAccueil = (lieux ?? (serveur ? [] : lieuxDemo)).filter((l) => l.type === 'accueil').slice(0, 2)
   const risquesCommune = risques ?? (serveur ? [] : risquesDemo)
@@ -32,7 +32,8 @@ export default function AccueilVeille() {
 
   return (
     <div className="ecran">
-      {visiteAFaire && <VisiteGuidee />}
+      {/* Pas de visite guidée pour qui vient de vivre une crise dans l'app : elle couvrirait le message de fin de crise */}
+      {visiteAFaire && !apresCrise && !demande && <VisiteGuidee />}
       <EnTete />
       <main className="contenu">
         {apresCrise && (
