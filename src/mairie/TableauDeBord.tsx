@@ -101,6 +101,7 @@ const libelleAction: Record<string, string> = {
   secours_prise: 'Pris en charge par les secours',
   secours_evacuee: 'Personne évacuée',
   secours_orientee: 'Personne orientée',
+  secours_resolue: "Plus besoin d'aide (secours)",
   secours_note: 'Note des secours',
   secours_numero: 'Numéro consulté par les secours',
   zone_proposee: 'Zone à éviter proposée',
@@ -113,6 +114,7 @@ const libelleGeste: Record<GesteSecours, string> = {
   prise: 'Pris en charge',
   evacuee: 'Évacuée',
   orientee: 'Orientée',
+  resolue: "Plus besoin d'aide",
   note: 'Note',
 }
 
@@ -227,53 +229,6 @@ export default function TableauDeBord({ coordinateur }: { coordinateur: Coordina
 
       {!donnees ? (
         <p style={{ padding: 24 }}>Chargement…</p>
-      ) : secours ? (
-        <main className="mairie-contenu">
-          <div className="mairie-colonne">
-            {enCrise && <Compteurs demandes={donnees.demandes} />}
-            <CarteMairie
-              lieux={donnees.lieux}
-              demandes={donnees.demandes}
-              zones={donnees.zones}
-              propositions={donnees.propositions}
-              zonesRisque={donnees.zonesRisque}
-              risques={donnees.risques}
-              communeId={commune}
-              enCrise={enCrise}
-              centre={donnees.position ? [donnees.position.lat, donnees.position.lng] : centreCommune}
-              partenaire={coordinateur.nom}
-            />
-            {enCrise && (
-              <PanneauBesoins
-                demandes={donnees.demandes}
-                volontaires={donnees.volontaires}
-                onMission={(m) => {
-                  setModeleMission({ ...m, numero: Date.now() })
-                  window.setTimeout(() => document.getElementById('titre-missions')?.scrollIntoView({ behavior: 'smooth' }), 50)
-                }}
-              />
-            )}
-            {(enCrise || demandesOuvertes > 0) && (
-              <Demandes demandes={donnees.demandes} depuis={donnees.crise?.declenchee_a ?? null} partenaire={coordinateur.nom} lieux={donnees.lieux} communeId={commune} />
-            )}
-          </div>
-          <div className="mairie-colonne">
-            <PanneauPartenaire crise={donnees.crise} />
-            {enCrise && (
-              <PanneauMissions
-                key={modeleMission?.numero ?? 0}
-                modele={modeleMission}
-                missions={donnees.missions}
-                reponses={donnees.reponses}
-                volontaires={donnees.volontaires}
-                communeId={commune}
-                partenaire={coordinateur.nom}
-              />
-            )}
-            <PanneauVolontaires volontaires={donnees.volontaires} enCrise={enCrise} />
-            <PanneauJournal journal={donnees.journal} />
-          </div>
-        </main>
       ) : (
         <main className="mairie-contenu">
           <div className="mairie-colonne">
@@ -288,6 +243,7 @@ export default function TableauDeBord({ coordinateur }: { coordinateur: Coordina
               communeId={commune}
               enCrise={!!donnees.crise}
               centre={donnees.position ? [donnees.position.lat, donnees.position.lng] : centreCommune}
+              partenaire={secours ? coordinateur.nom : undefined}
             />
             {enCrise && (
               <>
@@ -305,15 +261,24 @@ export default function TableauDeBord({ coordinateur }: { coordinateur: Coordina
             )}
             {/* En veille, la gestion de crise est masquée ; seule reste une demande isolée encore ouverte
                 (incendie, personne âgée...), pour qu'elle ne passe jamais inaperçue. */}
-            {(enCrise || demandesOuvertes > 0) && <Demandes demandes={donnees.demandes} depuis={donnees.crise?.declenchee_a ?? null} />}
+            {(enCrise || demandesOuvertes > 0) && (
+              <Demandes demandes={donnees.demandes} depuis={donnees.crise?.declenchee_a ?? null} partenaire={secours ? coordinateur.nom : undefined} lieux={donnees.lieux} communeId={commune} />
+            )}
           </div>
           <div className="mairie-colonne">
-            <PanneauCrise key={donnees.crise?.id ?? 'veille'} crise={donnees.crise} communeId={commune} />
-            <PanneauRisques risques={donnees.risques} communeId={commune} enCrise={!!donnees.crise} onEnregistre={() => void charger()} />
-            <PanneauPosition position={donnees.position ?? null} communeId={commune} onEnregistre={() => void charger()} />
+            {/* Les secours ont tout l'espace, sauf déclencher la crise, alerter et le référentiel de la commune */}
+            {secours ? (
+              <PanneauPartenaire crise={donnees.crise} />
+            ) : (
+              <>
+                <PanneauCrise key={donnees.crise?.id ?? 'veille'} crise={donnees.crise} communeId={commune} />
+                <PanneauRisques risques={donnees.risques} communeId={commune} enCrise={!!donnees.crise} onEnregistre={() => void charger()} />
+                <PanneauPosition position={donnees.position ?? null} communeId={commune} onEnregistre={() => void charger()} />
+              </>
+            )}
             <PanneauLieux lieux={donnees.lieux} communeId={commune} />
             <PanneauVolontaires volontaires={donnees.volontaires} enCrise={!!donnees.crise} />
-            <PanneauHabilitations communeId={commune} />
+            {!secours && <PanneauHabilitations communeId={commune} />}
             {enCrise && (
             <PanneauMissions
               key={modeleMission?.numero ?? 0}
@@ -322,10 +287,11 @@ export default function TableauDeBord({ coordinateur }: { coordinateur: Coordina
               reponses={donnees.reponses}
               volontaires={donnees.volontaires}
               communeId={commune}
+              partenaire={secours ? coordinateur.nom : undefined}
             />
             )}
             <PanneauJournal journal={donnees.journal} />
-            <PanneauPush />
+            {!secours && <PanneauPush />}
           </div>
         </main>
       )}
@@ -362,6 +328,7 @@ const gestesSecours: { type: GesteSecours; bouton: string; champ: string; exempl
   { type: 'prise', bouton: 'Pris en charge par les secours', champ: 'Équipe ou engin', exemple: 'VSAV Cholet, équipe 3' },
   { type: 'evacuee', bouton: 'Personne évacuée', champ: 'Évacuée vers', exemple: 'CHU de Cholet' },
   { type: 'orientee', bouton: 'Orientée vers un lieu', champ: "Lieu d'accueil", exemple: 'Salle Paul-Valéry' },
+  { type: 'resolue', bouton: "Plus besoin d'aide", champ: 'Ce que les secours ont fait', exemple: 'Personne mise en sécurité par les pompiers' },
   { type: 'note', bouton: 'Ajouter une note', champ: 'Note pour la cellule de crise', exemple: 'Accès impossible par la rue Nationale' },
 ]
 
@@ -415,8 +382,18 @@ function Demandes({
       modif.statut = 'aide_organisee'
       modif.reponse_mairie = `Les secours vous ont ${geste.type === 'evacuee' ? 'évacué' : 'orienté'} vers : ${texte}.`
     }
+    // Plus besoin d'aide : la demande est close et les volontaires sollicités pour elle sont libérés
+    if (geste.type === 'resolue') {
+      modif.statut = 'close'
+      modif.reponse_mairie = `Les secours se sont occupés de vous : ${texte}. Votre demande est close.`
+    }
     const { error } = await serveur!.from('demandes').update(modif).eq('id', d.id)
-    if (!error) setGeste(null)
+    if (error) return
+    if (geste.type === 'resolue' || geste.type === 'evacuee' || geste.type === 'orientee') {
+      await serveur!.from('entraides').update({ statut: 'annulee' }).eq('demande_id', d.id).in('statut', ['proposee', 'acceptee'])
+      await serveur!.from('hebergements').update({ statut: 'annulee' }).eq('demande_id', d.id).in('statut', ['proposee', 'acceptee'])
+    }
+    setGeste(null)
   }
 
   const voirNumero = async (d: DemandeServeur) => {
@@ -560,6 +537,7 @@ function Demandes({
                 <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                   {gestesSecours
                     .filter((g) => d.statut !== 'close' || g.type === 'note')
+                    .filter((g) => !(g.type === 'prise' && d.statut !== 'transmise' && d.suivi_secours?.some((x) => x.type === 'prise')))
                     .map((g) => (
                       <button
                         key={g.type}
@@ -2041,21 +2019,19 @@ function PanneauPartenaire({ crise }: { crise: CriseServeur | null }) {
           {crise.consigne}
         </div>
       ) : (
-        <p className="texte-doux" style={{ fontSize: 14 }}>
-          Aucune crise en cours. Les demandes isolées encore ouvertes restent visibles.
+        <p style={{ fontSize: 14, margin: 0, lineHeight: 1.5 }}>
+          <strong>Aucune crise en cours.</strong> Les besoins, les volontaires et les missions apparaissent dès que la mairie déclenche la crise
+          (ou un exercice). Les demandes isolées encore ouvertes restent visibles.
         </p>
       )}
-      <p style={{ fontSize: 14, margin: 0, fontWeight: 700 }}>Vous pouvez</p>
-      <ul style={{ margin: 0, paddingLeft: 18, fontSize: 14, lineHeight: 1.6 }}>
-        <li>marquer une demande prise en charge par vos équipes ;</li>
-        <li>indiquer qu'une personne est évacuée ou orientée vers un lieu ;</li>
-        <li>laisser une note à la cellule de crise ;</li>
-        <li>confier des missions aux volontaires citoyens (déblayage, transport, matériel…) ;</li>
-        <li>tracer une zone à éviter, aussitôt visible des habitants.</li>
-      </ul>
+      <p style={{ fontSize: 14, margin: 0, lineHeight: 1.5 }}>
+        Vous avez le même espace que la cellule de crise : demandes, missions pour les volontaires, besoins, hébergement, lieux ouverts, zones à
+        éviter. Sur chaque demande, indiquez ce que vos équipes ont fait, jusqu'à « Plus besoin d'aide » : la demande est close et les
+        volontaires sollicités pour elle sont libérés.
+      </p>
       <p className="texte-doux" style={{ fontSize: 13, margin: 0 }}>
-        Déclencher ou terminer la crise, alerter les habitants et modifier les lieux et risques de la commune restent réservés à la mairie.
-        Les numéros des habitants s'affichent à la demande. Chacun de vos gestes est inscrit au journal, avec votre nom et l'heure.
+        Restent à la mairie : déclencher ou terminer la crise, alerter les habitants, les risques et le périmètre de la commune. Les numéros des
+        habitants s'affichent à la demande. Chacun de vos gestes est inscrit au journal, avec votre nom et l'heure.
       </p>
     </section>
   )

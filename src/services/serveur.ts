@@ -85,7 +85,7 @@ export type MissionServeur = {
   proposee_par?: string | null
 }
 
-export type GesteSecours = 'prise' | 'evacuee' | 'orientee' | 'note'
+export type GesteSecours = 'prise' | 'evacuee' | 'orientee' | 'resolue' | 'note'
 export type SuiviSecours = { type: GesteSecours; par: string; texte: string; quand: string }
 
 export type DemandeServeur = {
