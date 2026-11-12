@@ -8,7 +8,7 @@ const lienClair = { color: 'var(--cyan)', fontSize: 15, fontWeight: 700, minHeig
 
 export default function Lancement() {
   const navigate = useNavigate()
-  const { utilisateur, mode, alerte, geoloc, activerGeoloc, geolocProposee, repondreGeoloc } = useAppState()
+  const { utilisateur, mode, alerte, geoloc, activerGeoloc, geolocProposee, repondreGeoloc, compteEfface, oublierCompteEfface } = useAppState()
   // Sans compte, seul le mode crise ouvre l'app (accès d'urgence)
   const urgenceSansCompte = !utilisateur && mode === 'crise'
   const propositionGeoloc = !urgenceSansCompte && !geoloc && !geolocProposee
@@ -19,6 +19,25 @@ export default function Lancement() {
       style={{ alignItems: 'center', justifyContent: 'space-between', padding: `${urgenceSansCompte || propositionGeoloc ? 32 : 96}px 28px 32px`, gap: 24 }}
     >
       <Logo taille={urgenceSansCompte || propositionGeoloc ? 160 : 280} slogan />
+
+      {compteEfface && !utilisateur && (
+        // Compte effacé après 3 ans sans ouverture de l'app et deux rappels (RGPD, migration 0016)
+        <section aria-labelledby="titre-compte-efface" style={{ width: '100%', background: 'var(--blanc)', color: 'var(--texte)', borderRadius: 16, padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <strong id="titre-compte-efface" style={{ fontSize: 17, color: 'var(--bleu-nuit)' }}>
+            Votre compte a été effacé
+          </strong>
+          <span style={{ fontSize: 14, lineHeight: 1.4 }}>
+            L'app n'avait pas été ouverte depuis 3 ans. Après deux rappels, votre compte a été effacé comme le prévoit notre
+            politique de confidentialité (RGPD). En cas de crise, vous pouvez toujours demander de l'aide <strong>sans compte</strong>.
+          </span>
+          <Link to="/inscription" state={{ compteEfface: true }} className="bouton bouton--principal" onClick={oublierCompteEfface}>
+            Recréer mon compte (1 minute)
+          </Link>
+          <button type="button" className="bouton bouton--contour" onClick={oublierCompteEfface}>
+            Plus tard
+          </button>
+        </section>
+      )}
 
       {urgenceSansCompte ? (
         <section role="alert" style={{ width: '100%', background: 'var(--blanc)', color: 'var(--texte)', borderRadius: 16, padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 6 }}>

@@ -135,6 +135,13 @@ type Etat = {
   communeIgnoree: string | null
   // Localisation déjà proposée au lancement (acceptée ou « Plus tard ») : jamais reproposée d'office
   geolocProposee: boolean
+  // ─── Comptes inactifs (RGPD, migration 0016) ───
+  // Identifiant technique du compte (jamais affiché) : permet de savoir s'il a été effacé
+  idCompte: string | null
+  // Jour où l'ouverture de l'app a été signalée au serveur (une fois par jour au plus)
+  ouvertureSignalee: string | null
+  // Compte effacé après 3 ans sans ouverture : message au lancement et recréation pré-remplie
+  compteEfface: boolean
 }
 
 type AppStateValue = Etat & {
@@ -154,6 +161,10 @@ type AppStateValue = Etat & {
   // Droit à l'effacement : supprime le compte et ses données sur le serveur puis sur le téléphone.
   // Renvoie un message d'erreur, ou null si c'est fait.
   supprimerCompte: () => Promise<string | null>
+  // Message « votre compte a été effacé » lu par l'habitant
+  oublierCompteEfface: () => void
+  // Démo locale : montre ce que voit un habitant dont le compte a été effacé pour inactivité
+  simulerCompteEfface: () => void
   // Mise à jour des informations personnelles depuis le profil
   modifierUtilisateur: (modifs: Partial<Utilisateur>) => void
   basculerRessource: (id: RessourceId) => void
@@ -220,6 +231,9 @@ const etatInitial: Etat = {
   horsCouverture: false,
   communeIgnoree: null,
   geolocProposee: false,
+  idCompte: null,
+  ouvertureSignalee: null,
+  compteEfface: false,
 }
 
 // Ce qui reste sur le téléphone après une déconnexion : uniquement les informations publiques
@@ -242,6 +256,8 @@ function etatPublic(e: Etat): Etat {
     horsCouverture: e.horsCouverture,
     communeIgnoree: e.communeIgnoree,
     geolocProposee: e.geolocProposee,
+    // Le message « compte effacé » doit survivre à l'effacement des données personnelles
+    compteEfface: e.compteEfface,
   }
 }
 
@@ -681,6 +697,44 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
   )
   const missionServeur = proposables.find((m) => m.id === etat.missionAcceptee) ?? proposables[0] ?? null
 
+  // Comptes inactifs (migration 0016) : chaque ouverture de l'app, même sans rien faire, garde le
+  // compte. Signalée une fois par jour au plus. Si le serveur répond que le compte a été effacé
+  // (3 ans sans ouverture, après deux rappels), on l'explique au lancement et on propose de le
+  // recréer avec le prénom et le numéro déjà remplis. La demande d'aide reste possible sans compte.
+  const connecte = !!etat.utilisateur
+  const { ouvertureSignalee, idCompte } = etat
+  useEffect(() => {
+    const aujourdhui = new Date().toISOString().slice(0, 10)
+    if (!serveur || !enLigne || !connecte || ouvertureSignalee === aujourdhui) return
+    let annule = false
+    void (async () => {
+      try {
+        const { data } = await serveur.auth.getSession()
+        const session = data.session && !data.session.user.is_anonymous ? data.session : null
+        const id = session?.user.id ?? idCompte
+        if (!id) return
+        const { data: reponse, error } = await serveur.rpc('etat_compte', { p_id: id })
+        if (annule || error) return
+        if (reponse === 'efface') {
+          if (session) await serveur.auth.signOut().catch(() => undefined)
+          setEtat((e) => ({
+            ...etatPublic(e),
+            compteEfface: true,
+            contact: e.utilisateur ? { prenom: e.utilisateur.prenom, telephone: e.utilisateur.telephone } : e.contact,
+            visiteFaite: e.visiteFaite,
+          }))
+        } else {
+          setEtat((e) => ({ ...e, idCompte: id, ouvertureSignalee: reponse === 'actif' ? aujourdhui : e.ouvertureSignalee }))
+        }
+      } catch {
+        // Pas de réseau : on réessaiera à la prochaine ouverture
+      }
+    })()
+    return () => {
+      annule = true
+    }
+  }, [enLigne, connecte, ouvertureSignalee, idCompte])
+
   const value: AppStateValue = {
     ...etat,
     missionServeur,
@@ -727,7 +781,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
       })),
     // La visite guidée n'est proposée d'office qu'une fois par téléphone
     connecter: (utilisateur, nouveauCompte) =>
-      setEtat((e) => ({ ...e, utilisateur, dernierUtilisateur: utilisateur, contact: null, visiteAFaire: nouveauCompte && !e.visiteFaite })),
+      setEtat((e) => ({ ...e, utilisateur, dernierUtilisateur: utilisateur, contact: null, compteEfface: false, visiteAFaire: nouveauCompte && !e.visiteFaite })),
     lancerVisite: () => setEtat((e) => ({ ...e, visiteAFaire: true })),
     terminerVisite: () => setEtat((e) => ({ ...e, visiteAFaire: false, visiteFaite: true })),
     deconnecter: () => {
@@ -739,6 +793,15 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
         visiteFaite: e.visiteFaite,
       }))
     },
+    oublierCompteEfface: () => setEtat((e) => ({ ...e, compteEfface: false })),
+    simulerCompteEfface: () =>
+      setEtat((e) => ({
+        ...etatPublic(e),
+        compteEfface: true,
+        contact: e.utilisateur ? { prenom: e.utilisateur.prenom, telephone: e.utilisateur.telephone } : e.contact,
+        dernierUtilisateur: null,
+        visiteFaite: e.visiteFaite,
+      })),
     supprimerCompte: async () => {
       if (serveur) {
         try {

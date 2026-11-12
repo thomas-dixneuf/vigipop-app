@@ -63,3 +63,12 @@ Tant que `VITE_CONNEXION_SMS` n'est pas à `1`, l'app garde la connexion de dém
 
 Le compte créé par SMS reste lié aux demandes déjà envoyées depuis ce téléphone : la session
 anonyme est rattachée au numéro, elle n'est pas remplacée.
+
+## 3. Rappels avant effacement d'un compte inactif
+
+La migration `0016_comptes_inactifs.sql` écrit dans la table `sms_a_envoyer` les rappels envoyés 30 puis 7 jours
+avant l'effacement d'un compte resté 3 ans sans ouverture de l'app. Tant qu'aucune passerelle ne lit cette table
+(clé de service, colonne `envoye_a` à remplir après l'envoi), seuls les abonnés aux notifications sont prévenus.
+Un compte n'est **jamais effacé sans rappel réellement parti** : sans notification ni SMS marqué envoyé, il est
+gardé. Brancher la passerelle avant la mise en service réelle. Les lignes sont effacées après 30 jours.
+
