@@ -74,6 +74,9 @@ Logos dans `public/` : `logo.png` (recadré, petites tailles), `logo-slogan.png`
 - Supabase (UE). Schéma et droits : `supabase/migrations/` ; mise en place : `docs/SUPABASE.md`.
 - Toute nouvelle table : RLS activée, droits par commune via `public.est_coordinateur()`.
 - Côté app : `src/services/serveur.ts` ; sans variables d'environnement, mode démo local.
+- Démonstration hors ligne avec l'espace mairie : `VITE_SERVEUR_LOCAL=1` (faux serveur dans le navigateur,
+  `src/services/serveurLocal.ts`, données fictives). Sans `VITE_VUE` : habitant et mairie côte à côte
+  (`src/presentation/`) ; `VITE_VUE=mairie` : espace mairie seul (compte `mairie@demo.vigipop.fr` / `demo`).
 - Espace mairie : `src/mairie/` (route `#/mairie`).
 
 ## Code

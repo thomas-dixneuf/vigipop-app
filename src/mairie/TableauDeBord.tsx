@@ -9,7 +9,7 @@ import { besoins as listeBesoins, centreCommune, libelleLieu, ressources as list
 import {
   heure,
   lienTelephone,
-  serveur,
+  serveurMairie as serveur,
   type CriseServeur,
   type DemandeServeur,
   type LieuServeur,

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { besoins as listeBesoins, situations } from '../data/fictif.ts'
-import { heure, serveur, type CriseServeur, type DemandeServeur, type StatutDemande } from '../services/serveur.ts'
+import { heure, serveurMairie as serveur, type CriseServeur, type DemandeServeur, type StatutDemande } from '../services/serveur.ts'
 
 // Repli papier du plan communal de sauvegarde : la liste des demandes s'imprime ou
 // s'exporte (tableur), pour continuer à travailler si le réseau de la mairie tombe.

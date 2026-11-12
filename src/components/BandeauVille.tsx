@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import { positionsDemo } from '../data/fictif.ts'
-import { serveur } from '../services/serveur.ts'
+import { serveur, serveurLocal } from '../services/serveur.ts'
 import { useAppState } from '../state/AppState.tsx'
 import Icone from './Icone.tsx'
 
@@ -53,7 +53,7 @@ export default function BandeauVille({ proposer = false }: { proposer?: boolean 
   // Mode démo : on ne se déplace pas pendant une présentation, on simule le trajet
   // (chez soi → ville voisine équipée → ville sans Vigipop → chez soi)
   const suivante = positionsDemo[communeVisitee ? 2 : horsCouverture ? 0 : 1]
-  const simuler = !serveur && (
+  const simuler = (!serveur || serveurLocal) && (
     <button
       type="button"
       style={{ ...petitBouton, border: '1px dashed var(--texte-doux)', color: 'var(--texte-doux)', fontSize: 13 }}
