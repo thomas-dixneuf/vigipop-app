@@ -51,6 +51,10 @@ les secours et l'alerte officielle (FR-Alert), elle ne les remplace jamais.
   missions et l'abonnement aux alertes restent sur sa commune. Hors couverture : « cette ville n'utilise pas encore
   Vigipop », le 112 reste affiché. Les **statistiques de passage** sont un accord séparé, facultatif, jamais coché
   d'office : rien n'est collecté ni revendu tant que le cadre (agrégation, seuils, avis CNIL) n'est pas validé.
+- **Adresses vérifiées** : toute saisie de commune ou d'adresse passe par `ChampAdresse` (liste du géocodeur officiel
+  IGN/BAN ; sans réponse, liste embarquée `src/data/adressesEmbarquees.ts`). Inscription, profil, foyer, hébergement et
+  mairie exigent un choix dans la liste ; le signalement accepte le texte tapé (jamais bloquant).
+- **Localisation proposée au lancement** (une fois, refusable avec « Plus tard », jamais en mode crise sans compte).
 - **Mairie hors ligne** : dernière liste gardée sur l'ordinateur (effacée à la déconnexion), impression
   et export des demandes, bilan de crise sans donnée nominative.
 - Accessibilité : zones tactiles ≥ 44 px, vrais `<button>` et `<a>`, contrastes AA.
@@ -70,6 +74,9 @@ Logos dans `public/` : `logo.png` (recadré, petites tailles), `logo-slogan.png`
 - Supabase (UE). Schéma et droits : `supabase/migrations/` ; mise en place : `docs/SUPABASE.md`.
 - Toute nouvelle table : RLS activée, droits par commune via `public.est_coordinateur()`.
 - Côté app : `src/services/serveur.ts` ; sans variables d'environnement, mode démo local.
+- Démonstration hors ligne avec l'espace mairie : `VITE_SERVEUR_LOCAL=1` (faux serveur dans le navigateur,
+  `src/services/serveurLocal.ts`, données fictives). Sans `VITE_VUE` : habitant et mairie côte à côte
+  (`src/presentation/`) ; `VITE_VUE=mairie` : espace mairie seul (compte `mairie@demo.vigipop.fr` / `demo`).
 - Espace mairie : `src/mairie/` (route `#/mairie`).
 
 ## Code

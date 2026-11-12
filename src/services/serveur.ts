@@ -1,4 +1,5 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
+import { creerServeurLocal } from './serveurLocal.ts'
 
 // Serveur commun app citoyenne ↔ tableau de bord mairie (Supabase, hébergé en UE).
 // Sans ces variables, l'app reste en mode démo local (bouton « Démo » pour la crise).
@@ -6,7 +7,15 @@ const url = import.meta.env.VITE_SUPABASE_URL as string | undefined
 // Clé publique : « publishable » (nouveau nom chez Supabase) ou « anon » (ancien nom)
 const cleAnon = (import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ?? import.meta.env.VITE_SUPABASE_ANON_KEY) as string | undefined
 
-export const serveur: SupabaseClient | null = url && cleAnon ? createClient(url, cleAnon) : null
+// Démonstration hors ligne (VITE_SERVEUR_LOCAL=1, sans Supabase) : un faux serveur dans le navigateur
+// relie l'app habitant et l'espace mairie ouverts sur le même ordinateur. Données fictives uniquement.
+const local = !(url && cleAnon) && import.meta.env.VITE_SERVEUR_LOCAL === '1'
+export const serveurLocal = local
+
+export const serveur: SupabaseClient | null = url && cleAnon ? createClient(url, cleAnon) : local ? creerServeurLocal('habitant') : null
+
+// Espace mairie : même serveur, mais sa propre session en démonstration locale
+export const serveurMairie: SupabaseClient | null = local ? creerServeurLocal('mairie') : serveur
 
 // Commune de démonstration créée par supabase/migrations/0001_init.sql
 export const COMMUNE_ID = (import.meta.env.VITE_COMMUNE_ID as string | undefined) ?? '00000000-0000-4000-8000-000000000001'

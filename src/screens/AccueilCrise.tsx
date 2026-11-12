@@ -62,7 +62,7 @@ export default function AccueilCrise() {
           </div>
         </section>
 
-        <BandeauVille />
+        <BandeauVille proposer />
 
         <PropositionHebergement />
         <SollicitationEntraide />

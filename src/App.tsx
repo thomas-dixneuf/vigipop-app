@@ -15,12 +15,16 @@ import MesInfos from './screens/MesInfos.tsx'
 import Carte from './screens/Carte.tsx'
 import Notifications from './screens/Notifications.tsx'
 import Notifieur from './components/Notifieur.tsx'
+import BandeauDemo from './components/BandeauDemo.tsx'
+import { serveurLocal } from './services/serveur.ts'
 import BandeauHorsLigne from './components/BandeauHorsLigne.tsx'
 import Signaler from './screens/Signaler.tsx'
 
-export default function App() {
+// dansPresentation : la vue côte à côte affiche déjà le bandeau « Démonstration » dans son en-tête
+export default function App({ dansPresentation = false }: { dansPresentation?: boolean }) {
   return (
     <>
+    {serveurLocal && !dansPresentation && <BandeauDemo />}
     <Notifieur />
     <BandeauHorsLigne />
     <Routes>

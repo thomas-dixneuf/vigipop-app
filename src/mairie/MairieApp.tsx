@@ -2,7 +2,8 @@ import { useEffect, useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import type { Session } from '@supabase/supabase-js'
 import Logo from '../components/Logo.tsx'
-import { serveur } from '../services/serveur.ts'
+import { serveurLocal, serveurMairie as serveur } from '../services/serveur.ts'
+import { comptesDemo } from '../services/serveurLocal.ts'
 import TableauDeBord, { type Coordinateur } from './TableauDeBord.tsx'
 import { ecrireCache, effacerCacheMairie, lireCache } from './cache.ts'
 import './mairie.css'
@@ -137,6 +138,16 @@ function ConnexionMairie() {
           {envoi ? 'Connexion…' : 'Se connecter'}
         </button>
       </form>
+      {serveurLocal && (
+        <div style={{ background: 'var(--bleu-voile)', borderRadius: 8, padding: '10px 12px', fontSize: 13, lineHeight: 1.5 }}>
+          <strong>Compte de démonstration</strong>
+          {comptesDemo.map((c) => (
+            <div key={c.email}>
+              {c.libelle} : <code>{c.email}</code> · mot de passe <code>{c.motDePasse}</code>
+            </div>
+          ))}
+        </div>
+      )}
       <Link to="/" style={{ fontSize: 14 }}>
         Retour à l'app habitants
       </Link>
