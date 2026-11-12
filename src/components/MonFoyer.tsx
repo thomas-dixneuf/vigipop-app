@@ -12,6 +12,8 @@ export default function MonFoyer() {
   const foyer = utilisateur?.foyer
   const [edition, setEdition] = useState(false)
   const [brouillon, setBrouillon] = useState<Foyer>(foyer ?? vide)
+  // Adresse choisie dans la liste officielle (ou laissée vide)
+  const [adresseVerifiee, setAdresseVerifiee] = useState(true)
 
   if (!utilisateur) return null
 
@@ -46,6 +48,7 @@ export default function MonFoyer() {
             className="bouton bouton--clair"
             onClick={() => {
               setBrouillon(foyer ?? vide)
+              setAdresseVerifiee(true)
               setEdition(true)
             }}
           >
@@ -59,8 +62,12 @@ export default function MonFoyer() {
             libelleChamp="Adresse du domicile"
             valeurInitiale={brouillon.adresse}
             verifieeInitialement={!!brouillon.adresse}
+            obligatoire
             onTexte={(adresse) => setBrouillon((b) => ({ ...b, adresse }))}
-            onChoix={(r) => r && setBrouillon((b) => ({ ...b, adresse: r.libelle }))}
+            onChoix={(r) => {
+              setAdresseVerifiee(!!r)
+              if (r) setBrouillon((b) => ({ ...b, adresse: r.libelle }))
+            }}
           />
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
             <span style={{ fontSize: 15 }}>Personnes au foyer</span>
@@ -97,7 +104,7 @@ export default function MonFoyer() {
             />
             Dont une personne âgée, handicapée ou un enfant en bas âge
           </label>
-          <button type="button" className="bouton bouton--principal" onClick={enregistrer}>
+          <button type="button" className="bouton bouton--principal" onClick={enregistrer} disabled={!adresseVerifiee && brouillon.adresse.trim() !== ''}>
             Enregistrer
           </button>
           <button type="button" className="bouton bouton--contour" onClick={() => setEdition(false)}>
