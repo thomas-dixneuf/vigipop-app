@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import type { Session } from '@supabase/supabase-js'
 import Logo from '../components/Logo.tsx'
 import { serveurLocal, serveurMairie as serveur } from '../services/serveur.ts'
+import { comptesDemo } from '../services/serveurLocal.ts'
 import TableauDeBord, { type Coordinateur } from './TableauDeBord.tsx'
 import './mairie.css'
 
@@ -96,14 +97,6 @@ function ConnexionMairie() {
   const [erreur, setErreur] = useState('')
   const [envoi, setEnvoi] = useState(false)
 
-  const entrer = async (adresse: string, mot: string) => {
-    setEnvoi(true)
-    setErreur('')
-    const { error } = await serveur!.auth.signInWithPassword({ email: adresse.trim(), password: mot })
-    setEnvoi(false)
-    if (error) setErreur('E-mail ou mot de passe incorrect.')
-  }
-
   const connecter = async (e: FormEvent) => {
     e.preventDefault()
     setEnvoi(true)
@@ -117,19 +110,8 @@ function ConnexionMairie() {
     <Cadre>
       <h1 style={{ fontSize: 22, fontWeight: 800, color: 'var(--bleu-nuit)' }}>Connexion</h1>
       <p style={{ fontSize: 14, lineHeight: 1.5, margin: 0 }}>
-        Cellule de crise de la commune, ou partenaire secours (pompiers, police, gendarmerie, SAMU) avec un accès limité.
+        Cellule de crise de la commune, ou partenaire secours (pompiers, police, gendarmerie, SAMU) avec son propre compte, créé par la mairie.
       </p>
-      {serveurLocal && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          <span style={{ fontSize: 13, fontWeight: 700 }}>Démonstration : entrer sans mot de passe</span>
-          <button type="button" className="mairie-bouton mairie-bouton--principal" disabled={envoi} onClick={() => void entrer('cellule.crise@cholet.fr', 'demo')}>
-            Cellule de crise communale
-          </button>
-          <button type="button" className="mairie-bouton" disabled={envoi} onClick={() => void entrer('officier.liaison@sdis49.fr', 'demo')}>
-            Partenaire secours (SDIS 49)
-          </button>
-        </div>
-      )}
       <form onSubmit={connecter} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
         <label style={{ display: 'flex', flexDirection: 'column', gap: 6, fontWeight: 700, fontSize: 14 }}>
           E-mail
@@ -148,6 +130,16 @@ function ConnexionMairie() {
           {envoi ? 'Connexion…' : 'Se connecter'}
         </button>
       </form>
+      {serveurLocal && (
+        <div style={{ background: 'var(--bleu-voile)', borderRadius: 8, padding: '10px 12px', fontSize: 13, lineHeight: 1.5 }}>
+          <strong>Comptes de démonstration</strong>
+          {comptesDemo.map((c) => (
+            <div key={c.email}>
+              {c.libelle} : <code>{c.email}</code> · mot de passe <code>{c.motDePasse}</code>
+            </div>
+          ))}
+        </div>
+      )}
       <Link to="/" style={{ fontSize: 14 }}>
         Retour à l'app habitants
       </Link>

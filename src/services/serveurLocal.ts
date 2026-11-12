@@ -14,7 +14,11 @@ export const COMMUNE_LOCALE = '00000000-0000-4000-8000-000000000001'
 const COORDINATEUR = 'coordinateur-cholet'
 // Accès partenaire secours (pompiers, police, SAMU) : gestes limités, tous inscrits au journal
 const PARTENAIRE = 'partenaire-secours-cholet'
-const estEmailSecours = (email: string) => /sdis|pompier|police|gendarm|samu|secours/i.test(email)
+// Comptes de démonstration : chaque accès passe par la connexion, avec son identifiant et son mot de passe
+export const comptesDemo = [
+  { email: 'cellule.crise@cholet.fr', motDePasse: 'cholet', user: COORDINATEUR, libelle: 'Cellule de crise' },
+  { email: 'officier.liaison@sdis49.fr', motDePasse: 'sdis49', user: PARTENAIRE, libelle: 'Partenaire secours (SDIS 49)' },
+]
 
 const maintenant = (decalageMinutes = 0) => new Date(Date.now() + decalageMinutes * 60000).toISOString()
 const identifiant = () => crypto.randomUUID()
@@ -271,6 +275,7 @@ class Requete implements PromiseLike<Resultat> {
           const geste = modif.suivi_secours.at(-1) as Ligne | undefined
           if (geste) ev.push(journal(`secours_${geste.type}`, { reference: n.reference, par: geste.par, texte: geste.texte }))
         } else if (t === 'demandes' && modif.statut) ev.push(journal('statut_demande', { reference: n.reference, statut: n.statut }))
+        if (t === 'missions' && modif.active === false) ev.push(journal('mission_close', { titre: n.titre, par: n.proposee_par ?? undefined }))
         if (t === 'zones_danger' && modif.active === true && n.proposee_par) ev.push(journal('zone_validee', { titre: n.nom, par: n.proposee_par }))
       }
     } else {
@@ -298,7 +303,8 @@ class Requete implements PromiseLike<Resultat> {
           resultat.push(n)
           ev.push({ table: t, type: 'INSERT', lignes: [n] })
           if (t === 'crises') ev.push(...aDeclenchement(n))
-          if (t === 'zones_danger' && n.proposee_par) ev.push(journal('zone_proposee', { titre: n.nom, par: n.proposee_par }))
+          if (t === 'zones_danger' && n.proposee_par) ev.push(journal(n.active ? 'zone_publiee' : 'zone_proposee', { titre: n.nom, par: n.proposee_par }))
+          if (t === 'missions') ev.push(journal('mission_creee', { titre: n.titre, par: n.proposee_par ?? undefined }))
         }
       }
     }
@@ -400,12 +406,10 @@ export function creerServeurLocal(role: 'habitant' | 'mairie'): SupabaseClient {
         changer({ user: { id: identifiant(), is_anonymous: true } })
         return Promise.resolve({ data: { user: session!.user, session }, error: null })
       },
-      signInWithPassword: ({ email }: { email: string }) => {
-        changer(
-          estEmailSecours(email)
-            ? { user: { id: PARTENAIRE, is_anonymous: false, email: 'officier.liaison@sdis49.fr' } }
-            : { user: { id: COORDINATEUR, is_anonymous: false, email: 'cellule.crise@cholet.fr' } },
-        )
+      signInWithPassword: ({ email, password }: { email: string; password: string }) => {
+        const compte = comptesDemo.find((c) => c.email === email.trim().toLowerCase() && c.motDePasse === password)
+        if (!compte) return Promise.resolve({ data: { user: null, session: null }, error: { message: 'Invalid login credentials' } })
+        changer({ user: { id: compte.user, is_anonymous: false, email: compte.email } })
         return Promise.resolve({ data: { user: session!.user, session }, error: null })
       },
       signOut: () => {

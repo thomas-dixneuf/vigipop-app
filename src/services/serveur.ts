@@ -81,6 +81,8 @@ export type MissionServeur = {
   adresse?: string
   lat?: number | null
   lng?: number | null
+  // Mission créée par un partenaire secours (pompiers, police…)
+  proposee_par?: string | null
 }
 
 export type GesteSecours = 'prise' | 'evacuee' | 'orientee' | 'note'
