@@ -11,6 +11,7 @@ import {
   type SituationId,
 } from '../data/fictif'
 import { distanceMetres } from '../outils/carte'
+import { communeFictive, memeCommune, nomDeCommune } from '../outils/commune'
 import { prechargerCarte } from '../outils/carteHorsLigne'
 import {
   assurerSession,
@@ -148,8 +149,10 @@ type AppStateValue = Etat & {
   // Mission proposée à ce volontaire : la plus récente de ses catégories, hors refus
   missionServeur: MissionServeur | null
   mission: ReponseMission
-  // Nom affiché en haut de l'app : celui de la mairie, sinon celui du compte, sinon la démo
+  // Nom affiché en haut de l'app : la ville visitée, sinon la commune du compte, sinon celle de la mairie
   communeAffichee: string
+  // La commune du compte n'utilise pas encore Vigipop : ni lieux, ni alerte, ni mission d'une autre ville
+  communeNonPartenaire: string | null
   basculerMode: () => void
   declarerEnSecurite: () => void
   enregistrerDemande: (demande: Omit<Demande, 'id' | 'statut' | 'envoyee'> & { id?: string }) => void
@@ -691,8 +694,15 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     }
   }, [envoiEnAttente])
 
+  // Commune du compte comparée à celle de la mairie Vigipop. Une commune fictive (démo) accueille tout le monde.
+  const nomPartenaire = etat.communeVisitee ? null : etat.nomCommune || (serveur ? null : communeDemo)
+  const communeHabitant = etat.utilisateur?.commune ? nomDeCommune(etat.utilisateur.commune) : ''
+  // Une demande d'aide en cours reste toujours suivie, quelle que soit la commune du compte
+  const communeNonPartenaire =
+    communeHabitant && nomPartenaire && !demandeEnCours(etat) && !communeFictive(nomPartenaire) && !memeCommune(communeHabitant, nomPartenaire) ? communeHabitant : null
+
   // En visite, les missions de l'autre ville ne sont pas proposées : on est volontaire chez soi
-  const proposables = (etat.communeVisitee ? [] : serveur ? etat.missions : missionsDemo).filter(
+  const proposables = (etat.communeVisitee || communeNonPartenaire ? [] : serveur ? etat.missions : missionsDemo).filter(
     (m) => (m.categorie === '' || etat.ressources.includes(m.categorie as RessourceId)) && !etat.missionsRefusees.includes(m.id),
   )
   const missionServeur = proposables.find((m) => m.id === etat.missionAcceptee) ?? proposables[0] ?? null
@@ -739,7 +749,12 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     ...etat,
     missionServeur,
     mission: missionServeur && missionServeur.id === etat.missionAcceptee ? 'acceptee' : 'en-attente',
-    communeAffichee: etat.nomCommune || etat.communeVisitee?.nom || etat.utilisateur?.commune || communeDemo,
+    communeAffichee: etat.communeVisitee
+      ? etat.nomCommune || etat.communeVisitee.nom
+      : communeHabitant || etat.nomCommune || communeDemo,
+    communeNonPartenaire,
+    // Hors commune Vigipop : rien de la mairie voisine (lieux, zones, crise) ; le 112 reste affiché
+    ...(communeNonPartenaire ? { mode: 'veille' as const, alerte: null, lieux: [], zones: [], zonesRisque: [], risques: [] } : {}),
     communeActiveId,
     centreActif,
     localisation,

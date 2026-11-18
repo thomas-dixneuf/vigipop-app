@@ -12,7 +12,7 @@ import { serveur } from '../services/serveur.ts'
 
 export default function AccueilVeille() {
   const navigate = useNavigate()
-  const { visiteAFaire, lieux, risques, utilisateur, ressources, offresEnregistrees, apresCrise, repondreApresCrise, communeVisitee } = useAppState()
+  const { visiteAFaire, lieux, risques, utilisateur, ressources, offresEnregistrees, apresCrise, repondreApresCrise, communeVisitee, communeNonPartenaire } = useAppState()
   // Seulement ce que la mairie a renseigné (les exemples fictifs restent pour le mode démo)
   const lieuxAccueil = (lieux ?? (serveur ? [] : lieuxDemo)).filter((l) => l.type === 'accueil').slice(0, 2)
   const risquesCommune = risques ?? (serveur ? [] : risquesDemo)
@@ -53,17 +53,32 @@ export default function AccueilVeille() {
 
         <BandeauVille proposer />
 
-        <section data-visite="alerte" style={{ display: 'flex', alignItems: 'center', gap: 12, background: 'var(--bleu-voile)', borderRadius: 16, padding: '14px 16px' }}>
-          <span style={{ width: 40, height: 40, borderRadius: 20, background: 'var(--blanc)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--bleu)' }}>
-            <Icone nom="bouclier" />
-          </span>
-          <span style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-            <span style={{ fontSize: 16, fontWeight: 800, color: 'var(--bleu-nuit)' }}>Aucune alerte en cours</span>
-            <span className="texte-doux">
-              {communeVisitee ? `La mairie de ${communeVisitee.nom} vous préviendra ici en cas de crise` : 'Votre mairie vous préviendra ici en cas de crise'}
+        {communeNonPartenaire ? (
+          <section data-visite="alerte" role="status" style={{ display: 'flex', alignItems: 'center', gap: 12, background: 'var(--bleu-voile)', borderRadius: 16, padding: '14px 16px' }}>
+            <span style={{ width: 40, height: 40, flexShrink: 0, borderRadius: 20, background: 'var(--blanc)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--bleu)' }}>
+              <Icone nom="bouclier" />
             </span>
-          </span>
-        </section>
+            <span style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+              <span style={{ fontSize: 16, fontWeight: 800, color: 'var(--bleu-nuit)' }}>{communeNonPartenaire} n'utilise pas encore Vigipop</span>
+              <span className="texte-doux" style={{ lineHeight: 1.4 }}>
+                Vous pouvez déjà préparer votre foyer et dire ce que vous pourriez offrir. Les lieux d'accueil s'afficheront ici dès que votre mairie
+                rejoindra Vigipop.
+              </span>
+            </span>
+          </section>
+        ) : (
+          <section data-visite="alerte" style={{ display: 'flex', alignItems: 'center', gap: 12, background: 'var(--bleu-voile)', borderRadius: 16, padding: '14px 16px' }}>
+            <span style={{ width: 40, height: 40, borderRadius: 20, background: 'var(--blanc)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--bleu)' }}>
+              <Icone nom="bouclier" />
+            </span>
+            <span style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+              <span style={{ fontSize: 16, fontWeight: 800, color: 'var(--bleu-nuit)' }}>Aucune alerte en cours</span>
+              <span className="texte-doux">
+                {communeVisitee ? `La mairie de ${communeVisitee.nom} vous préviendra ici en cas de crise` : 'Votre mairie vous préviendra ici en cas de crise'}
+              </span>
+            </span>
+          </section>
+        )}
 
         <Link
           to={prochaine?.lien ?? '/aider'}
@@ -128,7 +143,7 @@ export default function AccueilVeille() {
         >
           <Icone nom="telephone" couleur="var(--danger)" epaisseur={2} />
           <span>
-            Pas de crise en cours {communeVisitee ? 'ici' : 'sur votre commune'}. <strong style={{ color: 'var(--danger)' }}>En cas d'urgence, appelez le 112.</strong>
+            {communeNonPartenaire ? 'Vigipop ne couvre pas encore votre commune.' : `Pas de crise en cours ${communeVisitee ? 'ici' : 'sur votre commune'}.`} <strong style={{ color: 'var(--danger)' }}>En cas d'urgence, appelez le 112.</strong>
           </span>
         </a>
 
