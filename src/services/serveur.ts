@@ -76,6 +76,8 @@ export type MissionServeur = {
   adresse?: string
   lat?: number | null
   lng?: number | null
+  // Demande d'aide pour laquelle la mission a été créée (migration 0021)
+  demande_id?: string | null
 }
 
 export type DemandeServeur = {
