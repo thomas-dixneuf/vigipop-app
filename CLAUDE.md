@@ -62,7 +62,8 @@ les secours et l'alerte officielle (FR-Alert), elle ne les remplace jamais.
   3. Terminées), « Proposent leur aide » (volontaires : besoins, missions, propositions automatiques) ; Renforts : Protection civile, Entreprises
   conventionnées ; Commune : Lieux d'accueil, Journal et bilan, Paramètres de la ville (risques
   du DICRIM, périmètre des visiteurs, alertes). Zones exposées tracées ou importées depuis la carte de l'Accueil (hors
-  crise). À la première connexion, la mairie renseigne d'abord les risques de sa commune. **Hors crise**, seules les infos de la
+  crise). À la première connexion, la mairie renseigne d'abord les risques de sa commune ; elle peut passer
+  l'étape (« Je ne les connais pas encore ») : rappel permanent sur l'Accueil et écran de nouveau proposé chaque semaine. **Hors crise**, seules les infos de la
   mairie s'affichent (groupe Habitants absent du menu ; une demande reçue hors crise s'annonce sur l'Accueil). Le nom de la commune vient du compte
   (pas de renommage) ; son centre est trouvé automatiquement. Pas de sigle sans explication (TIM → « zones exposées »).
 - **Partenaires** (migration 0017, mairie seule) : entreprises sous convention (matériel, SIRET, fin de convention ;
