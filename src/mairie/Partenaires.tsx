@@ -27,6 +27,8 @@ export type Benevole = {
   association: string
   qualifications: string[]
   statut: StatutBenevole
+  // Mission sur laquelle le bénévole est mobilisé (migration 0021)
+  mission_id?: string | null
   updated_at: string
 }
 

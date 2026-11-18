@@ -32,7 +32,12 @@ les secours et l'alerte officielle (FR-Alert), elle ne les remplace jamais.
   commune, DICRIM) : tracées ou importées en GeoJSON par la mairie, permanentes, en pointillés bleu nuit ; en crise elles s'estompent et une légende distingue « zone touchée aujourd'hui » de « zone exposée connue ».
 - **Missions ciblées** : une mission a un type d'aide ; un volontaire ne reçoit que celles des
   types qu'il propose. Après un refus, la suivante de ses types lui est proposée. L'hébergement
-  ne passe jamais par une mission (mise en relation dédiée).
+  ne passe jamais par une mission (mise en relation dédiée). La cellule ajoute à une mission des bénévoles de la
+  Protection civile (migration 0021) ; les entreprises conventionnées ne font jamais de mission, elles prêtent du matériel.
+  Quand la cellule agit sur une demande eau ou médicaments, la mission est créée automatiquement (liée à la demande,
+  sans l'adresse de l'habitant, donnée par téléphone au volontaire qui accepte).
+- **Qui peut aider** : une seule liste mélangée (volontaires, Protection civile, entreprises pour le matériel), étiquetée
+  par sorte, les libres et les plus proches d'abord.
 - **Paires automatiques** : besoin « Transport » → volontaire avec véhicule, « Matériel » → volontaire
   avec matériel, proposés au plus proche disponible (table `entraides`, une sollicitation à la fois par
   volontaire). Coordonnées échangées seulement après l'accord. Les autres besoins (eau, médicaments,

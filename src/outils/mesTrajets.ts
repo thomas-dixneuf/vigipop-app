@@ -13,6 +13,7 @@ export type Trajet = {
   titre: string
   detail: string
   point: Coordonnees | null
+  // Vide : pas encore d'adresse (la cellule la donne par téléphone)
   itineraire: string
   telephone?: string
   lien?: string
@@ -88,6 +89,8 @@ export function useMesTrajets({ actif, demande, mission, rendezVous, commune, co
   }
 
   if (mission) {
+    // Mission créée pour une demande d'aide : l'adresse de l'habitant est donnée par téléphone, pas d'itinéraire avant
+    const adresseParTelephone = !rendezVous && !mission.adresse && (!!mission.demande_id || mission.lieu.startsWith('Adresse donnée'))
     trajets.push({
       id: 'trajet-mission',
       type: 'mission',
@@ -95,7 +98,7 @@ export function useMesTrajets({ actif, demande, mission, rendezVous, commune, co
       titre: mission.titre,
       detail: `Rendez-vous ${mission.rendez_vous} · ${mission.lieu}${mission.adresse ? ` · ${mission.adresse}` : ''}`,
       point: rendezVous,
-      itineraire: rendezVous ? lienItineraire(rendezVous) : recherche(`${mission.adresse || mission.lieu}, ${commune}`),
+      itineraire: rendezVous ? lienItineraire(rendezVous) : adresseParTelephone ? '' : recherche(`${mission.adresse || mission.lieu}, ${commune}`),
       lien: '/mission',
     })
   }
