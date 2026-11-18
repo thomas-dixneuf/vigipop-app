@@ -204,9 +204,13 @@ export default function Carte() {
               {t.detail}
               {position && t.point ? ` · à ${distanceLisible(distanceMetres(position, t.point))}` : ''}
             </span>
-            <a href={t.itineraire} target="_blank" rel="noreferrer" className="bouton bouton--principal" style={{ minHeight: 48, fontSize: 16 }}>
-              <Icone nom="itineraire" taille={18} /> Itinéraire
-            </a>
+            {t.itineraire ? (
+              <a href={t.itineraire} target="_blank" rel="noreferrer" className="bouton bouton--principal" style={{ minHeight: 48, fontSize: 16 }}>
+                <Icone nom="itineraire" taille={18} /> Itinéraire
+              </a>
+            ) : (
+              <span style={{ fontSize: 14, fontWeight: 700 }}>La cellule de crise vous appelle pour vous donner l'adresse.</span>
+            )}
             {t.telephone && (
               <a href={`tel:${t.telephone.replace(/[\s.-]/g, '')}`} className="bouton bouton--contour" style={{ minHeight: 44, fontSize: 15 }}>
                 Appeler {t.telephone}

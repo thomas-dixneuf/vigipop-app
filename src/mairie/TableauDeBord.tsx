@@ -6,7 +6,7 @@ import ChampAdresse from '../components/ChampAdresse.tsx'
 import PanneauHabilitations from './PanneauHabilitations.tsx'
 import PanneauPush from './PanneauPush.tsx'
 import { PanneauBenevoles, PanneauEntreprises, type Benevole, type Entreprise } from './Partenaires.tsx'
-import { QuiPeutAider } from './Renforts.tsx'
+import { QuiPeutAider, RenfortsMission } from './Renforts.tsx'
 import { aidantsPour, correspondances, libelleBesoin, libelleRessource, type Engagement, type Volontaire } from './aidants.ts'
 import { besoins as listeBesoins, centreCommune, libelleLieu, ressources as listeRessources, situations } from '../data/fictif.ts'
 import {
@@ -620,7 +620,10 @@ function Demandes({
   }
   // Plus de bouton « Prendre en charge » : la demande passe « en cours » dès que la cellule agit
   // (appel, aidant proposé, bénévole mobilisé, entreprise sollicitée), avec le nom de qui s'en occupe.
+  // Au premier geste, les besoins qui passent par une mission (eau, médicaments) en reçoivent une, envoyée aux volontaires
   const agir = (d: DemandeServeur) => {
+    if (d.statut === 'transmise' && donnees.crise)
+      for (const b of besoinsAvecMission(d)) void creerMissionDemande(d, b, donnees.missions, communeId, coordinateurNom)
     if (d.statut === 'transmise' || !d.suivie_par) void suivre(d, d.statut === 'transmise' ? 'prise_en_charge' : d.statut)
   }
   const suivre = async (d: DemandeServeur, statut: StatutDemande, extra: Record<string, string> = {}) => {
@@ -856,7 +859,7 @@ function Demandes({
               )}
             </div>
             )}
-            {aideOuverte === d.id && d.statut !== 'close' && <AideDemande demande={d} donnees={donnees} communeId={communeId} onAgir={() => agir(d)} />}
+            {aideOuverte === d.id && d.statut !== 'close' && <AideDemande demande={d} donnees={donnees} communeId={communeId} coordinateurNom={coordinateurNom} onAgir={() => agir(d)} />}
           </article>
         )
       })}
@@ -883,7 +886,38 @@ function engagementsDe(donnees: Donnees): Engagement[] {
 }
 
 // Sous une demande : pour chacun de ses besoins, ce qui est déjà proposé et qui d'autre peut aider
-function AideDemande({ demande, donnees, communeId, onAgir }: { demande: DemandeServeur; donnees: Donnees; communeId: string; onAgir: () => void }) {
+// Missions d'une demande : celles créées pour elle (migration 0021), ou à défaut celles qui citent sa référence
+const missionsDe = (d: DemandeServeur, missions: MissionServeur[]) =>
+  missions.filter((m) => (m.demande_id ? m.demande_id === d.id : m.titre.endsWith(`· ${d.reference}`)))
+
+// Besoins d'une demande qui passent par une mission (eau, médicaments). Transport et matériel sont proposés
+// automatiquement à un volontaire, l'hébergement a sa mise en relation, les blessés relèvent du 112.
+const besoinsAvecMission = (d: DemandeServeur) => d.besoins.filter((b) => correspondances[b]?.mission)
+
+// Crée la mission d'un besoin de la demande, si elle n'existe pas déjà. L'adresse de l'habitant n'y figure pas :
+// la mission part à plusieurs volontaires, la cellule donne l'adresse à celui qui accepte.
+async function creerMissionDemande(d: DemandeServeur, besoin: string, missions: MissionServeur[], communeId: string, coordinateurNom: string) {
+  const modele = correspondances[besoin]?.mission
+  if (!modele || missionsDe(d, missions).some((m) => m.categorie === modele.categorie && m.titre.startsWith(modele.titre))) return null
+  const mission = {
+    commune_id: communeId,
+    titre: `${modele.titre} · ${d.reference}`,
+    rendez_vous: 'Dès que possible',
+    duree: '',
+    lieu: 'Adresse donnée par la cellule de crise',
+    coordinateur: coordinateurNom,
+    categorie: modele.categorie,
+    ressource: libelleRessource(modele.categorie),
+    equipe: '1 volontaire',
+    consignes: `Pour ${d.personnes} personne${d.personnes > 1 ? 's' : ''} (demande ${d.reference}). Quand vous acceptez, la cellule de crise vous appelle avec l'adresse. N'entrez jamais dans une zone inondée.`,
+  }
+  const { error } = await serveur!.from('missions').insert({ ...mission, demande_id: d.id })
+  // Colonne demande_id absente tant que la migration 0021 n'est pas lancée : la mission part quand même
+  if (error) return (await serveur!.from('missions').insert(mission)).error
+  return null
+}
+
+function AideDemande({ demande, donnees, communeId, coordinateurNom, onAgir }: { demande: DemandeServeur; donnees: Donnees; communeId: string; coordinateurNom: string; onAgir: () => void }) {
   // Blessé ou évacuation : les secouristes d'abord ; sans besoin coché, eux seuls
   const urgent = demande.situation === 'blesse' || demande.situation === 'evac'
   const coches = demande.besoins.filter((b) => correspondances[b])
@@ -911,6 +945,9 @@ function AideDemande({ demande, donnees, communeId, onAgir }: { demande: Demande
     const { error } = await serveur!.from('entraides').insert({ commune_id: communeId, demande_id: demande.id, besoin, aidant: v.auteur })
     setMessage(error ? 'Échec : une sollicitation est peut-être déjà en cours.' : `${nomVolontaire(v.auteur)} est sollicité dans son app.`)
   }
+  const mission = c?.mission ? missionsDe(demande, donnees.missions).find((m) => m.categorie === c.mission!.categorie && m.titre.startsWith(c.mission!.titre)) : undefined
+  const acceptes = mission ? donnees.reponses.filter((r) => r.mission_id === mission.id && r.reponse === 'acceptee') : []
+  const concernes = mission ? donnees.volontaires.filter((v) => v.ressources.includes(mission.categorie)).length : 0
   const candidatsEntraide = (besoin === 'transport' || besoin === 'materiel') && !entraide
     ? aidantsPour(besoin, donnees.volontaires, [], []).volontaires.filter((v) => !donnees.entraides.some((e) => e.demande_id === demande.id && e.besoin === besoin && e.aidant === v.auteur))
     : []
@@ -967,27 +1004,52 @@ function AideDemande({ demande, donnees, communeId, onAgir }: { demande: Demande
         </div>
       )}
       {c?.mission && enCrise && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', fontSize: 14 }}>
-          <span>Plusieurs habitants ont le même besoin ? Envoyez une mission aux volontaires.</span>
-          <Link to="/mairie/renforts" state={{ mission: c.mission }} onClick={onAgir} className="mairie-bouton" style={{ textDecoration: 'none' }}>
-            Créer une mission « {c.mission.titre} »
-          </Link>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, fontSize: 14 }}>
+          {mission ? (
+            <>
+              <span>
+                <strong>Mission envoyée :</strong> {mission.titre} · {acceptes.length > 0 ? `✓ acceptée par ${acceptes.map((r) => r.prenom || 'un volontaire').join(', ')}` : `${concernes} volontaire${concernes > 1 ? 's' : ''} prévenu${concernes > 1 ? 's' : ''} dans l'app, réponse attendue`}
+              </span>
+              {acceptes.length > 0 && <span className="texte-doux">Appelez le volontaire pour lui donner l'adresse de l'habitant.</span>}
+              <RenfortsMission mission={mission} benevoles={donnees.benevoles ?? []} onAgir={onAgir} />
+            </>
+          ) : (
+            <span style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+              Une mission « {c.mission.titre} » part dès que vous vous occupez de la demande.
+              <button
+                type="button"
+                className="mairie-bouton mairie-bouton--principal"
+                onClick={async () => {
+                  onAgir()
+                  if (demande.statut !== 'transmise') {
+                    const erreur = await creerMissionDemande(demande, besoin, donnees.missions, communeId, coordinateurNom)
+                    setMessage(erreur ? "Échec : la mission n'a pas été créée." : 'Mission envoyée aux volontaires.')
+                  }
+                }}
+              >
+                Créer la mission maintenant
+              </button>
+            </span>
+          )}
         </div>
       )}
-      <QuiPeutAider
-        key={besoin}
-        compact
-        besoin={besoin}
-        position={position}
-        volontaires={donnees.volontaires}
-        benevoles={donnees.benevoles ?? []}
-        entreprises={donnees.entreprises ?? []}
-        engagements={engagements}
-        enCrise={enCrise}
-        sansVolontaires={besoin === 'heb'}
-        onAgir={onAgir}
-        titre={besoin === 'heb' ? 'Aussi en renfort' : `Qui peut aider · ${libelleBesoin(besoin)}`}
-      />
+      {!(mission && aidantsPour(besoin, [], [], donnees.entreprises ?? []).entreprises.length === 0) && (
+        <QuiPeutAider
+          key={besoin}
+          seulementMateriel={!!mission}
+          compact
+          besoin={besoin}
+          position={position}
+          volontaires={donnees.volontaires}
+          benevoles={donnees.benevoles ?? []}
+          entreprises={donnees.entreprises ?? []}
+          engagements={engagements}
+          enCrise={enCrise}
+          sansVolontaires={besoin === 'heb'}
+          onAgir={onAgir}
+          titre={besoin === 'heb' ? 'Aussi en renfort' : mission ? 'Matériel des entreprises conventionnées' : `Qui peut aider · ${libelleBesoin(besoin)}`}
+        />
+      )}
       {message && (
         <p role="status" style={{ fontSize: 14 }}>
           {message}
@@ -2012,6 +2074,7 @@ function PageRenforts({
                     missions={donnees.missions}
                     reponses={donnees.reponses}
                     volontaires={donnees.volontaires}
+                    benevoles={benevoles}
                     communeId={communeId}
                     partenaire={partenaire}
                   />
@@ -2459,13 +2522,14 @@ type PropsMissions = {
   missions: MissionServeur[]
   reponses: Reponse[]
   volontaires: Volontaire[]
+  benevoles: Benevole[]
   communeId: string
   modele: ModeleMission | null
   // Partenaire secours : ses missions portent son nom, il ne clôt que les siennes
   partenaire?: string
 }
 
-function PanneauMissions({ missions, reponses, volontaires, communeId, modele, partenaire }: PropsMissions) {
+function PanneauMissions({ missions, reponses, volontaires, benevoles, communeId, modele, partenaire }: PropsMissions) {
   const vide = partenaire ? { ...missionVide, coordinateur: partenaire } : missionVide
   const [ouvert, setOuvert] = useState(!!modele)
   const [mission, setMission] = useState(modele ? { ...vide, titre: modele.titre, categorie: modele.categorie } : vide)
@@ -2510,7 +2574,8 @@ function PanneauMissions({ missions, reponses, volontaires, communeId, modele, p
     <section className="mairie-panneau" aria-labelledby="titre-missions">
       <h2 id="titre-missions">Missions envoyées</h2>
       <p className="texte-doux" style={{ marginTop: -4 }}>
-        Une mission part seulement aux volontaires qui proposent ce type d'aide. Suivez ici qui a accepté.
+        Une mission part dans l'app des volontaires qui proposent ce type d'aide. Ajoutez-y des bénévoles de la Protection civile si besoin.
+        Les entreprises ne font pas de mission : sollicitez leur matériel dans « Qui peut aider ».
       </p>
       {missions.length === 0 && <p className="texte-doux">Aucune mission ouverte.</p>}
       {missions.map((m) => {
@@ -2535,6 +2600,7 @@ function PanneauMissions({ missions, reponses, volontaires, communeId, modele, p
               {acceptees.length > 0 && ` : ${acceptees.map((r) => r.prenom || 'anonyme').join(', ')}`}
               {refusees > 0 && ` · ${refusees} indisponible${refusees > 1 ? 's' : ''}`}
             </span>
+            <RenfortsMission mission={m} benevoles={benevoles} />
             {(!partenaire || m.proposee_par === partenaire) && (
               <button type="button" className="mairie-bouton" style={{ alignSelf: 'flex-start' }} onClick={() => void clore(m)}>
                 Clore la mission
@@ -2554,7 +2620,9 @@ function PanneauMissions({ missions, reponses, volontaires, communeId, modele, p
                 </option>
               ))}
             </select>
-            <span className="texte-doux" style={{ fontWeight: 400 }}>Seuls les volontaires qui proposent ce type d'aide recevront la mission.</span>
+            <span className="texte-doux" style={{ fontWeight: 400 }}>
+              Les volontaires qui proposent ce type d'aide la reçoivent dans l'app ; vous ajoutez ensuite les bénévoles de la Protection civile.
+            </span>
           </label>
           {champsMission.map(([cle, libelle]) => (
             <label key={cle} style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 14, fontWeight: 700 }}>

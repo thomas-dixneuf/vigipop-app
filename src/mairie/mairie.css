@@ -315,6 +315,10 @@ a.mairie-etape[aria-current='page'] { background: var(--bleu-nuit); border-color
 /* Qui peut aider : volontaires, bénévoles et entreprises dans une seule liste */
 .mairie-qui-aide { display: flex; flex-direction: column; gap: 12px; }
 .mairie-qui-aide-source { font-size: 13px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.04em; color: var(--bleu-nuit); }
+.mairie-sorte { display: inline-block; font-size: 12px; font-weight: 800; padding: 1px 8px; border-radius: 999px; margin-right: 2px; vertical-align: 1px; border: 1px solid var(--bleu-nuit); }
+.mairie-sorte--volontaire { background: var(--bleu-voile); color: var(--bleu-nuit); }
+.mairie-sorte--benevole { background: var(--bleu-nuit); color: var(--blanc); }
+.mairie-sorte--entreprise { background: #F3EEDF; color: #4A3B12; border-color: #8A7432; }
 .mairie-aidants { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 6px; }
 .mairie-aidant {
   display: flex;

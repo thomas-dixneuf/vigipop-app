@@ -83,6 +83,8 @@ export type MissionServeur = {
   lng?: number | null
   // Mission créée par un partenaire secours (pompiers, police…)
   proposee_par?: string | null
+  // Demande d'aide pour laquelle la mission a été créée (migration 0021)
+  demande_id?: string | null
 }
 
 export type GesteSecours = 'prise' | 'evacuee' | 'orientee' | 'resolue' | 'note'
