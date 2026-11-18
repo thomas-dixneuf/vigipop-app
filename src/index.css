@@ -108,3 +108,7 @@ h1, h2, p { margin: 0; }
 
 /* Vue de démonstration côte à côte : l'app tient dans le cadre du téléphone */
 .cadre-telephone .ecran { min-height: 100%; }
+
+/* Carte : mes trajets (hébergement, mission, personne aidée), au-dessus des lieux de la mairie */
+.puce--trajet { display: inline-flex; align-items: center; gap: 6px; border-color: var(--bleu-nuit); color: var(--bleu-nuit); font-weight: 800; }
+.puce--trajet[aria-pressed='true'] { background: var(--bleu-nuit); border-color: var(--bleu-nuit); color: var(--blanc); }

@@ -26,6 +26,8 @@ les secours et l'alerte officielle (FR-Alert), elle ne les remplace jamais.
   foyer le plus proche (répartition automatique désactivable par la mairie, migration 0018), l'hébergeur accepte ou
   refuse, puis la personne sinistrée voit l'offre et peut la décliner : le foyer suivant lui est proposé (jamais deux
   fois le même). La mairie supervise et peut réattribuer.
+  En crise, « Mes trajets » au-dessus de la carte : foyer qui m'héberge (après accord), mission acceptée, personne que je
+  transporte ou à qui j'apporte du matériel, chacun avec son itinéraire (`src/outils/mesTrajets.ts`).
   Zones à éviter (zones touchées le jour J) tracées par la mairie, en rouge plein. Zones exposées aux risques connus (TIM fourni par la
   commune, DICRIM) : tracées ou importées en GeoJSON par la mairie, permanentes, en pointillés bleu nuit ; en crise elles s'estompent et une légende distingue « zone touchée aujourd'hui » de « zone exposée connue ».
 - **Missions ciblées** : une mission a un type d'aide ; un volontaire ne reçoit que celles des
