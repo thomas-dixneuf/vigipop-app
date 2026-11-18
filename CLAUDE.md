@@ -17,8 +17,8 @@ les secours et l'alerte officielle (FR-Alert), elle ne les remplace jamais.
   signalement, consignes, lieux ouverts. Se proposer comme volontaire exige toujours un compte.
   Le 112 reste affiché sur l'écran de lancement, avec ou sans compte. Exception : la **carte**
   (`#/carte`) est consultable sans compte à tout moment, pour repérer les secours avant une crise.
-- **Compte express** : sans compte, la demande d'aide propose un prénom et un numéro de rappel
-  facultatifs (jamais bloquants). Ces informations pré-remplissent l'inscription proposée
+- **Compte express** : sans compte, la demande d'aide propose prénom, nom de famille (migration 0019) et numéro de
+  rappel, « fortement conseillés » mais jamais bloquants. Ces informations pré-remplissent l'inscription proposée
   après l'envoi ; le compte créé reste lié à la même demande.
 - **Carte** : fond OpenStreetMap (Leaflet), adresses officielles via la Base Adresse Nationale,
   « Itinéraire » ouvre Google Maps. Jamais d'adresse privée (hébergement chez l'habitant) sur
@@ -57,20 +57,24 @@ les secours et l'alerte officielle (FR-Alert), elle ne les remplace jamais.
   IGN/BAN ; sans réponse, liste embarquée `src/data/adressesEmbarquees.ts`). Inscription, profil, foyer, hébergement et
   mairie exigent un choix dans la liste ; le signalement accepte le texte tapé (jamais bloquant).
 - **Localisation proposée au lancement** (une fois, refusable avec « Plus tard », jamais en mode crise sans compte).
-- **Espace mairie en pages** (`#/mairie/...`), menu par sujet : Accueil (en crise, « À faire maintenant » : un geste
-  par ligne, avec son bouton) ; Habitants : « Ont besoin d'aide » (demandes, étapes 1. À traiter, 2. Prises en charge,
-  3. Terminées), « Proposent leur aide » (volontaires : besoins, missions, propositions automatiques) ; Renforts : Protection civile, Entreprises
-  conventionnées ; Commune : Lieux d'accueil, Journal et bilan ; tout en bas du menu, « Paramètres »
-  (risques du DICRIM, alertes). Hors crise, l'Accueil sert aussi à tracer ou importer les zones exposées et à
+- **Espace mairie en pages** (`#/mairie/...`), menu simple, chaque lien avec une ligne qui dit à quoi il sert : Accueil
+  (en crise, « À faire maintenant » : un geste par ligne, avec son bouton) ; Demandes d'aide (étapes 1. À traiter,
+  2. Prises en charge, 3. Terminées ; sous chaque demande, « Qui peut aider ? » montre volontaires, Protection civile et
+  entreprises pour chacun de ses besoins, sans changer de page) ; Aidants et renforts (`#/mairie/renforts` : en crise,
+  besoins à couvrir + liste unique « Qui peut aider » + missions + propositions automatiques ; onglets Protection civile
+  et Entreprises conventionnées pour les fiches ; hors crise « Renforts », ces deux onglets seuls) ; Lieux d'accueil ;
+  Journal et bilan ; tout en bas du menu, « Paramètres » (risques du DICRIM, alertes). Hors crise, l'Accueil sert aussi à tracer ou importer les zones exposées et à
   régler le périmètre des visiteurs géolocalisés. À la première connexion, la mairie renseigne d'abord les risques de sa commune ; elle peut passer
   l'étape (« Je ne les connais pas encore ») : rappel permanent sur l'Accueil et écran de nouveau proposé chaque semaine. **Hors crise**, seules les infos de la
-  mairie s'affichent (groupe Habitants absent du menu ; une demande reçue hors crise s'annonce sur l'Accueil). Le nom de la commune vient du compte
+  mairie s'affichent (Demandes d'aide absente du menu ; une demande reçue hors crise s'annonce sur l'Accueil). Le nom de la commune vient du compte
   (pas de renommage) ; son centre est trouvé automatiquement. Pas de sigle sans explication (TIM → « zones exposées »).
 - **Partenaires** (migration 0017, mairie seule) : entreprises sous convention (matériel, SIRET, fin de convention ;
   solliciter → matériel engagé → rendu) et bénévoles d'association type réserve communale / Protection civile
   (compétences ; mobiliser → fin de mission). Chaque changement de statut passe au journal.
 - **Mairie hors ligne** : dernière liste gardée sur l'ordinateur (effacée à la déconnexion), impression
   et export des demandes, bilan de crise sans donnée nominative.
+- **Textes** : écriture inclusive dans les questionnaires habitants (« Blessé(e) », « Sinistré(e) »). Pas de besoin
+  « Animaux » dans la demande d'aide. « Je suis en sécurité » peut être annulé (avec confirmation).
 - Accessibilité : zones tactiles ≥ 44 px, vrais `<button>` et `<a>`, contrastes AA.
 
 ## Charte

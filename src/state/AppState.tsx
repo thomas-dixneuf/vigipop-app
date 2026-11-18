@@ -40,6 +40,8 @@ export type Demande = {
   position: string
   // Pour que la mairie puisse rappeler ; facultatif, jamais bloquant
   prenom: string
+  // Nom de famille, facultatif lui aussi (absent des demandes enregistrées avant)
+  nom?: string
   telephone: string
   envoyeeA: string
   // Faux tant que la demande n'a pas pu partir (pas de réseau)
@@ -64,7 +66,7 @@ export type Utilisateur = {
 export type Foyer = { adresse: string; personnes: number; vulnerable: boolean }
 
 // Ce qu'une personne sans compte a déjà saisi : repris pour pré-remplir l'inscription
-export type Contact = { prenom: string; telephone: string }
+export type Contact = { prenom: string; nom?: string; telephone: string }
 
 // Logement proposé par un volontaire hébergeur : visible par la mairie seulement
 export type Accueil = { places: number; adresse: string; lat: number | null; lng: number | null }
@@ -155,6 +157,8 @@ type AppStateValue = Etat & {
   communeNonPartenaire: string | null
   basculerMode: () => void
   declarerEnSecurite: () => void
+  // Clic par erreur : on revient à « Êtes-vous en sécurité ? »
+  annulerEnSecurite: () => void
   enregistrerDemande: (demande: Omit<Demande, 'id' | 'statut' | 'envoyee'> & { id?: string }) => void
   connecter: (utilisateur: Utilisateur, nouveauCompte: boolean) => void
   lancerVisite: () => void
@@ -552,7 +556,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     ;(async () => {
       try {
         await assurerSession(client)
-        const { error } = await client.from('demandes').upsert({
+        const ligne = {
           id: demande.id,
           commune_id: demande.communeId ?? COMMUNE_ID,
           reference: demande.reference,
@@ -563,7 +567,15 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
           position: demande.position,
           prenom: demande.prenom,
           telephone: demande.telephone,
-        })
+          nom: demande.nom ?? '',
+        }
+        let { error } = await client.from('demandes').upsert(ligne)
+        // Colonne « nom » absente tant que la migration 0019 n'est pas lancée : la demande part quand même, sans le nom
+        if (error && /nom/.test(error.message)) {
+          const { nom: _nom, ...sansNom } = ligne
+          void _nom
+          ;({ error } = await client.from('demandes').upsert(sansNom))
+        }
         if (!error) marquer()
       } catch {
         // Réseau instable : nouvel essai au prochain retour en ligne ou dans 30 s
@@ -730,7 +742,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
           setEtat((e) => ({
             ...etatPublic(e),
             compteEfface: true,
-            contact: e.utilisateur ? { prenom: e.utilisateur.prenom, telephone: e.utilisateur.telephone } : e.contact,
+            contact: e.utilisateur ? { prenom: e.utilisateur.prenom, nom: e.utilisateur.nom, telephone: e.utilisateur.telephone } : e.contact,
             visiteFaite: e.visiteFaite,
           }))
         } else {
@@ -778,12 +790,13 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     basculerMode: () =>
       setEtat((e) => (e.mode === 'veille' ? { ...e, mode: 'crise', alerte: alerteDemo, enSecurite: false } : finDeCrise(e))),
     declarerEnSecurite: () => setEtat((e) => ({ ...e, enSecurite: true })),
+    annulerEnSecurite: () => setEtat((e) => ({ ...e, enSecurite: false })),
     enregistrerDemande: ({ id, ...demande }) =>
       setEtat((e) => ({
         ...e,
         enSecurite: false,
         apresCrise: false,
-        contact: e.utilisateur || (!demande.prenom && !demande.telephone) ? e.contact : { prenom: demande.prenom, telephone: demande.telephone },
+        contact: e.utilisateur || (!demande.prenom && !demande.nom && !demande.telephone) ? e.contact : { prenom: demande.prenom, nom: demande.nom, telephone: demande.telephone },
         // « Ma situation a changé » : même demande, mise à jour côté mairie
         demande: {
           ...demande,
@@ -813,7 +826,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
       setEtat((e) => ({
         ...etatPublic(e),
         compteEfface: true,
-        contact: e.utilisateur ? { prenom: e.utilisateur.prenom, telephone: e.utilisateur.telephone } : e.contact,
+        contact: e.utilisateur ? { prenom: e.utilisateur.prenom, nom: e.utilisateur.nom, telephone: e.utilisateur.telephone } : e.contact,
         dernierUtilisateur: null,
         visiteFaite: e.visiteFaite,
       })),

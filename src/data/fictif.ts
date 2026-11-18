@@ -101,10 +101,10 @@ export const libelleLieu: Record<LieuServeur['type'], string> = {
 }
 
 export const situations = [
-  { id: 'sinistre', label: 'Sinistré, en sécurité' },
-  { id: 'bloque', label: 'Bloqué chez moi' },
+  { id: 'sinistre', label: 'Sinistré(e), en sécurité' },
+  { id: 'bloque', label: 'Bloqué(e) chez moi' },
   { id: 'evac', label: "Besoin d'évacuation" },
-  { id: 'blesse', label: 'Personne blessée' },
+  { id: 'blesse', label: 'Blessé(e)' },
 ] as const
 
 export const besoins = [
@@ -113,7 +113,6 @@ export const besoins = [
   { id: 'med', label: 'Médicaments' },
   { id: 'transport', label: 'Transport' },
   { id: 'materiel', label: 'Matériel' },
-  { id: 'animaux', label: 'Animaux' },
 ] as const
 
 export type SituationId = (typeof situations)[number]['id']
