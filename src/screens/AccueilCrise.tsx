@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import Bandeau112 from '../components/Bandeau112.tsx'
 import BarreNav from '../components/BarreNav.tsx'
@@ -41,7 +42,7 @@ const pastille = {
 } as const
 
 export default function AccueilCrise() {
-  const { demande, enSecurite, declarerEnSecurite, disponible, mission, missionServeur, alerte, lieux } = useAppState()
+  const { demande, enSecurite, declarerEnSecurite, annulerEnSecurite, disponible, mission, missionServeur, alerte, lieux } = useAppState()
   const demandeOuverte = !!demande && demande.statut !== 'close'
   const ouverts = (lieux ?? (serveur ? [] : lieuxDemo)).filter((l) => l.ouvert)
 
@@ -134,6 +135,7 @@ export default function AccueilCrise() {
             {enSecurite ? 'Signalé à la mairie' : 'Je suis en sécurité'}
           </button>
         )}
+        {!demande && enSecurite && <AnnulerSecurite onAnnuler={annulerEnSecurite} />}
 
         <Bandeau112 />
 
@@ -155,6 +157,33 @@ export default function AccueilCrise() {
         <BoutonDemo />
       </main>
       <BarreNav />
+    </div>
+  )
+}
+
+// « Je suis en sécurité » cliqué par erreur : on peut revenir en arrière, après confirmation
+function AnnulerSecurite({ onAnnuler }: { onAnnuler: () => void }) {
+  const [confirmer, setConfirmer] = useState(false)
+  if (!confirmer)
+    return (
+      <button type="button" className="bouton bouton--contour" style={{ minHeight: 44, fontSize: 14, borderStyle: 'dashed' }} onClick={() => setConfirmer(true)}>
+        Je me suis trompé(e), annuler
+      </button>
+    )
+  return (
+    <div role="alertdialog" aria-labelledby="titre-annuler-securite" className="carte" style={{ display: 'flex', flexDirection: 'column', gap: 10, borderColor: 'var(--urgence)', borderWidth: 2 }}>
+      <strong id="titre-annuler-securite" style={{ color: 'var(--bleu-nuit)' }}>
+        Vous n’êtes pas en sécurité ?
+      </strong>
+      <span style={{ fontSize: 14, lineHeight: 1.4 }}>Votre réponse « Je suis en sécurité » sera retirée. Si vous avez besoin d’aide, utilisez « J’ai besoin d’aide » juste au-dessus.</span>
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+        <button type="button" className="bouton bouton--principal" style={{ minHeight: 44, flex: 1 }} onClick={onAnnuler}>
+          Oui, annuler
+        </button>
+        <button type="button" className="bouton bouton--contour" style={{ minHeight: 44, flex: 1 }} onClick={() => setConfirmer(false)}>
+          Non, je suis en sécurité
+        </button>
+      </div>
     </div>
   )
 }

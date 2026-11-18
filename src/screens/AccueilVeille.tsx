@@ -106,7 +106,7 @@ export default function AccueilVeille() {
             <span style={{ display: 'block', width: `${preparation}%`, height: 8, background: 'var(--cyan)' }} />
           </span>
           <span style={{ fontSize: 14, color: 'var(--bleu-voile)', lineHeight: 1.4 }}>
-            {prochaine ? `Prochaine étape (${faites}/${etapes.length}) : ${prochaine.texte.toLowerCase()} →` : 'Vous êtes prêt. Vous pouvez modifier vos offres à tout moment →'}
+            {prochaine ? `Prochaine étape (${faites}/${etapes.length}) : ${prochaine.texte.toLowerCase()} →` : 'Vous êtes prêt(e). Vous pouvez modifier vos offres à tout moment →'}
           </span>
         </Link>
 

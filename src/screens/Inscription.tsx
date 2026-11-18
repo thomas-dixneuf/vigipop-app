@@ -17,7 +17,7 @@ export default function Inscription() {
   const { contact } = useAppState()
   const [prenom, setPrenom] = useState(contact?.prenom ?? '')
   // Nom de famille demandé tout de suite : il n'est plus redemandé ensuite
-  const [nom, setNom] = useState('')
+  const [nom, setNom] = useState(contact?.nom ?? '')
   const [telephone, setTelephone] = useState(contact?.telephone ?? '')
   // Commune choisie dans la liste officielle (jamais un nom tapé au hasard)
   const [commune, setCommune] = useState<string | null>(null)

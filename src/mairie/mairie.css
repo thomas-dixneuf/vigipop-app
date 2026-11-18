@@ -300,3 +300,54 @@ textarea.mairie-champ { resize: vertical; min-height: 72px; }
 @media (max-width: 900px) {
   .mairie-nav-bas { margin-top: 0; padding-top: 0; border-top: none; }
 }
+
+/* Menu : chaque page avec une ligne qui dit à quoi elle sert */
+.mairie-nav-lien { min-height: 52px; padding: 6px 12px; }
+.mairie-nav-textes { display: flex; flex-direction: column; gap: 1px; line-height: 1.25; }
+.mairie-nav-sous { font-size: 12.5px; font-weight: 400; color: var(--texte-doux, #4a6070); }
+.mairie-nav-lien[aria-current='page'] .mairie-nav-sous { color: var(--bleu-clair); }
+@media (max-width: 900px) { .mairie-nav-sous { display: none; } .mairie-nav-lien { min-height: 44px; } }
+
+/* Onglets de la page Aidants et renforts */
+a.mairie-etape[aria-current='page'] { background: var(--bleu-nuit); border-color: var(--bleu-nuit); color: var(--blanc); }
+@media (max-width: 700px) { nav.mairie-etapes { grid-template-columns: minmax(0, 1fr) !important; } }
+
+/* Qui peut aider : volontaires, bénévoles et entreprises dans une seule liste */
+.mairie-qui-aide { display: flex; flex-direction: column; gap: 12px; }
+.mairie-qui-aide-source { font-size: 13px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.04em; color: var(--bleu-nuit); }
+.mairie-aidants { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 6px; }
+.mairie-aidant {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  border: 1px solid var(--bordure);
+  border-radius: 10px;
+  padding: 8px 10px;
+  font-size: 14px;
+}
+.mairie-aidant-texte { display: flex; flex-direction: column; gap: 4px; min-width: 200px; flex: 1; }
+.mairie-aidant-etiquettes { display: flex; gap: 4px; flex-wrap: wrap; }
+.mairie-aide-demande {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  background: var(--bleu-voile);
+  border-radius: 12px;
+  padding: 12px;
+}
+.mairie-aide-demande .mairie-aidant { background: var(--blanc); }
+.mairie-lien-bouton {
+  background: none;
+  border: 0;
+  padding: 0;
+  min-height: 32px;
+  font: inherit;
+  font-weight: 700;
+  color: var(--bleu-nuit);
+  text-decoration: underline;
+  cursor: pointer;
+}
+.mairie-contenu--moitie { padding: 0; max-width: none; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); }
+@media (max-width: 1100px) { .mairie-contenu--moitie { grid-template-columns: minmax(0, 1fr); } }

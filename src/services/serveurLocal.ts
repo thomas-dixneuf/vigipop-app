@@ -37,7 +37,7 @@ const volontairesFictifs = [
 const demandesFictives = [
   { situation: 'bloque', besoins: ['eau', 'med'], personnes: 2, personne_vulnerable: true, prenom: 'Martine', position: '47.0569, -0.8838', minutes: -9 },
   { situation: 'evac', besoins: ['transport'], personnes: 4, personne_vulnerable: false, prenom: 'Sofia', position: '47.0561, -0.8791', minutes: -7 },
-  { situation: 'sinistre', besoins: ['heb', 'animaux'], personnes: 3, personne_vulnerable: false, prenom: 'Paul', position: '47.0581, -0.8872', minutes: -5 },
+  { situation: 'sinistre', besoins: ['heb', 'eau'], personnes: 3, personne_vulnerable: false, prenom: 'Paul', position: '47.0581, -0.8872', minutes: -5 },
   { situation: 'blesse', besoins: ['med'], personnes: 1, personne_vulnerable: true, prenom: 'Jean', position: '47.0537, -0.8766', minutes: -2 },
 ]
 

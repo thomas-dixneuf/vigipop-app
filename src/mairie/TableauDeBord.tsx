@@ -6,6 +6,8 @@ import ChampAdresse from '../components/ChampAdresse.tsx'
 import PanneauHabilitations from './PanneauHabilitations.tsx'
 import PanneauPush from './PanneauPush.tsx'
 import { PanneauBenevoles, PanneauEntreprises, type Benevole, type Entreprise } from './Partenaires.tsx'
+import { QuiPeutAider } from './Renforts.tsx'
+import { aidantsPour, correspondances, libelleBesoin, libelleRessource, type Engagement, type Volontaire } from './aidants.ts'
 import { besoins as listeBesoins, centreCommune, libelleLieu, ressources as listeRessources, situations } from '../data/fictif.ts'
 import {
   heure,
@@ -29,18 +31,6 @@ import { chercherAdresse, couleurLieu, distanceLisible, distanceMetres, estPlace
 export type Coordinateur = { nom: string; communeId: string; communeNom: string; role: 'mairie' | 'secours' }
 
 type Reponse = { mission_id: string; prenom: string; reponse: 'acceptee' | 'refusee' }
-type Volontaire = {
-  auteur: string
-  prenom: string
-  nom?: string
-  telephone: string
-  ressources: string[]
-  places_hebergement: number
-  adresse: string
-  lat: number | null
-  lng: number | null
-  updated_at: string
-}
 type Hebergement = { id: string; demande_id: string; hebergeur: string; personnes: number; statut: StatutHebergement; updated_at: string }
 type Entraide = { id: string; demande_id: string; besoin: BesoinEntraide; aidant: string; statut: StatutHebergement; updated_at: string }
 type Evenement = { id: number; action: string; details: Record<string, string>; created_at: string }
@@ -71,55 +61,47 @@ type Donnees = {
   benevoles: Benevole[]
 }
 
-// Pages de l'espace mairie, regroupées par sujet : les habitants, les renforts, la commune
-type Page = '' | 'demandes' | 'volontaires' | 'benevoles' | 'entreprises' | 'lieux' | 'parametres' | 'bilan'
-const groupesPages: { groupe: string; pages: { id: Page; titre: string }[] }[] = [
-  { groupe: '', pages: [{ id: '', titre: 'Accueil' }] },
-  {
-    groupe: 'Habitants',
-    pages: [
-      { id: 'demandes', titre: 'Ont besoin d’aide' },
-      { id: 'volontaires', titre: 'Proposent leur aide' },
-    ],
-  },
-  {
-    groupe: 'Renforts',
-    pages: [
-      { id: 'benevoles', titre: 'Protection civile' },
-      { id: 'entreprises', titre: 'Entreprises conventionnées' },
-    ],
-  },
-  {
-    groupe: 'Commune',
-    pages: [
-      { id: 'lieux', titre: 'Lieux d’accueil' },
-      { id: 'bilan', titre: 'Journal et bilan' },
-    ],
-  },
-]
+// Pages de l'espace mairie : une liste simple, chaque page avec une ligne qui dit à quoi elle sert.
+// En crise : les demandes, puis tous ceux qui peuvent aider réunis sur une seule page.
+type Page = '' | 'demandes' | 'renforts' | 'lieux' | 'parametres' | 'bilan'
+type InfoPage = { id: Page; titre: string; sous: string }
+function pagesMenu(enCrise: boolean): InfoPage[] {
+  return [
+    { id: '', titre: 'Accueil', sous: enCrise ? 'Ce qu’il faut faire maintenant' : 'Préparer la commune' },
+    { id: 'demandes', titre: 'Demandes d’aide', sous: 'Habitants qui ont besoin d’aide' },
+    enCrise
+      ? { id: 'renforts', titre: 'Aidants et renforts', sous: 'Volontaires, Protection civile, entreprises' }
+      : { id: 'renforts', titre: 'Renforts', sous: 'Protection civile, entreprises sous convention' },
+    { id: 'lieux', titre: 'Lieux d’accueil', sous: 'Gymnases, salles, points d’eau' },
+    { id: 'bilan', titre: 'Journal et bilan', sous: 'Ce qui a été fait, bilan à transmettre' },
+  ]
+}
 // Rarement modifiés : en bas du menu, à part
-const pageParametres: { id: Page; titre: string } = { id: 'parametres', titre: 'Paramètres' }
-const toutesPages = [...groupesPages.flatMap((g) => g.pages), pageParametres]
+const pageParametres: InfoPage = { id: 'parametres', titre: 'Paramètres', sous: 'Risques de la commune, alertes' }
+// Anciennes adresses de pages, gardées pour les favoris
+const anciennesPages: Record<string, string> = {
+  volontaires: '/mairie/renforts',
+  benevoles: '/mairie/renforts/protection-civile',
+  entreprises: '/mairie/renforts/entreprises',
+}
 // Hors crise, l'espace mairie ne montre que les informations de la mairie (lieux, risques, renforts, journal).
-// Les pages des habitants n'apparaissent qu'en crise, ou s'il reste une demande ouverte à traiter.
-const pagesHabitants: Page[] = ['demandes', 'volontaires']
+// Les demandes n'apparaissent qu'en crise, ou s'il reste une demande ouverte à traiter (annoncée sur l'Accueil).
 function pagesVisibles(donnees: Donnees): Page[] {
   const demandeOuverte = donnees.demandes.some((d) => d.statut === 'transmise' || d.statut === 'prise_en_charge')
-  return toutesPages
-    .map((p) => p.id)
-    .filter((id) => !pagesHabitants.includes(id) || !!donnees.crise || (id === 'demandes' && demandeOuverte))
+  return [...pagesMenu(!!donnees.crise), pageParametres].map((p) => p.id).filter((id) => id !== 'demandes' || !!donnees.crise || demandeOuverte)
 }
 // Une phrase sous le titre de chaque page : à quoi elle sert, en une lecture
-const descriptionsPages: Record<Page, string> = {
-  '': '',
-  demandes: 'Les demandes d’aide envoyées par les habitants. Traitez-les dans l’ordre : prendre en charge, organiser l’aide, prévenir l’habitant.',
-  volontaires:
-    'Les habitants volontaires, prêts à aider leurs voisins. Hébergement, transport et matériel leur sont proposés automatiquement ; pour le reste (eau, médicaments, animaux…), envoyez une mission.',
-  benevoles: 'Les bénévoles formés de l’association (réserve communale, Protection civile…) : la mairie les connaît et les appelle directement.',
-  entreprises: 'Les entreprises qui ont signé une convention pour prêter du matériel ou des engins pendant une crise.',
-  lieux: 'Gymnases, salles et points d’eau : seuls les lieux ouverts s’affichent chez les habitants.',
-  parametres: 'Réglages rarement modifiés : risques connus de la commune (DICRIM) et alertes sur les téléphones.',
-  bilan: 'Tout ce que la cellule de crise a fait, et le bilan à transmettre (sans nom ni numéro).',
+function descriptionPage(page: Page, enCrise: boolean): string {
+  return {
+    '': '',
+    demandes: 'Les demandes d’aide envoyées par les habitants. Pour chacune, « Qui peut aider ? » montre les volontaires, bénévoles et entreprises qui peuvent y répondre, sans changer de page.',
+    renforts: enCrise
+      ? 'Tous ceux qui peuvent aider, au même endroit : habitants volontaires, bénévoles de la Protection civile, entreprises conventionnées. Choisissez un besoin pour voir qui peut y répondre.'
+      : 'Les bénévoles de l’association (réserve communale, Protection civile…) et les entreprises qui prêtent du matériel. Les habitants volontaires s’ajoutent ici pendant une crise.',
+    lieux: 'Gymnases, salles et points d’eau : seuls les lieux ouverts s’affichent chez les habitants.',
+    parametres: 'Réglages rarement modifiés : risques connus de la commune (DICRIM) et alertes sur les téléphones.',
+    bilan: 'Tout ce que la cellule de crise a fait, et le bilan à transmettre (sans nom ni numéro).',
+  }[page]
 }
 
 // Les cas les plus graves d'abord, puis les plus anciens
@@ -227,8 +209,6 @@ export default function TableauDeBord({ coordinateur }: { coordinateur: Coordina
   const premierPassage = !passageTermine && !secours && !!donnees && donnees.risques.length === 0
   const setPremierPassage = (v: boolean) => setPassageTermine(!v)
   const [erreur, setErreur] = useState('')
-  // Mission pré-remplie depuis le tableau des besoins
-  const [modeleMission, setModeleMission] = useState<ModeleMission | null>(null)
 
   const charger = useCallback(async () => {
     const [crise, demandes, lieux, missions, reponses, volontaires, hebergements, zones, journal, communeLue, entraides, zonesRisque, propositions, entreprises, benevoles] = await Promise.all([
@@ -303,7 +283,9 @@ export default function TableauDeBord({ coordinateur }: { coordinateur: Coordina
 
   const enCrise = !!donnees?.crise
   const location = useLocation()
-  const page = (location.pathname.replace(/^\/mairie\/?/, '').split('/')[0] || '') as Page
+  const segments = location.pathname.replace(/^\/mairie\/?/, '').split('/')
+  const page = (segments[0] || '') as Page
+  const sousPage = segments[1] ?? ''
   const centre: [number, number] = donnees?.position ? [donnees.position.lat, donnees.position.lng] : centreCommune
   return (
     <ContexteAcces.Provider value={{ partenaire: secours ? coordinateur.nom : undefined, communeId: commune }}>
@@ -352,6 +334,8 @@ export default function TableauDeBord({ coordinateur }: { coordinateur: Coordina
             setPremierPassage(false)
           }}
         />
+      ) : anciennesPages[page] ? (
+        <Navigate to={anciennesPages[page]} replace />
       ) : !pagesVisibles(donnees).includes(page) ? (
         <Navigate to="/mairie" replace />
       ) : (
@@ -359,9 +343,9 @@ export default function TableauDeBord({ coordinateur }: { coordinateur: Coordina
           <Navigation page={page} donnees={donnees} secours={secours} />
           <main className="mairie-page" aria-labelledby="titre-page">
             <h1 id="titre-page" className="mairie-titre-page">
-              {toutesPages.find((p) => p.id === page)?.titre ?? 'Accueil'}
+              {[...pagesMenu(!!donnees.crise), pageParametres].find((p) => p.id === page)?.titre ?? 'Accueil'}
             </h1>
-            {descriptionsPages[page] && <p className="mairie-description-page">{descriptionsPages[page]}</p>}
+            {descriptionPage(page, !!donnees.crise) && <p className="mairie-description-page">{descriptionPage(page, !!donnees.crise)}</p>}
             {page === '' && (
               <div className="mairie-contenu">
                 <div className="mairie-colonne">
@@ -414,56 +398,10 @@ export default function TableauDeBord({ coordinateur }: { coordinateur: Coordina
             )}
             {page === 'demandes' && (
               <div className="mairie-pile">
-                <Demandes demandes={donnees.demandes} depuis={donnees.crise?.declenchee_a ?? null} partenaire={secours ? coordinateur.nom : undefined} lieux={donnees.lieux} />
+                <Demandes donnees={donnees} communeId={commune} demandes={donnees.demandes} depuis={donnees.crise?.declenchee_a ?? null} partenaire={secours ? coordinateur.nom : undefined} lieux={donnees.lieux} />
               </div>
             )}
-            {page === 'volontaires' && (
-              <div className="mairie-contenu">
-                <div className="mairie-colonne">
-                  <PanneauBesoins
-                    demandes={donnees.demandes}
-                    volontaires={donnees.volontaires}
-                    onMission={(m) => {
-                      setModeleMission({ ...m, numero: Date.now() })
-                      window.setTimeout(() => document.getElementById('titre-missions')?.scrollIntoView({ behavior: 'smooth' }), 50)
-                    }}
-                  />
-                  <PanneauMissions
-                    key={modeleMission?.numero ?? 0}
-                    modele={modeleMission}
-                    missions={donnees.missions}
-                    reponses={donnees.reponses}
-                    volontaires={donnees.volontaires}
-                    communeId={commune}
-                    partenaire={secours ? coordinateur.nom : undefined}
-                  />
-                  <h2 className="mairie-intertitre">3. Proposé automatiquement aux volontaires</h2>
-                  <PanneauHebergement
-                    demandes={donnees.demandes}
-                    volontaires={donnees.volontaires}
-                    hebergements={donnees.hebergements}
-                    communeId={commune}
-                    auto={donnees.hebergementAuto ?? true}
-                    onAuto={() => void charger()}
-                  />
-                  <PanneauEntraides demandes={donnees.demandes} volontaires={donnees.volontaires} entraides={donnees.entraides} communeId={commune} />
-                </div>
-                <div className="mairie-colonne">
-                  <PanneauVolontaires volontaires={donnees.volontaires} enCrise={enCrise} />
-                </div>
-              </div>
-            )}
-            {page === 'benevoles' && (
-              <div className="mairie-pile">
-                <PanneauBenevoles benevoles={donnees.benevoles} communeId={commune} enCrise={enCrise} />
-                {!secours && <PanneauHabilitations communeId={commune} />}
-              </div>
-            )}
-            {page === 'entreprises' && (
-              <div className="mairie-pile">
-                <PanneauEntreprises entreprises={donnees.entreprises} communeId={commune} enCrise={enCrise} />
-              </div>
-            )}
+            {page === 'renforts' && <PageRenforts donnees={donnees} communeId={commune} onglet={sousPage} onRecharger={() => void charger()} secours={secours} partenaire={secours ? coordinateur.nom : undefined} />}
             {page === 'lieux' && (
               <div className="mairie-pile">
                 <PanneauLieux lieux={donnees.lieux} communeId={commune} />
@@ -492,33 +430,29 @@ export default function TableauDeBord({ coordinateur }: { coordinateur: Coordina
   )
 }
 
-// Menu des pages : la crise d'abord, avec le nombre de choses qui attendent la cellule
+// Menu des pages : une liste simple, chaque lien avec sa ligne d'explication
+// et le nombre de choses qui attendent la cellule
 function Navigation({ page, donnees, secours }: { page: Page; donnees: Donnees; secours: boolean }) {
+  const enCrise = !!donnees.crise
   const attente: Partial<Record<Page, number>> = {
     demandes: donnees.demandes.filter((d) => d.statut === 'transmise').length,
   }
-  const visibles = pagesVisibles(donnees)
-  const lien = (p: { id: Page; titre: string }) => (
+  const lien = (p: InfoPage) => (
     <Link key={p.id} to={p.id ? `/mairie/${p.id}` : '/mairie'} className="mairie-nav-lien" aria-current={page === p.id ? 'page' : undefined}>
-      {p.titre}
-      {attente[p.id] ? <span className="mairie-nav-compteur">{attente[p.id]}</span> : null}
+      <span className="mairie-nav-textes">
+        <span>{p.titre}</span>
+        <span className="mairie-nav-sous">{p.sous}</span>
+      </span>
+      {attente[p.id] ? <span className="mairie-nav-compteur" aria-label={`${attente[p.id]} à traiter`}>{attente[p.id]}</span> : null}
     </Link>
   )
+  // Hors crise, le menu ne montre que les informations de la mairie
+  const pages = pagesMenu(enCrise).filter((p) => p.id !== 'demandes' || enCrise)
   return (
     <nav className="mairie-nav" aria-label="Pages de l'espace mairie">
-      {groupesPages.map((g) => {
-        // Hors crise, le menu ne montre que les informations de la mairie
-        const pages = g.pages.filter((p) => visibles.includes(p.id) && (!secours || p.id !== 'parametres') && (!!donnees.crise || !pagesHabitants.includes(p.id)))
-        if (!pages.length) return null
-        return (
-          <div key={g.groupe || 'accueil'} className="mairie-nav-bloc">
-            {g.groupe && <span className="mairie-nav-groupe">{g.groupe}</span>}
-            {pages.map(lien)}
-          </div>
-        )
-      })}
-      {!donnees.crise && (
-        <p className="mairie-nav-note">Les habitants qui ont besoin d’aide et ceux qui proposent leur aide apparaissent ici dès que le mode crise est déclenché.</p>
+      <div className="mairie-nav-bloc">{pages.map(lien)}</div>
+      {!enCrise && (
+        <p className="mairie-nav-note">Les demandes d’aide des habitants et les volontaires apparaissent dès que le mode crise est déclenché.</p>
       )}
       {!secours && <div className="mairie-nav-bloc mairie-nav-bas">{lien(pageParametres)}</div>}
     </nav>
@@ -552,16 +486,10 @@ function AFaire({ donnees }: { donnees: Donnees }) {
       bouton: 'Ouvrir ou fermer un lieu',
     },
     {
-      texte: `Protection civile : ${mobilises} bénévole${mobilises > 1 ? 's' : ''} mobilisé${mobilises > 1 ? 's' : ''}`,
-      detail: `${disponibles} encore disponible${disponibles > 1 ? 's' : ''} dans l'association`,
-      lien: '/mairie/benevoles',
-      bouton: 'Appeler la protection civile',
-    },
-    {
-      texte: `${engagees} entreprise${engagees > 1 ? 's' : ''} conventionnée${engagees > 1 ? 's' : ''} sollicitée${engagees > 1 ? 's' : ''}`,
-      detail: `${entreprises.length} sous convention pour prêter du matériel`,
-      lien: '/mairie/entreprises',
-      bouton: 'Demander du matériel',
+      texte: `Aidants : ${donnees.volontaires.length} volontaire${donnees.volontaires.length > 1 ? 's' : ''}, ${disponibles} bénévole${disponibles > 1 ? 's' : ''} de la Protection civile disponible${disponibles > 1 ? 's' : ''}`,
+      detail: `${mobilises} bénévole${mobilises > 1 ? 's' : ''} mobilisé${mobilises > 1 ? 's' : ''} · ${engagees} entreprise${engagees > 1 ? 's' : ''} sollicitée${engagees > 1 ? 's' : ''} sur ${entreprises.length}`,
+      lien: '/mairie/renforts',
+      bouton: 'Trouver qui peut aider',
     },
   ]
   return (
@@ -590,8 +518,8 @@ function Preparation({ donnees }: { donnees: Donnees }) {
     { ok: donnees.risques.length > 0, texte: 'Risques de la commune renseignés', lien: '/mairie/parametres' },
     { ok: donnees.zonesRisque.length > 0, texte: 'Zones exposées aux risques tracées sur la carte', lien: '/mairie' },
     { ok: donnees.lieux.length > 0, texte: "Lieux d'accueil et de secours enregistrés", lien: '/mairie/lieux' },
-    { ok: (donnees.benevoles ?? []).length > 0, texte: 'Bénévoles de la protection civile enregistrés', lien: '/mairie/benevoles' },
-    { ok: (donnees.entreprises ?? []).length > 0, texte: 'Entreprises conventionnées enregistrées', lien: '/mairie/entreprises' },
+    { ok: (donnees.benevoles ?? []).length > 0, texte: 'Bénévoles de la protection civile enregistrés', lien: '/mairie/renforts/protection-civile' },
+    { ok: (donnees.entreprises ?? []).length > 0, texte: 'Entreprises conventionnées enregistrées', lien: '/mairie/renforts/entreprises' },
   ]
   return (
     <section className="mairie-panneau" aria-labelledby="titre-preparation">
@@ -648,11 +576,15 @@ const gestesSecours: { type: GesteSecours; bouton: string; champ: string; exempl
 ]
 
 function Demandes({
+  donnees,
+  communeId,
   demandes,
   depuis,
   partenaire,
   lieux = [],
 }: {
+  donnees: Donnees
+  communeId: string
   demandes: DemandeServeur[]
   depuis: string | null
   // Nom du partenaire secours connecté ; absent : cellule de crise
@@ -660,6 +592,8 @@ function Demandes({
   lieux?: LieuServeur[]
 }) {
   const [filtre, setFiltre] = useState<Filtre>('a-traiter')
+  // Fiche « Qui peut aider ? » ouverte sous une demande : on organise l'aide sans changer de page
+  const [aideOuverte, setAideOuverte] = useState<string | null>(null)
   const [organisation, setOrganisation] = useState<{ id: string; texte: string } | null>(null)
   const [geste, setGeste] = useState<{ id: string; type: GesteSecours; texte: string } | null>(null)
   const lieuxOuverts = lieux.filter((l) => l.ouvert)
@@ -788,10 +722,10 @@ function Demandes({
               Contact :{' '}
               {d.telephone ? (
                 <>
-                  {d.prenom || 'Sans prénom'} · <LienAppel telephone={d.telephone} libelle={`Appeler le ${d.telephone}`} sujet={d.reference} />
+                  {[d.prenom, d.nom].filter(Boolean).join(' ') || 'Sans nom'} · <LienAppel telephone={d.telephone} libelle={`Appeler le ${d.telephone}`} sujet={d.reference} />
                 </>
               ) : (
-                <span className="texte-doux">{d.prenom ? `${d.prenom} · ` : ''}aucun numéro laissé</span>
+                <span className="texte-doux">{d.prenom || d.nom ? `${[d.prenom, d.nom].filter(Boolean).join(' ')} · ` : ''}aucun numéro laissé</span>
               )}
             </div>
             {d.reponse_mairie && (
@@ -883,6 +817,11 @@ function Demandes({
                   Prendre en charge
                 </button>
               )}
+              {d.statut !== 'close' && d.statut !== 'aide_organisee' && (
+                <button type="button" className="mairie-bouton" aria-expanded={aideOuverte === d.id} onClick={() => setAideOuverte(aideOuverte === d.id ? null : d.id)}>
+                  {aideOuverte === d.id ? 'Fermer « Qui peut aider ? »' : 'Qui peut aider ?'}
+                </button>
+              )}
               {d.statut === 'prise_en_charge' && (
                 <button type="button" className="mairie-bouton mairie-bouton--principal" onClick={() => setOrganisation({ id: d.id, texte: d.reponse_mairie ?? '' })}>
                   Aide organisée…
@@ -905,6 +844,7 @@ function Demandes({
               )}
             </div>
             )}
+            {aideOuverte === d.id && d.statut !== 'close' && <AideDemande demande={d} donnees={donnees} communeId={communeId} />}
           </article>
         )
       })}
@@ -916,6 +856,132 @@ function Demandes({
         </datalist>
       )}
     </section>
+  )
+}
+
+// Ce que chaque volontaire fait déjà (hébergement, transport, matériel), pour la liste des aidants
+function engagementsDe(donnees: Donnees): Engagement[] {
+  const ref = (id: string) => donnees.demandes.find((d) => d.id === id)?.reference ?? ''
+  return [
+    ...donnees.hebergements.filter(actif).map((h) => ({ aidant: h.hebergeur, reference: ref(h.demande_id), libelle: h.statut === 'acceptee' ? 'Héberge' : 'Sollicité pour' })),
+    ...donnees.entraides
+      .filter((e) => e.statut === 'proposee' || e.statut === 'acceptee')
+      .map((e) => ({ aidant: e.aidant, reference: ref(e.demande_id), libelle: e.statut === 'acceptee' ? (e.besoin === 'transport' ? 'Transporte' : 'Prête du matériel à') : 'Sollicité pour' })),
+  ]
+}
+
+// Sous une demande : pour chacun de ses besoins, ce qui est déjà proposé et qui d'autre peut aider
+function AideDemande({ demande, donnees, communeId }: { demande: DemandeServeur; donnees: Donnees; communeId: string }) {
+  // Blessé ou évacuation : les secouristes d'abord ; sans besoin coché, eux seuls
+  const urgent = demande.situation === 'blesse' || demande.situation === 'evac'
+  const coches = demande.besoins.filter((b) => correspondances[b])
+  const besoins = urgent || coches.length === 0 ? ['secours', ...coches] : coches
+  const [besoin, setBesoin] = useState(besoins[0])
+  const [message, setMessage] = useState('')
+  const enCrise = !!donnees.crise
+  const position = coordonneesDemande(demande)
+  const engagements = engagementsDe(donnees)
+  const c = correspondances[besoin]
+  const entraide = (besoin === 'transport' || besoin === 'materiel')
+    ? donnees.entraides.find((e) => e.demande_id === demande.id && e.besoin === besoin && (e.statut === 'proposee' || e.statut === 'acceptee'))
+    : undefined
+  const nomVolontaire = (id: string) => {
+    const v = donnees.volontaires.find((x) => x.auteur === id)
+    return v ? [v.prenom, v.nom].filter(Boolean).join(' ') || 'un volontaire' : 'un volontaire'
+  }
+  const relancer = async () => {
+    const { error } = await serveur!.rpc('relancer_entraides', { p_demande: demande.id })
+    setMessage(error ? 'Échec de la relance.' : 'Recherche relancée : le volontaire le plus proche est sollicité.')
+  }
+  const proposer = async (v: Volontaire) => {
+    const { error } = await serveur!.from('entraides').insert({ commune_id: communeId, demande_id: demande.id, besoin, aidant: v.auteur })
+    setMessage(error ? 'Échec : une sollicitation est peut-être déjà en cours.' : `${nomVolontaire(v.auteur)} est sollicité dans son app.`)
+  }
+  const candidatsEntraide = (besoin === 'transport' || besoin === 'materiel') && !entraide
+    ? aidantsPour(besoin, donnees.volontaires, [], []).volontaires.filter((v) => !donnees.entraides.some((e) => e.demande_id === demande.id && e.besoin === besoin && e.aidant === v.auteur))
+    : []
+
+  return (
+    <div className="mairie-aide-demande" aria-label={`Qui peut aider pour ${demande.reference}`}>
+      {besoins.length > 1 && (
+        <div className="mairie-onglets" role="group" aria-label="Besoin">
+          {besoins.map((b) => (
+            <button key={b} type="button" className="mairie-bouton" aria-pressed={besoin === b} onClick={() => setBesoin(b)}>
+              {libelleBesoin(b)}
+            </button>
+          ))}
+        </div>
+      )}
+      {besoin === 'heb' && (
+        <>
+          <strong style={{ fontSize: 14 }}>Foyers volontaires</strong>
+          <HebergementDemande demande={demande} volontaires={donnees.volontaires} hebergements={donnees.hebergements} communeId={communeId} />
+        </>
+      )}
+      {(besoin === 'transport' || besoin === 'materiel') && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, fontSize: 14 }}>
+          <span>
+            <strong>Proposé automatiquement :</strong>{' '}
+            {entraide
+              ? entraide.statut === 'acceptee'
+                ? `✓ accepté par ${nomVolontaire(entraide.aidant)}`
+                : `demandé à ${nomVolontaire(entraide.aidant)}, réponse attendue`
+              : 'aucun volontaire sollicité pour le moment'}
+          </span>
+          {!entraide && (
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              {candidatsEntraide.length > 0 && (
+                <button type="button" className="mairie-bouton mairie-bouton--principal" onClick={() => void relancer()}>
+                  Proposer au plus proche
+                </button>
+              )}
+              {candidatsEntraide.length > 0 && (
+                <select className="mairie-champ" aria-label="Choisir un volontaire" value="" onChange={(e) => {
+                  const v = candidatsEntraide.find((x) => x.auteur === e.target.value)
+                  if (v) void proposer(v)
+                }} style={{ maxWidth: 240 }}>
+                  <option value="">Choisir un volontaire…</option>
+                  {candidatsEntraide.map((v) => (
+                    <option key={v.auteur} value={v.auteur}>
+                      {nomVolontaire(v.auteur)}
+                    </option>
+                  ))}
+                </select>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+      {c?.mission && enCrise && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', fontSize: 14 }}>
+          <span>Plusieurs habitants ont le même besoin ? Envoyez une mission aux volontaires.</span>
+          <Link to="/mairie/renforts" state={{ mission: c.mission }} className="mairie-bouton" style={{ textDecoration: 'none' }}>
+            Créer une mission « {c.mission.titre} »
+          </Link>
+        </div>
+      )}
+      <QuiPeutAider
+        key={besoin}
+        compact
+        besoin={besoin}
+        position={position}
+        volontaires={donnees.volontaires}
+        benevoles={donnees.benevoles ?? []}
+        entreprises={donnees.entreprises ?? []}
+        engagements={engagements}
+        enCrise={enCrise}
+        sansVolontaires={besoin === 'heb'}
+        titre={besoin === 'heb' ? 'Aussi en renfort' : `Qui peut aider · ${libelleBesoin(besoin)}`}
+      />
+      {message && (
+        <p role="status" style={{ fontSize: 14 }}>
+          {message}
+        </p>
+      )}
+      <Link to="/mairie/renforts" style={{ fontSize: 14, fontWeight: 700 }}>
+        Voir tous les aidants et renforts
+      </Link>
+    </div>
   )
 }
 
@@ -1830,27 +1896,117 @@ function PanneauLieux({ lieux, communeId }: { lieux: LieuServeur[]; communeId: s
   )
 }
 
-// Besoins sans mise en relation automatique : la mairie compare demandes et volontaires
-// et lance une mission ciblée. Transport et matériel sont proposés automatiquement (0011).
-const besoinsSuivis: { id: string; aides: string[]; auto?: string; mission?: { titre: string; categorie: string } }[] = [
-  { id: 'heb', aides: ['heb'], auto: 'Proposé automatiquement (Hébergement solidaire)' },
-  { id: 'transport', aides: ['vehicule'], auto: 'Proposé automatiquement au plus proche' },
-  { id: 'materiel', aides: ['materiel'], auto: 'Proposé automatiquement au plus proche' },
-  { id: 'eau', aides: ['mainoeuvre', 'vehicule'], mission: { titre: "Distribution d'eau et de repas", categorie: 'mainoeuvre' } },
-  { id: 'med', aides: ['vehicule', 'competences'], mission: { titre: 'Livraison de médicaments', categorie: 'vehicule' } },
-  { id: 'animaux', aides: ['vehicule', 'mainoeuvre'], mission: { titre: "Prise en charge d'animaux", categorie: 'vehicule' } },
-]
+// Page « Aidants et renforts » : en crise, tous ceux qui peuvent aider réunis (volontaires, Protection civile,
+// entreprises), face aux besoins des demandes. Les fiches de la Protection civile et des entreprises
+// (ajout, modification) restent dans leurs onglets ; hors crise, seuls ces deux onglets existent.
+type OngletRenforts = '' | 'protection-civile' | 'entreprises'
+function PageRenforts({ donnees, communeId, onglet, onRecharger, secours, partenaire }: { donnees: Donnees; communeId: string; onglet: string; onRecharger: () => void; secours: boolean; partenaire?: string }) {
+  const enCrise = !!donnees.crise
+  const location = useLocation()
+  const actuel: OngletRenforts = onglet === 'protection-civile' || onglet === 'entreprises' ? onglet : enCrise ? '' : 'protection-civile'
+  // Mission pré-remplie depuis le tableau des besoins ou depuis une demande
+  const [modeleMission, setModeleMission] = useState<ModeleMission | null>(() => {
+    const m = (location.state as { mission?: { titre: string; categorie: string } } | null)?.mission
+    return m ? { ...m, numero: Date.now() } : null
+  })
+  const [besoinChoisi, setBesoinChoisi] = useState<{ id: string; n: number } | null>(null)
+  useEffect(() => {
+    if (modeleMission) window.setTimeout(() => document.getElementById('titre-missions')?.scrollIntoView({ behavior: 'smooth' }), 50)
+  }, [modeleMission])
+  const benevoles = donnees.benevoles ?? []
+  const entreprises = donnees.entreprises ?? []
+  const onglets: { id: OngletRenforts; titre: string; detail: string }[] = [
+    ...(enCrise ? [{ id: '' as OngletRenforts, titre: 'Besoins et aidants', detail: `${donnees.volontaires.length} volontaire${donnees.volontaires.length > 1 ? 's' : ''} disponible${donnees.volontaires.length > 1 ? 's' : ''}` }] : []),
+    { id: 'protection-civile', titre: 'Protection civile', detail: `${benevoles.filter((b) => b.statut === 'disponible').length} disponible(s) · ${benevoles.filter((b) => b.statut === 'mobilise').length} mobilisé(s)` },
+    { id: 'entreprises', titre: 'Entreprises conventionnées', detail: `${entreprises.length} sous convention · ${entreprises.filter((e) => e.statut !== 'disponible').length} sollicitée(s)` },
+  ]
+  return (
+    <div className="mairie-pile">
+      <nav className="mairie-etapes" aria-label="Onglets des renforts" style={{ gridTemplateColumns: `repeat(${onglets.length}, minmax(0, 1fr))` }}>
+        {onglets.map((o) => (
+          <Link key={o.id} to={o.id ? `/mairie/renforts/${o.id}` : '/mairie/renforts'} className="mairie-etape" aria-current={actuel === o.id ? 'page' : undefined} style={{ textDecoration: 'none' }}>
+            <span style={{ fontSize: 16, fontWeight: 800 }}>{o.titre}</span>
+            <span style={{ fontWeight: 400 }}>{o.detail}</span>
+          </Link>
+        ))}
+      </nav>
+      {actuel === '' && (
+        <div className="mairie-contenu mairie-contenu--moitie">
+          <div className="mairie-colonne">
+            <PanneauBesoins
+              donnees={donnees}
+              onChoisir={(id) => {
+                setBesoinChoisi({ id, n: Date.now() })
+                window.setTimeout(() => document.getElementById('titre-qui-aide')?.scrollIntoView({ behavior: 'smooth' }), 50)
+              }}
+              onMission={(m) => setModeleMission({ ...m, numero: Date.now() })}
+            />
+            <PanneauMissions
+              key={modeleMission?.numero ?? 0}
+              modele={modeleMission}
+              missions={donnees.missions}
+              reponses={donnees.reponses}
+              volontaires={donnees.volontaires}
+              communeId={communeId}
+              partenaire={partenaire}
+            />
+            <h2 className="mairie-intertitre">Proposé automatiquement aux volontaires</h2>
+            <PanneauHebergement
+              demandes={donnees.demandes}
+              volontaires={donnees.volontaires}
+              hebergements={donnees.hebergements}
+              communeId={communeId}
+              auto={donnees.hebergementAuto ?? true}
+              onAuto={onRecharger}
+            />
+            <PanneauEntraides demandes={donnees.demandes} volontaires={donnees.volontaires} entraides={donnees.entraides} communeId={communeId} />
+          </div>
+          <div className="mairie-colonne">
+            <section className="mairie-panneau" aria-labelledby="titre-qui-aide">
+              <h2 id="titre-qui-aide">Qui peut aider</h2>
+              <p className="texte-doux" style={{ marginTop: -4, fontSize: 14 }}>
+                Volontaires, bénévoles et entreprises dans une seule liste. Choisissez un besoin : seuls ceux qui peuvent y répondre restent.
+              </p>
+              <QuiPeutAider
+                key={besoinChoisi?.n ?? 0}
+                besoinInitial={besoinChoisi?.id}
+                volontaires={donnees.volontaires}
+                benevoles={benevoles}
+                entreprises={entreprises}
+                engagements={engagementsDe(donnees)}
+                enCrise={enCrise}
+              />
+            </section>
+          </div>
+        </div>
+      )}
+      {actuel === 'protection-civile' && (
+        <>
+          <PanneauBenevoles benevoles={benevoles} communeId={communeId} enCrise={enCrise} />
+          {!secours && <PanneauHabilitations communeId={communeId} />}
+        </>
+      )}
+      {actuel === 'entreprises' && <PanneauEntreprises entreprises={entreprises} communeId={communeId} enCrise={enCrise} />}
+    </div>
+  )
+}
 
-type PropsBesoins = { demandes: DemandeServeur[]; volontaires: Volontaire[]; onMission: (m: { titre: string; categorie: string }) => void }
+// Pour chaque besoin : combien de demandes l'attendent, et combien d'aidants de chaque sorte peuvent y répondre.
+// Hébergement, transport et matériel sont proposés automatiquement aux volontaires (0011) ; le reste passe par une mission.
+const besoinsAuto: Record<string, string> = {
+  heb: 'Proposé automatiquement aux foyers volontaires',
+  transport: 'Proposé automatiquement au plus proche',
+  materiel: 'Proposé automatiquement au plus proche',
+}
 
-function PanneauBesoins({ demandes, volontaires, onMission }: PropsBesoins) {
-  const ouvertes = demandes.filter((d) => d.statut !== 'close')
+function PanneauBesoins({ donnees, onChoisir, onMission }: { donnees: Donnees; onChoisir: (besoin: string) => void; onMission: (m: { titre: string; categorie: string }) => void }) {
+  const ouvertes = donnees.demandes.filter((d) => d.statut !== 'close' && d.statut !== 'aide_organisee')
   return (
     <section className="mairie-panneau" aria-labelledby="titre-besoins">
-      <h2 id="titre-besoins">1. Besoins à couvrir</h2>
+      <h2 id="titre-besoins">Besoins à couvrir</h2>
       <p className="texte-doux" style={{ marginTop: -4 }}>
-        Pour chaque besoin : combien de demandes l'attendent, et combien de volontaires peuvent y répondre. En rouge : personne ne peut aider,
-        appelez la protection civile ou une entreprise conventionnée.
+        Pour chaque besoin : les demandes qui l'attendent et ceux qui peuvent y répondre. Cliquez sur « Qui peut aider » pour voir les noms. En
+        rouge : personne ne peut aider, orientez vers un lieu d'accueil.
       </p>
       <div style={{ overflowX: 'auto' }}>
         <table className="mairie-tableau tableau-besoins" style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
@@ -1858,40 +2014,49 @@ function PanneauBesoins({ demandes, volontaires, onMission }: PropsBesoins) {
             <tr style={{ textAlign: 'left' }}>
               <th scope="col">Besoin</th>
               <th scope="col">Demandes</th>
-              <th scope="col">Personnes</th>
-              <th scope="col">Volontaires</th>
+              <th scope="col">Peuvent aider</th>
               <th scope="col">Réponse</th>
             </tr>
           </thead>
           <tbody>
-            {besoinsSuivis.map((b) => {
-              const concernees = ouvertes.filter((d) => d.besoins.includes(b.id))
-              const personnes = concernees.reduce((n, d) => n + d.personnes, 0)
-              const aidants = volontaires.filter((v) => b.aides.some((r) => v.ressources.includes(r))).length
-              const manque = concernees.length > 0 && aidants === 0
-              return (
-                <tr key={b.id} style={{ borderTop: '1px solid var(--bordure)' }}>
-                  <th scope="row" style={{ padding: '8px 6px 8px 0', textAlign: 'left' }}>
-                    {listeBesoins.find((x) => x.id === b.id)?.label ?? b.id}
-                  </th>
-                  <td data-libelle="Demandes" style={{ padding: 6, fontWeight: concernees.length ? 800 : 400 }}>{concernees.length}</td>
-                  <td data-libelle="Personnes" style={{ padding: 6 }}>{personnes}</td>
-                  <td data-libelle="Volontaires" style={{ padding: 6, color: manque ? 'var(--urgence-fonce)' : undefined, fontWeight: manque ? 800 : 400 }}>
-                    {aidants}
-                    <span className="texte-doux" style={{ fontWeight: 400 }}> ({b.aides.map(libelleRessource).join(', ')})</span>
-                  </td>
-                  <td style={{ padding: 6 }}>
-                    {b.auto ? (
-                      <span className="texte-doux">{b.auto}</span>
-                    ) : (
-                      <button type="button" className="mairie-bouton" disabled={concernees.length === 0} onClick={() => b.mission && onMission(b.mission)}>
-                        Créer une mission
+            {Object.keys(correspondances)
+              .filter((b) => b !== 'secours')
+              .map((b) => {
+                const concernees = ouvertes.filter((d) => d.besoins.includes(b))
+                const personnes = concernees.reduce((n, d) => n + d.personnes, 0)
+                const a = aidantsPour(b, donnees.volontaires, donnees.benevoles ?? [], donnees.entreprises ?? [])
+                const total = a.volontaires.length + a.benevoles.length + a.entreprises.length
+                const manque = concernees.length > 0 && total === 0
+                const mission = correspondances[b].mission
+                return (
+                  <tr key={b} style={{ borderTop: '1px solid var(--bordure)' }}>
+                    <th scope="row" style={{ padding: '8px 6px 8px 0', textAlign: 'left' }}>
+                      {libelleBesoin(b)}
+                    </th>
+                    <td data-libelle="Demandes" style={{ padding: 6, fontWeight: concernees.length ? 800 : 400 }}>
+                      {concernees.length}
+                      {personnes > 0 && <span className="texte-doux" style={{ fontWeight: 400 }}> ({personnes} pers.)</span>}
+                    </td>
+                    <td data-libelle="Peuvent aider" style={{ padding: 6, color: manque ? 'var(--urgence-fonce)' : undefined, fontWeight: manque ? 800 : 400 }}>
+                      <button type="button" className="mairie-lien-bouton" onClick={() => onChoisir(b)}>
+                        Qui peut aider ({total})
                       </button>
-                    )}
-                  </td>
-                </tr>
-              )
-            })}
+                      <span className="texte-doux" style={{ display: 'block', fontWeight: 400, fontSize: 13 }}>
+                        {a.volontaires.length} volontaire{a.volontaires.length > 1 ? 's' : ''} · {a.benevoles.length} bénévole{a.benevoles.length > 1 ? 's' : ''} · {a.entreprises.length} entreprise{a.entreprises.length > 1 ? 's' : ''}
+                      </span>
+                    </td>
+                    <td style={{ padding: 6 }}>
+                      {besoinsAuto[b] ? (
+                        <span className="texte-doux">{besoinsAuto[b]}</span>
+                      ) : mission ? (
+                        <button type="button" className="mairie-bouton" disabled={concernees.length === 0} onClick={() => onMission(mission)}>
+                          Créer une mission
+                        </button>
+                      ) : null}
+                    </td>
+                  </tr>
+                )
+              })}
           </tbody>
         </table>
       </div>
@@ -2212,42 +2377,6 @@ function HebergementDemande({ demande, volontaires, hebergements, communeId }: {
   )
 }
 
-function libelleRessource(id: string) {
-  return listeRessources.find((r) => r.id === id)?.label ?? id
-}
-
-function PanneauVolontaires({ volontaires, enCrise }: { volontaires: Volontaire[]; enCrise: boolean }) {
-  return (
-    <section className="mairie-panneau" aria-labelledby="titre-volontaires">
-      <h2 id="titre-volontaires">
-        Qui est disponible <span className="mairie-etiquette">{volontaires.length}</span>
-      </h2>
-      {volontaires.length === 0 && (
-        <p className="texte-doux">
-          {enCrise ? "Aucun volontaire disponible pour l'instant." : 'Les volontaires se déclarent pendant une crise.'}
-        </p>
-      )}
-      <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 8 }}>
-        {volontaires.map((v) => (
-          <li key={v.auteur} style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-            <strong style={{ fontSize: 15 }}>
-              {[v.prenom, v.nom].filter(Boolean).join(' ') || 'Volontaire'} <span className="texte-doux" style={{ fontWeight: 400 }}>· depuis {heure(v.updated_at)}</span>
-            </strong>
-            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-              {v.ressources.map((r) => (
-                <span key={r} className="mairie-etiquette">
-                  {libelleRessource(r)}
-                  {r === 'heb' && v.places_hebergement > 0 ? ` · ${v.places_hebergement} places` : ''}
-                </span>
-              ))}
-            </div>
-          </li>
-        ))}
-      </ul>
-    </section>
-  )
-}
-
 const missionVide = {
   titre: '',
   rendez_vous: '',
@@ -2325,7 +2454,7 @@ function PanneauMissions({ missions, reponses, volontaires, communeId, modele, p
 
   return (
     <section className="mairie-panneau" aria-labelledby="titre-missions">
-      <h2 id="titre-missions">2. Missions envoyées</h2>
+      <h2 id="titre-missions">Missions envoyées</h2>
       <p className="texte-doux" style={{ marginTop: -4 }}>
         Une mission part seulement aux volontaires qui proposent ce type d'aide. Suivez ici qui a accepté.
       </p>

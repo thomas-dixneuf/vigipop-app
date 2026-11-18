@@ -37,6 +37,7 @@ export default function Signaler() {
   const [adresseSaisie, setAdresseSaisie] = useState('')
   // Avec un compte, la mairie a déjà le numéro ; sans compte, on le propose sans l'exiger
   const [prenom, setPrenom] = useState(demande?.prenom || contact?.prenom || '')
+  const [nom, setNom] = useState(demande?.nom || contact?.nom || '')
   const [telephone, setTelephone] = useState(demande?.telephone || contact?.telephone || '')
 
   useEffect(() => {
@@ -76,6 +77,7 @@ export default function Signaler() {
       personneVulnerable: vulnerable,
       position: positionTexte,
       prenom: utilisateur?.prenom ?? prenom.trim(),
+      nom: utilisateur ? (utilisateur.nom ?? '') : nom.trim(),
       telephone: utilisateur?.telephone ?? telephone.trim(),
       envoyeeA: heureActuelle(),
     })
@@ -106,7 +108,7 @@ export default function Signaler() {
               href="tel:112"
               style={{ textDecoration: 'none', background: 'var(--danger)', color: 'var(--blanc)', borderRadius: 12, padding: '12px', fontSize: 15, fontWeight: 700 }}
             >
-              Personne blessée : appelez d'abord le 112 →
+              Blessé(e) : appelez d'abord le 112 →
             </a>
           )}
         </section>
@@ -177,7 +179,7 @@ export default function Signaler() {
         <section style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           <h2 style={{ fontSize: 15, fontWeight: 800, color: 'var(--bleu-nuit)' }}>
             4. Pour que la mairie vous rappelle{' '}
-            {!utilisateur && <span style={{ fontWeight: 400, color: 'var(--texte-doux)', fontSize: 13 }}>(facultatif)</span>}
+            {!utilisateur && <span style={{ fontWeight: 400, color: 'var(--texte-doux)', fontSize: 13 }}>(fortement conseillé)</span>}
           </h2>
           {utilisateur ? (
             <p className="carte" style={{ fontSize: 14 }}>
@@ -185,9 +187,16 @@ export default function Signaler() {
             </p>
           ) : (
             <div className="carte" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <span className="texte-doux" style={{ fontSize: 13, lineHeight: 1.4 }}>
+                Sans numéro, la mairie ne peut pas vous rappeler. Vous pouvez quand même envoyer votre demande.
+              </span>
               <label style={libelle}>
                 Prénom
                 <input type="text" value={prenom} onChange={(e) => setPrenom(e.target.value)} placeholder="Prénom" autoComplete="given-name" maxLength={60} style={champ} />
+              </label>
+              <label style={libelle}>
+                Nom de famille
+                <input type="text" value={nom} onChange={(e) => setNom(e.target.value)} placeholder="Nom de famille" autoComplete="family-name" maxLength={60} style={champ} />
               </label>
               <ChampTelephone valeur={telephone} onChange={setTelephone} />
             </div>

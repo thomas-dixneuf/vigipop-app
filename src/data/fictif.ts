@@ -179,10 +179,10 @@ export const libelleLieu: Record<LieuServeur['type'], string> = {
 }
 
 export const situations = [
-  { id: 'sinistre', label: 'Sinistré, en sécurité' },
-  { id: 'bloque', label: 'Bloqué chez moi' },
+  { id: 'sinistre', label: 'Sinistré(e), en sécurité' },
+  { id: 'bloque', label: 'Bloqué(e) chez moi' },
   { id: 'evac', label: "Besoin d'évacuation" },
-  { id: 'blesse', label: 'Personne blessée' },
+  { id: 'blesse', label: 'Blessé(e)' },
 ] as const
 
 export const besoins = [
@@ -191,7 +191,6 @@ export const besoins = [
   { id: 'med', label: 'Médicaments' },
   { id: 'transport', label: 'Transport' },
   { id: 'materiel', label: 'Matériel' },
-  { id: 'animaux', label: 'Animaux' },
 ] as const
 
 export type SituationId = (typeof situations)[number]['id']
@@ -209,7 +208,7 @@ export const ressources = [
   // La main-d'œuvre fait partie des offres des volontaires (choix du 22/10/2026)
   { id: 'mainoeuvre', label: "Main-d'œuvre", detail: "Distribuer l'eau, vider et nettoyer les logements après la décrue" },
   { id: 'competences', label: 'Compétences', detail: 'Secourisme (PSC1, SST), métier de la santé, électricien' },
-  { id: 'temps', label: 'Aide aux personnes fragiles', detail: 'Prendre des nouvelles des voisins âgés, isolés ou à mobilité réduite' },
+  { id: 'temps', label: 'Aide aux personnes fragiles', detail: 'Prendre des nouvelles des voisin(e)s âgé(e)s, isolé(e)s ou à mobilité réduite' },
 ] as const
 
 export type RessourceId = (typeof ressources)[number]['id']
