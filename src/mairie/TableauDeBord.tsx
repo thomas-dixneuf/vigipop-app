@@ -337,7 +337,6 @@ export default function TableauDeBord({ coordinateur }: { coordinateur: Coordina
                 <div className="mairie-colonne">
                   <PanneauCrise crise={donnees.crise} communeId={commune} />
                   {!donnees.crise && <Preparation donnees={donnees} />}
-                  <PanneauJournal journal={donnees.journal.slice(0, 8)} lienTout />
                 </div>
               </div>
             )}
