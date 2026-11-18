@@ -72,7 +72,7 @@ type Donnees = {
 }
 
 // Pages de l'espace mairie, regroupées par sujet : les habitants, les renforts, la commune
-type Page = '' | 'demandes' | 'volontaires' | 'benevoles' | 'entreprises' | 'lieux' | 'commune' | 'bilan'
+type Page = '' | 'demandes' | 'volontaires' | 'benevoles' | 'entreprises' | 'lieux' | 'parametres' | 'bilan'
 const groupesPages: { groupe: string; pages: { id: Page; titre: string }[] }[] = [
   { groupe: '', pages: [{ id: '', titre: 'Accueil' }] },
   {
@@ -93,8 +93,8 @@ const groupesPages: { groupe: string; pages: { id: Page; titre: string }[] }[] =
     groupe: 'Commune',
     pages: [
       { id: 'lieux', titre: 'Lieux d’accueil' },
-      { id: 'commune', titre: 'Risques et zones' },
       { id: 'bilan', titre: 'Journal et bilan' },
+      { id: 'parametres', titre: 'Paramètres de la ville' },
     ],
   },
 ]
@@ -117,7 +117,7 @@ const descriptionsPages: Record<Page, string> = {
   benevoles: 'Les bénévoles formés de l’association (réserve communale, Protection civile…) : la mairie les connaît et les appelle directement.',
   entreprises: 'Les entreprises qui ont signé une convention pour prêter du matériel ou des engins pendant une crise.',
   lieux: 'Gymnases, salles et points d’eau : seuls les lieux ouverts s’affichent chez les habitants.',
-  commune: 'À préparer une fois, hors crise, puis rarement modifié : risques connus, zones exposées, périmètre de la commune, alertes sur les téléphones.',
+  parametres: 'Réglages rarement modifiés : risques connus de la commune (DICRIM), périmètre pour les visiteurs, alertes sur les téléphones.',
   bilan: 'Tout ce que la cellule de crise a fait, et le bilan à transmettre (sans nom ni numéro).',
 }
 
@@ -219,6 +219,9 @@ export default function TableauDeBord({ coordinateur }: { coordinateur: Coordina
   const commune = coordinateur.communeId
   const secours = coordinateur.role === 'secours'
   const [donnees, setDonnees] = useState<Donnees | null>(null)
+  // Première connexion de la mairie : elle renseigne d'abord les risques de sa commune
+  const [passageTermine, setPassageTermine] = useState(false)
+  const premierPassage = !passageTermine && !secours && !!donnees && donnees.risques.length === 0
   const [erreur, setErreur] = useState('')
   // Mission pré-remplie depuis le tableau des besoins
   const [modeleMission, setModeleMission] = useState<ModeleMission | null>(null)
@@ -334,6 +337,8 @@ export default function TableauDeBord({ coordinateur }: { coordinateur: Coordina
 
       {!donnees ? (
         <p style={{ padding: 24 }}>Chargement…</p>
+      ) : premierPassage && !donnees.crise ? (
+        <PremierPassage risques={donnees.risques} communeId={commune} communeNom={coordinateur.communeNom} onEnregistre={() => void charger()} onTermine={() => setPassageTermine(true)} />
       ) : !pagesVisibles(donnees).includes(page) ? (
         <Navigate to="/mairie" replace />
       ) : (
@@ -358,8 +363,9 @@ export default function TableauDeBord({ coordinateur }: { coordinateur: Coordina
                     </section>
                   )}
                   {enCrise && <Compteurs demandes={donnees.demandes} />}
+                  {/* Hors crise, la carte de l'accueil sert aussi à tracer ou importer les zones exposées aux risques */}
                   <CarteMairie
-                    mode={donnees.crise ? 'crise' : 'veille'}
+                    mode={donnees.crise ? 'crise' : secours ? 'veille' : 'risques'}
                     lieux={donnees.lieux}
                     demandes={donnees.crise ? donnees.demandes : []}
                     zones={donnees.zones}
@@ -436,26 +442,13 @@ export default function TableauDeBord({ coordinateur }: { coordinateur: Coordina
                 <PanneauLieux lieux={donnees.lieux} communeId={commune} />
               </div>
             )}
-            {page === 'commune' && !secours && (
+            {page === 'parametres' && !secours && (
               <div className="mairie-contenu">
                 <div className="mairie-colonne">
-                  <CarteMairie
-                    mode="risques"
-                    lieux={donnees.lieux}
-                    demandes={donnees.demandes}
-                    zones={donnees.zones}
-                    propositions={donnees.propositions}
-                    zonesRisque={donnees.zonesRisque}
-                    risques={donnees.risques}
-                    communeId={commune}
-                    enCrise={enCrise}
-                    centre={centre}
-                    partenaire={secours ? coordinateur.nom : undefined}
-                  />
+                  <PanneauRisques risques={donnees.risques} communeId={commune} enCrise={enCrise} onEnregistre={() => void charger()} />
                   <PanneauPosition position={donnees.position ?? null} communeId={commune} communeNom={coordinateur.communeNom} onEnregistre={() => void charger()} />
                 </div>
                 <div className="mairie-colonne">
-                  <PanneauRisques risques={donnees.risques} communeId={commune} enCrise={enCrise} onEnregistre={() => void charger()} />
                   <PanneauPush />
                 </div>
               </div>
@@ -489,7 +482,7 @@ function Navigation({ page, donnees, secours }: { page: Page; donnees: Donnees; 
     <nav className="mairie-nav" aria-label="Pages de l'espace mairie">
       {groupesPages.map((g) => {
         // Hors crise, le menu ne montre que les informations de la mairie
-        const pages = g.pages.filter((p) => visibles.includes(p.id) && (!secours || p.id !== 'commune') && (!!donnees.crise || !pagesHabitants.includes(p.id)))
+        const pages = g.pages.filter((p) => visibles.includes(p.id) && (!secours || p.id !== 'parametres') && (!!donnees.crise || !pagesHabitants.includes(p.id)))
         if (!pages.length) return null
         return (
           <div key={g.groupe || 'accueil'} className="mairie-nav-bloc">
@@ -567,8 +560,8 @@ function AFaire({ donnees }: { donnees: Donnees }) {
 // Accueil en veille : ce qui doit être prêt avant une crise
 function Preparation({ donnees }: { donnees: Donnees }) {
   const points = [
-    { ok: donnees.risques.length > 0, texte: 'Risques de la commune renseignés', lien: '/mairie/commune' },
-    { ok: donnees.zonesRisque.length > 0, texte: 'Zones exposées aux risques tracées sur la carte', lien: '/mairie/commune' },
+    { ok: donnees.risques.length > 0, texte: 'Risques de la commune renseignés', lien: '/mairie/parametres' },
+    { ok: donnees.zonesRisque.length > 0, texte: 'Zones exposées aux risques tracées sur la carte', lien: '/mairie' },
     { ok: donnees.lieux.length > 0, texte: "Lieux d'accueil et de secours enregistrés", lien: '/mairie/lieux' },
     { ok: (donnees.benevoles ?? []).length > 0, texte: 'Bénévoles de la protection civile enregistrés', lien: '/mairie/benevoles' },
     { ok: (donnees.entreprises ?? []).length > 0, texte: 'Entreprises conventionnées enregistrées', lien: '/mairie/entreprises' },
@@ -1264,7 +1257,7 @@ function CarteMairie({ lieux, demandes, zones, propositions, zonesRisque, risque
   const sansPosition = ouvertes.filter((d) => !coordonneesDemande(d)).length
   return (
     <section className="mairie-panneau" aria-labelledby="titre-carte">
-      <h2 id="titre-carte">{mode === 'risques' ? 'Zones exposées aux risques' : 'Carte de la commune'}</h2>
+      <h2 id="titre-carte">Carte de la commune</h2>
       {mode === 'risques' && (
         <p className="texte-doux" style={{ fontSize: 14, lineHeight: 1.5 }}>
           Zones connues pour être exposées (inondation, barrage, site industriel…), reprises des cartes que la préfecture envoie à la mairie
@@ -1559,6 +1552,26 @@ function PanneauRisques({
         </p>
       )}
     </section>
+  )
+}
+
+// Première connexion : la mairie indique les risques de sa commune avant tout le reste.
+// Ensuite, ils se modifient dans « Paramètres de la ville ».
+function PremierPassage({ risques, communeId, communeNom, onEnregistre, onTermine }: { risques: string[]; communeId: string; communeNom: string; onEnregistre: () => void; onTermine: () => void }) {
+  return (
+    <main className="mairie-page" style={{ maxWidth: 760, margin: '0 auto' }} aria-labelledby="titre-bienvenue">
+      <h1 id="titre-bienvenue" className="mairie-titre-page">
+        Bienvenue, {communeNom}
+      </h1>
+      <p className="mairie-description-page">
+        Avant de commencer, indiquez les risques connus de votre commune, tels qu’ils figurent dans votre DICRIM. Les habitants les voient
+        pour se préparer. Vous pourrez les modifier plus tard dans « Paramètres de la ville ».
+      </p>
+      <PanneauRisques risques={risques} communeId={communeId} enCrise={false} onEnregistre={onEnregistre} />
+      <button type="button" className="mairie-bouton mairie-bouton--principal" disabled={risques.length === 0} onClick={onTermine} style={{ alignSelf: 'flex-start', marginTop: 16 }}>
+        {risques.length === 0 ? 'Ajoutez au moins un risque pour continuer' : 'Continuer vers l’espace mairie'}
+      </button>
+    </main>
   )
 }
 
