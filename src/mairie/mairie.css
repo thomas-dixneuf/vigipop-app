@@ -355,3 +355,20 @@ a.mairie-etape[aria-current='page'] { background: var(--bleu-nuit); border-color
 }
 .mairie-contenu--moitie { padding: 0; max-width: none; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); }
 @media (max-width: 1100px) { .mairie-contenu--moitie { grid-template-columns: minmax(0, 1fr); } }
+
+/* Types d'aide demandée : une couleur par type, la même dans les filtres et sur chaque demande (contrastes AA) */
+.mairie-types { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.mairie-types-titre { width: 100%; font-size: 13px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.04em; color: var(--bleu-nuit); }
+.mairie-types-demande { display: flex; flex-wrap: wrap; gap: 6px; }
+.mairie-type, .mairie-type-filtre { --fond: var(--bleu-voile); --texte: var(--bleu-nuit); background: var(--fond); color: var(--texte); border: 1.5px solid var(--texte); border-radius: 999px; font-weight: 800; }
+.mairie-type { font-size: 13px; padding: 3px 10px; }
+.mairie-type-filtre { font: inherit; font-size: 14px; font-weight: 700; padding: 8px 12px; min-height: 44px; cursor: pointer; }
+.mairie-type-filtre[aria-pressed='true'] { background: var(--texte); color: var(--blanc); }
+.mairie-type-filtre:disabled { opacity: 0.45; cursor: default; }
+.mairie-type--secours { --fond: #fde3d6; --texte: #8a2e0c; }
+.mairie-type--bloque { --fond: #ede4f7; --texte: #4b2a78; }
+.mairie-type--heb { --fond: #ddeffb; --texte: #0e3a52; }
+.mairie-type--eau { --fond: #d9f2ec; --texte: #0f5244; }
+.mairie-type--med { --fond: #f9dde8; --texte: #7a1f45; }
+.mairie-type--transport { --fond: #e6e9f7; --texte: #2c3a85; }
+.mairie-type--materiel { --fond: #efeae0; --texte: #5a4520; }

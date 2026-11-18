@@ -33,6 +33,8 @@ export const correspondances: Record<string, { ressources: string[]; qualificati
   },
   eau: { ressources: ['mainoeuvre', 'vehicule'], qualifications: ['Logistique'], materiel: [], mission: { titre: "Distribution d'eau et de repas", categorie: 'mainoeuvre' } },
   med: { ressources: ['vehicule', 'competences'], qualifications: ['Secourisme (PSE1 / PSE2)'], materiel: [], mission: { titre: 'Livraison de médicaments', categorie: 'vehicule' } },
+  // Bloqué(e) chez soi : dégager l'accès, avec la Protection civile ou des volontaires (danger : 112)
+  bloque: { ressources: ['mainoeuvre', 'materiel'], qualifications: ['Déblaiement et bricolage', 'Secourisme (PSE1 / PSE2)'], materiel: [] },
   // Blessé ou évacuation sans besoin coché : les secouristes
   secours: { ressources: ['competences'], qualifications: ['Secourisme (PSE1 / PSE2)', 'Soutien psychologique'], materiel: [] },
 }
@@ -51,7 +53,8 @@ export function benevolesPourMission(categorie: string, benevoles: Benevole[]) {
   return benevoles.filter((b) => b.statut !== 'indisponible' && (!q || q.some((x) => b.qualifications.includes(x))))
 }
 
-export const libelleBesoin = (id: string) => (id === 'secours' ? 'Secours et évacuation' : (listeBesoins.find((b) => b.id === id)?.label ?? id))
+export const libelleBesoin = (id: string) =>
+  id === 'secours' ? 'Secours (blessé, évacuation)' : id === 'bloque' ? 'Bloqué(e) chez soi' : (listeBesoins.find((b) => b.id === id)?.label ?? id)
 export const libelleRessource = (id: string) => listeRessources.find((r) => r.id === id)?.label ?? id
 
 export function aidantsPour(besoin: string, volontaires: Volontaire[], benevoles: Benevole[], entreprises: Entreprise[]) {
