@@ -19,6 +19,7 @@ export function numeroValide(numero: string) {
 // Ce que l'écran du code reçoit de l'inscription ou de la connexion
 export type EtatCode = {
   prenom: string
+  nom?: string
   telephone: string
   commune: string
   nouveauCompte: boolean

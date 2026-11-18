@@ -21,7 +21,6 @@ export default function AccueilVeille() {
   // Préparation : chaque étape vaut autant ; la prochaine non faite est proposée
   const etapes = [
     { faite: !!utilisateur, texte: 'Créez votre compte', lien: '/inscription' },
-    { faite: !!utilisateur?.nom?.trim(), texte: 'Complétez vos informations (nom de famille)', lien: '/profil/infos' },
     { faite: !!quartier, texte: 'Repérez votre point de rassemblement', lien: '/quartier' },
     { faite: offresEnregistrees && ressources.length > 0, texte: 'Indiquez ce que vous pourriez offrir ou prêter', lien: '/aider' },
     { faite: etatAlertes() === 'granted', texte: 'Activez les alertes sur ce téléphone', lien: '/notifications' },

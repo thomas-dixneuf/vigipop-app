@@ -16,18 +16,20 @@ export default function Inscription() {
   // Ce qui a été saisi sans compte (demande d'aide) est repris
   const { contact } = useAppState()
   const [prenom, setPrenom] = useState(contact?.prenom ?? '')
+  // Nom de famille demandé tout de suite : il n'est plus redemandé ensuite
+  const [nom, setNom] = useState('')
   const [telephone, setTelephone] = useState(contact?.telephone ?? '')
   // Commune choisie dans la liste officielle (jamais un nom tapé au hasard)
   const [commune, setCommune] = useState<string | null>(null)
   // Texte ouvert par-dessus le formulaire, pour ne pas perdre ce qui est déjà saisi
   const [texte, setTexte] = useState<'conditions' | 'confidentialite' | null>(null)
 
-  const valide = prenom.trim() !== '' && numeroValide(telephone) && commune !== null
+  const valide = prenom.trim() !== '' && nom.trim() !== '' && numeroValide(telephone) && commune !== null
 
   const envoyer = (e: FormEvent) => {
     e.preventDefault()
     if (!valide) return
-    const etat: EtatCode = { prenom: prenom.trim(), telephone, commune: commune ?? '', nouveauCompte: true, suite }
+    const etat: EtatCode = { prenom: prenom.trim(), nom: nom.trim(), telephone, commune: commune ?? '', nouveauCompte: true, suite }
     navigate('/code', { state: etat })
   }
 
@@ -46,7 +48,11 @@ export default function Inscription() {
         )}
         <label style={libelle}>
           Prénom
-          <input type="text" value={prenom} onChange={(e) => setPrenom(e.target.value)} placeholder="Prénom" autoComplete="given-name" style={champ} />
+          <input type="text" value={prenom} onChange={(e) => setPrenom(e.target.value)} placeholder="Prénom" autoComplete="given-name" maxLength={60} style={champ} />
+        </label>
+        <label style={libelle}>
+          Nom de famille
+          <input type="text" value={nom} onChange={(e) => setNom(e.target.value)} placeholder="Nom de famille" autoComplete="family-name" maxLength={60} style={champ} />
         </label>
         <ChampTelephone valeur={telephone} onChange={setTelephone} />
         <ChampAdresse variante="app" commune obligatoire libelleChamp="Ma commune" onChoix={(r) => setCommune(r?.libelle ?? null)} />

@@ -52,7 +52,7 @@ export type Demande = {
 
 export type Utilisateur = {
   prenom: string
-  // Nom de famille : facultatif, complété dans « Mes informations »
+  // Nom de famille : demandé à l'inscription (modifiable dans « Mes informations »)
   nom?: string
   telephone: string
   commune: string

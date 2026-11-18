@@ -4,9 +4,9 @@ import BarreNav from '../components/BarreNav.tsx'
 import ChampAdresse from '../components/ChampAdresse.tsx'
 import ChampTelephone from '../components/ChampTelephone.tsx'
 import EnTeteRetour from '../components/EnTeteRetour.tsx'
-import Icone from '../components/Icone.tsx'
 import { champ, libelle, numeroValide, type EtatCode } from '../outils/formulaire.ts'
 import { useAppState } from '../state/AppState.tsx'
+import { ressources as listeRessources } from '../data/fictif.ts'
 
 const chiffres = (numero: string) => numero.replace(/[\s.-]/g, '')
 
@@ -59,6 +59,7 @@ export default function MesInfos() {
   }
 
   const hebergeur = ressources.includes('heb')
+  const offres = listeRessources.filter((r) => ressources.includes(r.id)).map((r) => r.label)
 
   return (
     <div className="ecran">
@@ -142,9 +143,18 @@ export default function MesInfos() {
               </li>
             )}
           </ul>
-          <Link to="/aider" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', minHeight: 44, fontWeight: 700, textDecoration: 'none' }}>
-            Modifier ce que je peux offrir
-            <Icone nom="fleche" taille={18} />
+        </section>
+
+        <section className="carte" aria-labelledby="titre-offres" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <strong id="titre-offres" style={{ fontSize: 16, color: 'var(--bleu-nuit)' }}>
+            Ce que je peux offrir
+          </strong>
+          <span className="texte-doux" style={{ lineHeight: 1.4 }}>
+            {offres.length > 0 ? offres.join(', ') : 'Rien pour le moment. Votre mairie saura sur qui compter en cas de crise.'}
+          </span>
+          {/* Même bouton que « Modifier mes informations » */}
+          <Link to="/aider" className="bouton bouton--clair">
+            {offres.length > 0 ? 'Modifier ce que je peux offrir' : 'Indiquer ce que je peux offrir'}
           </Link>
         </section>
 
