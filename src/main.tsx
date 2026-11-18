@@ -1,6 +1,7 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { HashRouter } from 'react-router-dom'
+import { registerSW } from 'virtual:pwa-register'
 import './index.css'
 import App from './App.tsx'
 import { AppStateProvider } from './state/AppState.tsx'
@@ -26,6 +27,20 @@ if (serveurLocal) {
 // Application mairie installée : elle s'ouvre toujours sur l'espace mairie
 if (vue === 'mairie' && !location.hash.startsWith('#/mairie')) location.replace('#/mairie')
 const coteACote = serveurLocal && !vue && !location.hash.startsWith('#/mairie')
+
+// Mise à jour automatique : dès qu'une nouvelle version est en ligne, elle s'installe et la page se recharge.
+// Une app restée ouverte (poste de la cellule de crise) vérifie toutes les 15 minutes et à chaque retour au premier plan.
+if (location.protocol !== 'file:') {
+  registerSW({
+    immediate: true,
+    onRegisteredSW(_url, enregistrement) {
+      if (!enregistrement) return
+      const verifier = () => void enregistrement.update().catch(() => undefined)
+      window.setInterval(verifier, 15 * 60 * 1000)
+      document.addEventListener('visibilitychange', () => document.visibilityState === 'visible' && verifier())
+    },
+  })
+}
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
