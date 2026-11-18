@@ -1467,7 +1467,7 @@ const besoinsSuivis: { id: string; aides: string[]; auto?: string; mission?: { t
   { id: 'materiel', aides: ['materiel'], auto: 'Proposé automatiquement au plus proche' },
   { id: 'eau', aides: ['mainoeuvre', 'vehicule'], mission: { titre: "Distribution d'eau et de repas", categorie: 'mainoeuvre' } },
   { id: 'med', aides: ['vehicule', 'competences'], mission: { titre: 'Livraison de médicaments', categorie: 'vehicule' } },
-  { id: 'animaux', aides: ['temps', 'vehicule'], mission: { titre: "Prise en charge d'animaux", categorie: 'temps' } },
+  { id: 'animaux', aides: ['vehicule', 'mainoeuvre'], mission: { titre: "Prise en charge d'animaux", categorie: 'vehicule' } },
 ]
 
 type PropsBesoins = { demandes: DemandeServeur[]; volontaires: Volontaire[]; onMission: (m: { titre: string; categorie: string }) => void }

@@ -197,14 +197,19 @@ export const besoins = [
 export type SituationId = (typeof situations)[number]['id']
 export type BesoinId = (typeof besoins)[number]['id']
 
+// Ce que les volontaires peuvent offrir, formulé d'après le DICRIM de Cholet (2021) : après une crue,
+// « apporter une première aide aux voisins ; penser aux personnes âgées et à mobilité réduite »,
+// « se mettre à la disposition des secours », relogement d'abord chez la famille et les proches (p. 24),
+// équipements minimum (radio et lampe à piles, couvertures, vêtements), remise en état après la décrue
+// (aérer, désinfecter, ne rétablir le courant qu'après contrôle par un professionnel).
 export const ressources = [
-  { id: 'heb', label: 'Hébergement temporaire', detail: "2 places · chambre d'amis" },
-  { id: 'vehicule', label: 'Véhicule', detail: 'Voiture 5 places · permis B' },
-  { id: 'materiel', label: 'Matériel', detail: 'Pompe, groupe électrogène, bâches' },
+  { id: 'heb', label: "Hébergement d'urgence chez moi", detail: "2 places · chambre d'amis" },
+  { id: 'vehicule', label: 'Véhicule', detail: "Conduire des habitants vers un point de rassemblement ou un centre d'hébergement · permis B" },
+  { id: 'materiel', label: 'Matériel à prêter', detail: 'Pompe, groupe électrogène, couvertures, lampes et radios à piles' },
   // La main-d'œuvre fait partie des offres des volontaires (choix du 22/10/2026)
-  { id: 'mainoeuvre', label: "Main-d'œuvre", detail: 'Déblayer, porter, nettoyer' },
-  { id: 'competences', label: 'Compétences', detail: 'Secourisme (PSC1, SST)' },
-  { id: 'temps', label: 'Temps disponible', detail: 'Soirs et week-ends' },
+  { id: 'mainoeuvre', label: "Main-d'œuvre", detail: "Distribuer l'eau, vider et nettoyer les logements après la décrue" },
+  { id: 'competences', label: 'Compétences', detail: 'Secourisme (PSC1, SST), métier de la santé, électricien' },
+  { id: 'temps', label: 'Aide aux personnes fragiles', detail: 'Prendre des nouvelles des voisins âgés, isolés ou à mobilité réduite' },
 ] as const
 
 export type RessourceId = (typeof ressources)[number]['id']

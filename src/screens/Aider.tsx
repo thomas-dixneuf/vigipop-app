@@ -2,7 +2,7 @@ import { useNavigate } from 'react-router-dom'
 import ChampAdresse from '../components/ChampAdresse.tsx'
 import EnTeteRetour from '../components/EnTeteRetour.tsx'
 import Icone from '../components/Icone.tsx'
-import { ressources } from '../data/fictif.ts'
+import { commune, ressources } from '../data/fictif.ts'
 import { useAppState } from '../state/AppState.tsx'
 
 export default function Aider() {
@@ -33,6 +33,10 @@ export default function Aider() {
         <p style={{ fontSize: 15, lineHeight: 1.45 }}>
           Touchez les aides que vous pouvez apporter. Vous pouvez en choisir plusieurs et les changer à tout moment : la mairie ne vous
           proposera que des missions de ces types.
+        </p>
+        <p className="texte-doux" style={{ fontSize: 14, lineHeight: 1.4, marginTop: -4 }}>
+          Ces aides reprennent les consignes du DICRIM de {commune} : aider ses voisins, penser aux personnes âgées et à mobilité
+          réduite, se mettre à la disposition des secours.
         </p>
 
         <section aria-label="Mes types d'aide" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
