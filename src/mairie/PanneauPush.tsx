@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { serveur } from '../services/serveur.ts'
+import { serveurMairie as serveur } from '../services/serveur.ts'
 
 const base64Url = (octets: ArrayBuffer | Uint8Array) =>
   btoa(String.fromCharCode(...new Uint8Array(octets)))

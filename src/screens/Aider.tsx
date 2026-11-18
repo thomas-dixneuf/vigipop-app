@@ -9,6 +9,8 @@ export default function Aider() {
   const navigate = useNavigate()
   const { mode, ressources: actives, basculerRessource, seRendreDisponible, seRendreIndisponible, enregistrerOffres, disponible, accueil, definirAccueil } = useAppState()
   const enCrise = mode === 'crise'
+  // Hébergement : adresse vérifiée obligatoire (le foyer le plus proche est proposé d'après elle)
+  const adresseManquante = actives.includes('heb') && accueil.lat === null
 
   const valider = () => {
     if (enCrise) {
@@ -116,6 +118,7 @@ export default function Aider() {
               variante="app"
               valeurInitiale={accueil.adresse}
               verifieeInitialement={accueil.lat !== null}
+              obligatoire
               onTexte={(adresse) => definirAccueil({ adresse })}
               onChoix={(r) => definirAccueil(r ? { adresse: r.libelle, lat: r.lat, lng: r.lng } : { lat: null, lng: null })}
             />
@@ -127,9 +130,14 @@ export default function Aider() {
       </main>
 
       <footer style={{ position: 'sticky', bottom: 0, padding: '12px 20px calc(18px + env(safe-area-inset-bottom))', background: 'var(--blanc)', borderTop: '1px solid var(--bordure)', display: 'flex', flexDirection: 'column', gap: 6 }}>
-        <button type="button" className="bouton bouton--principal" style={{ fontSize: 18 }} onClick={valider} disabled={actives.length === 0}>
+        <button type="button" className="bouton bouton--principal" style={{ fontSize: 18 }} onClick={valider} disabled={actives.length === 0 || adresseManquante}>
           {enCrise ? (disponible ? 'Enregistrer mes types d’aide' : 'Je suis disponible maintenant') : 'Enregistrer mes offres'}
         </button>
+        {adresseManquante && (
+          <span className="texte-doux" style={{ textAlign: 'center' }}>
+            Hébergement : choisissez l'adresse du logement dans la liste pour continuer.
+          </span>
+        )}
         {enCrise && disponible && (
           <button
             type="button"

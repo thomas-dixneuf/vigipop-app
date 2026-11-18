@@ -13,10 +13,12 @@ type Props = {
   // Recherche d'une commune plutôt que d'une adresse précise
   commune?: boolean
   libelleChamp?: string
+  // Le formulaire n'accepte qu'un choix dans la liste : on le rappelle tant qu'il manque
+  obligatoire?: boolean
 }
 
 // Saisie d'adresse avec suggestions de la Base Adresse Nationale (adresses officielles à jour)
-export default function ChampAdresse({ onChoix, onTexte, valeurInitiale = '', verifieeInitialement = false, variante = 'mairie', commune = false, libelleChamp }: Props) {
+export default function ChampAdresse({ onChoix, onTexte, valeurInitiale = '', verifieeInitialement = false, variante = 'mairie', commune = false, libelleChamp, obligatoire = false }: Props) {
   const [texte, setTexte] = useState(valeurInitiale)
   const [suggestions, setSuggestions] = useState<ResultatAdresse[]>([])
   const [choisie, setChoisie] = useState<string | null>(verifieeInitialement ? valeurInitiale : null)
@@ -83,7 +85,16 @@ export default function ChampAdresse({ onChoix, onTexte, valeurInitiale = '', ve
       )}
       {choisie !== null && (
         <span className="texte-doux" style={{ fontSize: 13 }}>
-          {commune ? 'Commune vérifiée' : 'Adresse vérifiée'} (Base Adresse Nationale)
+          ✓ {commune ? 'Commune vérifiée' : 'Adresse vérifiée'}
+        </span>
+      )}
+      {choisie === null && texte.trim().length >= 2 && (
+        <span role={obligatoire ? 'alert' : undefined} style={{ fontSize: 13, fontWeight: 700, color: obligatoire ? 'var(--danger)' : 'var(--texte-doux)' }}>
+          {suggestions.length > 0
+            ? `Touchez ${commune ? 'votre commune' : 'votre adresse'} dans la liste pour la valider.`
+            : obligatoire
+              ? `${commune ? 'Commune' : 'Adresse'} introuvable : vérifiez l'orthographe.`
+              : 'Adresse non vérifiée : elle sera transmise telle quelle.'}
         </span>
       )}
     </div>
