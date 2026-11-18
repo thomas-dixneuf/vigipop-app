@@ -26,8 +26,8 @@ les secours et l'alerte officielle (FR-Alert), elle ne les remplace jamais.
   foyer le plus proche (répartition automatique désactivable par la mairie, migration 0018), l'hébergeur accepte ou
   refuse, puis la personne sinistrée voit l'offre et peut la décliner : le foyer suivant lui est proposé (jamais deux
   fois le même). La mairie supervise et peut réattribuer.
-  Zones à éviter tracées par la mairie, en rouge. Zones exposées aux risques connus (TIM fourni par la
-  commune, DICRIM) : tracées ou importées en GeoJSON par la mairie, permanentes, en pointillés bleu nuit.
+  Zones à éviter (zones touchées le jour J) tracées par la mairie, en rouge plein. Zones exposées aux risques connus (TIM fourni par la
+  commune, DICRIM) : tracées ou importées en GeoJSON par la mairie, permanentes, en pointillés bleu nuit ; en crise elles s'estompent et une légende distingue « zone touchée aujourd'hui » de « zone exposée connue ».
 - **Missions ciblées** : une mission a un type d'aide ; un volontaire ne reçoit que celles des
   types qu'il propose. Après un refus, la suivante de ses types lui est proposée. L'hébergement
   ne passe jamais par une mission (mise en relation dédiée).
@@ -60,8 +60,8 @@ les secours et l'alerte officielle (FR-Alert), elle ne les remplace jamais.
 - **Espace mairie en pages** (`#/mairie/...`), menu par sujet : Accueil (en crise, « À faire maintenant » : un geste
   par ligne, avec son bouton) ; Habitants : « Ont besoin d'aide » (demandes, étapes 1. À traiter, 2. Prises en charge,
   3. Terminées), « Proposent leur aide » (volontaires : besoins, missions, propositions automatiques) ; Renforts : Protection civile, Entreprises
-  conventionnées ; Commune : Lieux d'accueil, Journal et bilan ; tout en bas du menu, Paramètres de la
-  ville (risques du DICRIM, alertes). Hors crise, l'Accueil sert aussi à tracer ou importer les zones exposées et à
+  conventionnées ; Commune : Lieux d'accueil, Journal et bilan ; tout en bas du menu, « Paramètres »
+  (risques du DICRIM, alertes). Hors crise, l'Accueil sert aussi à tracer ou importer les zones exposées et à
   régler le périmètre des visiteurs géolocalisés. À la première connexion, la mairie renseigne d'abord les risques de sa commune ; elle peut passer
   l'étape (« Je ne les connais pas encore ») : rappel permanent sur l'Accueil et écran de nouveau proposé chaque semaine. **Hors crise**, seules les infos de la
   mairie s'affichent (groupe Habitants absent du menu ; une demande reçue hors crise s'annonce sur l'Accueil). Le nom de la commune vient du compte

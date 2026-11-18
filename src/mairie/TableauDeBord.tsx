@@ -95,7 +95,7 @@ const groupesPages: { groupe: string; pages: { id: Page; titre: string }[] }[] =
   },
 ]
 // Rarement modifiés : en bas du menu, à part
-const pageParametres: { id: Page; titre: string } = { id: 'parametres', titre: 'Paramètres de la ville' }
+const pageParametres: { id: Page; titre: string } = { id: 'parametres', titre: 'Paramètres' }
 const toutesPages = [...groupesPages.flatMap((g) => g.pages), pageParametres]
 // Hors crise, l'espace mairie ne montre que les informations de la mairie (lieux, risques, renforts, journal).
 // Les pages des habitants n'apparaissent qu'en crise, ou s'il reste une demande ouverte à traiter.
@@ -1056,7 +1056,7 @@ function CarteMairie({ lieux, demandes, zones, zonesRisque, risques, communeId, 
         <Legende couleur={couleurLieu.accueil} texte="Accueil" />
         <Legende couleur={couleurLieu.soins} texte="Secours" />
         <Legende couleur={couleurLieu.eau} texte="Eau" />
-        {mode === 'crise' && <Legende couleur="#d92d20" texte="Zone à éviter" />}
+        {mode === 'crise' && <Legende couleur="#d92d20" texte="Zone touchée (à éviter)" />}
         <Legende couleur="#86ddff" texte="Zone exposée à un risque" />
       </div>
       {trace ? (
@@ -1273,7 +1273,7 @@ function PanneauRisques({ risques, communeId, onEnregistre }: { risques: string[
 }
 
 // Première connexion : la mairie indique les risques de sa commune avant tout le reste.
-// Ensuite, ils se modifient dans « Paramètres de la ville ».
+// Ensuite, ils se modifient dans « Paramètres ».
 const cleReport = (commune: string) => `vigipop-risques-reportes-${commune}`
 const delaiRappel = 7 * 24 * 3600 * 1000
 function reporteRecemment(commune: string) {
@@ -1300,7 +1300,7 @@ function PremierPassage({ risques, communeId, communeNom, onEnregistre, onTermin
       </h1>
       <p className="mairie-description-page">
         Avant de commencer, indiquez les risques connus de votre commune, tels qu’ils figurent dans votre DICRIM. Les habitants les voient
-        pour se préparer. Vous pourrez les modifier plus tard dans « Paramètres de la ville ».
+        pour se préparer. Vous pourrez les modifier plus tard dans « Paramètres ».
       </p>
       <PanneauRisques risques={risques} communeId={communeId} onEnregistre={onEnregistre} />
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 16 }}>

@@ -148,7 +148,33 @@ export default function Carte() {
           selection={selection}
           onSelection={choisir}
           hauteur="42vh"
+          attenuerRisques={enCrise}
         />
+
+        {(zones.length > 0 || zonesRisque.length > 0) && (
+          <div aria-label="Légende des zones" style={{ display: 'flex', flexDirection: 'column', gap: 6, fontSize: 14, lineHeight: 1.35 }}>
+            {(enCrise || zones.length > 0) && (
+              <span style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+                <span aria-hidden="true" style={{ width: 22, height: 14, borderRadius: 3, background: 'rgba(217,45,32,.45)', border: '2px solid #b42318', flexShrink: 0 }} />
+                <span>
+                  <strong style={{ color: 'var(--danger)' }}>Rouge plein : zone touchée aujourd’hui</strong>, à éviter (indiquée par la mairie pendant la crise)
+                </span>
+              </span>
+            )}
+            {zonesRisque.length > 0 && (
+              <span style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+                <span aria-hidden="true" style={{ width: 22, height: 14, borderRadius: 3, background: 'rgba(134,221,255,.35)', border: '2px dashed #0e3a52', flexShrink: 0 }} />
+                <span>
+                  <strong style={{ color: 'var(--bleu-nuit)' }}>Pointillés bleus : zone exposée connue</strong>, toute l’année (pas forcément touchée
+                  aujourd’hui)
+                </span>
+              </span>
+            )}
+            {enCrise && zones.length === 0 && (
+              <span className="texte-doux">La mairie n’a pas encore signalé de zone touchée. Suivez ses consignes.</span>
+            )}
+          </div>
+        )}
 
         {mission && itineraireMission && (
           <section aria-label="Ma mission" className="carte" style={{ display: 'flex', flexDirection: 'column', gap: 8, borderColor: 'var(--bleu)', borderWidth: 2 }}>
@@ -173,7 +199,7 @@ export default function Carte() {
               <div key={z.id} style={{ display: 'flex', gap: 10, alignItems: 'flex-start', fontSize: 14, lineHeight: 1.4 }}>
                 <span aria-hidden="true" style={{ width: 14, height: 14, marginTop: 3, borderRadius: 3, background: 'rgba(217,45,32,.35)', border: '2px solid #b42318', flexShrink: 0 }} />
                 <span>
-                  <strong style={{ color: 'var(--danger)' }}>Zone à éviter : {z.nom}</strong>
+                  <strong style={{ color: 'var(--danger)' }}>Zone touchée, à éviter : {z.nom}</strong>
                   {z.consigne ? <span className="texte-doux"> · {z.consigne}</span> : null}
                 </span>
               </div>
@@ -188,7 +214,7 @@ export default function Carte() {
                 <span aria-hidden="true" style={{ width: 14, height: 14, marginTop: 3, borderRadius: 3, background: 'rgba(134,221,255,.45)', border: '2px dashed #0e3a52', flexShrink: 0 }} />
                 <span>
                   <strong style={{ color: 'var(--bleu-nuit)' }}>
-                    Risque {z.risque.toLowerCase()} : {z.nom}
+                    Zone exposée ({z.risque.toLowerCase()}) : {z.nom}
                   </strong>
                   <span className="texte-doux">
                     {z.consigne ? ` · ${z.consigne}` : ''} · Source : {z.source}
