@@ -77,7 +77,9 @@ Logos dans `public/` : `logo.png` (recadré, petites tailles), `logo-slogan.png`
 - Démonstration hors ligne avec l'espace mairie : `VITE_SERVEUR_LOCAL=1` (faux serveur dans le navigateur,
   `src/services/serveurLocal.ts`, données fictives). Sans `VITE_VUE` : habitant et mairie côte à côte
   (`src/presentation/`) ; `VITE_VUE=mairie` : espace mairie seul (compte `mairie@demo.vigipop.fr` / `demo`).
-- Espace mairie : `src/mairie/` (route `#/mairie`).
+- Espace mairie : `src/mairie/` (route `#/mairie`). Application installable sur ordinateur (`npm run build:mairie`,
+  publiée avec l'app) : `mairie/` (serveur réel) et `demo-mairie/` (données fictives, hors ligne). Fichier à
+  double-cliquer sans Internet : `npm run fichier:mairie` → `vigipop-mairie-hors-ligne.html`.
 
 ## Code
 - React + TypeScript + Vite, PWA via `vite-plugin-pwa`, `HashRouter`.
