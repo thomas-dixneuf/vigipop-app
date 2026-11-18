@@ -147,8 +147,8 @@ textarea.mairie-champ { resize: vertical; min-height: 72px; }
   font-weight: 800;
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  color: var(--texte-doux, #4a6170);
-  padding: 12px 10px 4px;
+  color: var(--bleu-nuit);
+  padding: 14px 10px 4px;
 }
 .mairie-nav-lien {
   min-height: 44px;
