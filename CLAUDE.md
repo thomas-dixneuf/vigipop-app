@@ -23,7 +23,9 @@ les secours et l'alerte officielle (FR-Alert), elle ne les remplace jamais.
 - **Carte** : fond OpenStreetMap (Leaflet), adresses officielles via la Base Adresse Nationale,
   « Itinéraire » ouvre Google Maps. Jamais d'adresse privée (hébergement chez l'habitant) sur
   la carte des habitants : seulement un nombre de foyers. Le serveur propose automatiquement le
-  foyer le plus proche, l'hébergeur accepte ou refuse, la mairie supervise et peut réattribuer.
+  foyer le plus proche (répartition automatique désactivable par la mairie, migration 0018), l'hébergeur accepte ou
+  refuse, puis la personne sinistrée voit l'offre et peut la décliner : le foyer suivant lui est proposé (jamais deux
+  fois le même). La mairie supervise et peut réattribuer.
   Zones à éviter tracées par la mairie, en rouge. Zones exposées aux risques connus (TIM fourni par la
   commune, DICRIM) : tracées ou importées en GeoJSON par la mairie, permanentes, en pointillés bleu nuit.
 - **Missions ciblées** : une mission a un type d'aide ; un volontaire ne reçoit que celles des
@@ -55,10 +57,12 @@ les secours et l'alerte officielle (FR-Alert), elle ne les remplace jamais.
   IGN/BAN ; sans réponse, liste embarquée `src/data/adressesEmbarquees.ts`). Inscription, profil, foyer, hébergement et
   mairie exigent un choix dans la liste ; le signalement accepte le texte tapé (jamais bloquant).
 - **Localisation proposée au lancement** (une fois, refusable avec « Plus tard », jamais en mode crise sans compte).
-- **Espace mairie en pages** (`#/mairie/...`) : Accueil (en crise, « À faire maintenant » : un geste par ligne,
-  avec son bouton), Demandes d'aide, Volontaires et missions, Bénévoles, Entreprises, Lieux d'accueil ; à part,
-  « Préparer » : Risques et commune (rarement modifiés), Bilan et journal. En crise, seuls les gestes utiles restent
-  à l'écran. Pas de sigle sans explication (TIM → « zones exposées aux risques »).
+- **Espace mairie en pages** (`#/mairie/...`), menu par sujet : Accueil (en crise, « À faire maintenant » : un geste
+  par ligne, avec son bouton) ; Habitants : Demandes d'aide (étapes 1. À traiter, 2. Prises en charge, 3. Terminées),
+  Volontaires habitants (besoins, missions, propositions automatiques) ; Renforts : Protection civile, Entreprises
+  conventionnées ; Commune : Lieux d'accueil, Risques et zones, Journal et bilan. **Hors crise**, seules les infos de la
+  mairie s'affichent (pages Habitants masquées, sauf demande encore ouverte). Le nom de la commune vient du compte
+  (pas de renommage) ; son centre est trouvé automatiquement. Pas de sigle sans explication (TIM → « zones exposées »).
 - **Partenaires** (migration 0017, mairie seule) : entreprises sous convention (matériel, SIRET, fin de convention ;
   solliciter → matériel engagé → rendu) et bénévoles d'association type réserve communale / Protection civile
   (compétences ; mobiliser → fin de mission). Chaque changement de statut passe au journal.

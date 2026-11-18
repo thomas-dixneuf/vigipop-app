@@ -149,7 +149,7 @@ export function PanneauEntreprises({ entreprises, communeId, enCrise }: { entrep
   }
 
   const supprimer = async (e: Entreprise) => {
-    if (!window.confirm(`Retirer « ${e.nom} » des entreprises sous convention ?`)) return
+    if (!window.confirm(`Retirer « ${e.nom} » des entreprises conventionnées ?`)) return
     const { error } = await serveur!.from('entreprises_convention').delete().eq('id', e.id)
     setMessage(error ? "Échec : l'entreprise est toujours dans la liste." : '')
   }
@@ -158,13 +158,13 @@ export function PanneauEntreprises({ entreprises, communeId, enCrise }: { entrep
 
   return (
     <section className="mairie-panneau" aria-labelledby="titre-entreprises">
-      <h2 id="titre-entreprises">Entreprises sous convention</h2>
+      <h2 id="titre-entreprises">Entreprises conventionnées</h2>
       <p className="texte-doux" style={{ fontSize: 14, lineHeight: 1.5 }}>
         Entreprises qui ont signé une convention avec la commune pour prêter du matériel ou des engins en cas de crise. Appelez-les, puis
         notez où en est chaque demande : tout le monde dans la cellule de crise voit le même état.
       </p>
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-        <span className="mairie-etiquette">{entreprises.length} sous convention</span>
+        <span className="mairie-etiquette">{entreprises.length} conventionnée{entreprises.length > 1 ? 's' : ''}</span>
         {engagees > 0 && <span className="mairie-etiquette mairie-etiquette--ok">{engagees} sollicitée{engagees > 1 ? 's' : ''} ou engagée{engagees > 1 ? 's' : ''}</span>}
         {expirees > 0 && <span className="mairie-etiquette mairie-etiquette--urgent">{expirees} convention{expirees > 1 ? 's' : ''} à renouveler</span>}
       </div>
@@ -220,7 +220,7 @@ export function PanneauEntreprises({ entreprises, communeId, enCrise }: { entrep
         </p>
       )}
 
-      {visibles.length === 0 && <p className="texte-doux">{filtre ? 'Aucune entreprise ne prête ce matériel.' : 'Aucune entreprise sous convention pour le moment.'}</p>}
+      {visibles.length === 0 && <p className="texte-doux">{filtre ? 'Aucune entreprise ne prête ce matériel.' : 'Aucune entreprise conventionnée pour le moment.'}</p>}
       {visibles.map((e) => {
         const expiree = !!e.convention_fin && e.convention_fin < aujourdhui()
         return (
@@ -343,7 +343,7 @@ export function PanneauBenevoles({ benevoles, communeId, enCrise }: { benevoles:
 
   return (
     <section className="mairie-panneau" aria-labelledby="titre-benevoles">
-      <h2 id="titre-benevoles">Association de bénévoles</h2>
+      <h2 id="titre-benevoles">Bénévoles de la protection civile</h2>
       <p className="texte-doux" style={{ fontSize: 14, lineHeight: 1.5 }}>
         Personnes engagées auprès de la commune, formées et mobilisables en crise : réserve communale de sécurité civile, Protection civile, Croix-Rouge… À la
         différence des volontaires de l'app, la mairie les connaît et les appelle directement.

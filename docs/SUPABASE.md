@@ -28,7 +28,10 @@ fonctionne en mode démo local, avec un bouton « Démo » pour simuler la crise
    automatique chaque nuit : activer d'abord l'extension **pg_cron** dans **Database → Extensions**), puis
    `0015_communes_position.sql` (centre et rayon de chaque commune : l'app affiche les services de la ville où
    l'on se trouve, sans jamais enregistrer la position), puis `0016_comptes_inactifs.sql` (comptes effacés après
-  3 ans sans ouverture de l'app, après deux rappels par notification et SMS ; s'ajoute à la tâche de chaque nuit). Chaque nouveau fichier de `supabase/migrations/` se lance
+  3 ans sans ouverture de l'app, après deux rappels par notification et SMS ; s'ajoute à la tâche de chaque nuit),
+   puis `0017_partenaires.sql` (entreprises conventionnées et bénévoles de la protection civile), puis
+   `0018_hebergement_choix.sql` (répartition automatique de l'hébergement réglable par la mairie ; la personne
+   sinistrée peut décliner une offre pour qu'un autre foyer lui soit proposé). Chaque nouveau fichier de `supabase/migrations/` se lance
    une seule fois, dans l'ordre des numéros.
 
 ## 2. Autoriser les habitants sans mot de passe
