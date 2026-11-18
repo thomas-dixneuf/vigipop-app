@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import CarteInteractive, { type Repere } from '../components/CarteInteractive.tsx'
 import Logo from '../components/Logo.tsx'
 import ChampAdresse from '../components/ChampAdresse.tsx'
+import BoutonInstaller from './BoutonInstaller.tsx'
 import PanneauPush from './PanneauPush.tsx'
 import { ActionsListe, PanneauBilan } from './Rapports.tsx'
 import { ecrireCache, effacerCacheMairie, lireCache } from './cache.ts'
@@ -196,6 +197,7 @@ export default function TableauDeBord({ coordinateur }: { coordinateur: Coordina
           ) : (
             <span className="mairie-etiquette">Veille</span>
           )}
+          <BoutonInstaller />
           <button
             type="button"
             className="mairie-bouton"

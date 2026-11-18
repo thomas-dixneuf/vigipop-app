@@ -22,8 +22,9 @@ if (serveurLocal) {
     const reponse = confirmer(texte)
     return reponse || performance.now() - debut < 50
   }
-  if (vue === 'mairie' && !location.hash.startsWith('#/mairie')) location.replace('#/mairie')
 }
+// Application mairie installée : elle s'ouvre toujours sur l'espace mairie
+if (vue === 'mairie' && !location.hash.startsWith('#/mairie')) location.replace('#/mairie')
 const coteACote = serveurLocal && !vue && !location.hash.startsWith('#/mairie')
 
 createRoot(document.getElementById('root')!).render(

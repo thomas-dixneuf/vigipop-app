@@ -6,6 +6,8 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
+    "build:mairie": "VITE_VUE=mairie vite build --outDir dist/mairie && VITE_VUE=mairie VITE_SERVEUR_LOCAL=1 vite build --mode captures --outDir dist/demo-mairie",
+    "fichier:mairie": "FICHIER_UNIQUE=1 VITE_VUE=mairie VITE_SERVEUR_LOCAL=1 vite build --mode captures --outDir dist-fichier && node scripts/fichier-hors-ligne.mjs dist-fichier vigipop-mairie-hors-ligne.html",
     "lint": "oxlint",
     "preview": "vite preview",
     "captures": "vite build --mode captures --outDir dist-captures && node scripts/captures-stores.mjs"

@@ -25,6 +25,8 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run build
+      # Espace mairie installable sur ordinateur : mairie/ (serveur réel) et demo-mairie/ (données fictives)
+      - run: npm run build:mairie
       - name: Envoi sur l'hébergement OVH (dossier www/application/)
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5
         with:

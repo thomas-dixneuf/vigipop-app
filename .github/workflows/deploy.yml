@@ -25,6 +25,8 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run build
+      # Espace mairie installable sur ordinateur : mairie/ (serveur réel) et demo-mairie/ (données fictives)
+      - run: npm run build:mairie
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist

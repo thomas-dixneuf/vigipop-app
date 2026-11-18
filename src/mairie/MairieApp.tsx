@@ -4,6 +4,7 @@ import type { Session } from '@supabase/supabase-js'
 import Logo from '../components/Logo.tsx'
 import { serveurLocal, serveurMairie as serveur } from '../services/serveur.ts'
 import { comptesDemo } from '../services/serveurLocal.ts'
+import BoutonInstaller from './BoutonInstaller.tsx'
 import TableauDeBord, { type Coordinateur } from './TableauDeBord.tsx'
 import { ecrireCache, effacerCacheMairie, lireCache } from './cache.ts'
 import './mairie.css'
@@ -97,6 +98,7 @@ function Cadre({ children }: { children: React.ReactNode }) {
           <span style={{ fontWeight: 800, color: 'var(--bleu-nuit)' }}>Vigipop · Espace mairie</span>
         </div>
         {children}
+        <BoutonInstaller />
       </div>
     </div>
   )
@@ -148,9 +150,12 @@ function ConnexionMairie() {
           ))}
         </div>
       )}
-      <Link to="/" style={{ fontSize: 14 }}>
-        Retour à l'app habitants
-      </Link>
+      {/* Application mairie installée : pas de passage vers l'app habitants */}
+      {import.meta.env.VITE_VUE !== 'mairie' && (
+        <Link to="/" style={{ fontSize: 14 }}>
+          Retour à l'app habitants
+        </Link>
+      )}
     </Cadre>
   )
 }
