@@ -41,6 +41,21 @@ const demandesFictives = [
   { situation: 'blesse', besoins: ['med'], personnes: 1, personne_vulnerable: true, prenom: 'Jean', position: '47.0537, -0.8766', minutes: -2 },
 ]
 
+// Partenaires fictifs de la commune (migration 0017) : entreprises sous convention et bénévoles d'association
+const entreprisesFictives = [
+  { nom: 'Travaux publics (entreprise fictive)', siret: '00000000000011', contact: 'Responsable d’astreinte', telephone: '02 00 00 00 11', materiel: ['Engins de chantier', 'Camions et transport', 'Outillage et déblaiement'], precisions: '2 pelleteuses, 1 camion benne, intervention sous 2 h', convention_fin: '2027-12-31' },
+  { nom: 'Location de matériel (entreprise fictive)', siret: '00000000000022', contact: 'Chef d’agence', telephone: '02 00 00 00 22', materiel: ['Groupes électrogènes', 'Pompes et motopompes'], precisions: '6 groupes électrogènes, 4 motopompes', convention_fin: '2027-06-30' },
+  { nom: 'Grande surface (entreprise fictive)', siret: '00000000000033', contact: 'Direction du magasin', telephone: '02 00 00 00 33', materiel: ['Eau et vivres', 'Lits et couvertures'], precisions: 'Eau en bouteille et repas pour 200 personnes', convention_fin: '2026-09-30' },
+]
+const benevolesFictifs = [
+  { nom: 'Claire R.', qualifications: ['Secourisme (PSE1 / PSE2)', 'Accueil et hébergement'] },
+  { nom: 'Mathieu G.', qualifications: ['Logistique', 'Conduite poids lourd'] },
+  { nom: 'Fatou D.', qualifications: ['Soutien psychologique', 'Accueil et hébergement'] },
+  { nom: 'Yves P.', qualifications: ['Transmissions radio', 'Logistique'] },
+  { nom: 'Inès B.', qualifications: ['Secourisme (PSE1 / PSE2)'] },
+  { nom: 'Gérard M.', qualifications: ['Déblaiement et bricolage', 'Conduite poids lourd'] },
+]
+
 function baseInitiale(): Base {
   const c = COMMUNE_LOCALE
   const cree = maintenant(-60 * 24)
@@ -81,6 +96,17 @@ function baseInitiale(): Base {
       { prenom: 'Olivier', nom: 'R.', type: 'entreprise', statut: 'verifiee', details: { entreprise: 'Entreprise partenaire B', siret: '00000000000002', materiel: 'Mini-pelle avec chauffeur, 2 bennes, barrières de chantier' } },
       { prenom: 'Marc', nom: 'L.', type: 'protection_civile', details: { numero: 'PC49-0203' }, statut: 'a_verifier' },
     ].map((h, i) => ({ ...h, id: `habilitation-${i + 1}`, auteur: `habitant-${i + 1}`, commune_id: c, telephone: '06 00 00 01 0' + i, created_at: cree, updated_at: cree })),
+    entreprises_convention: entreprisesFictives.map((e, i) => ({ ...e, id: `entreprise-${i + 1}`, commune_id: c, statut: 'disponible', created_at: cree, updated_at: cree })),
+    benevoles_association: benevolesFictifs.map((b, i) => ({
+      ...b,
+      id: `benevole-${i + 1}`,
+      commune_id: c,
+      telephone: `06 00 00 02 0${i}`,
+      association: 'Réserve communale de sécurité civile',
+      statut: i === 5 ? 'indisponible' : 'disponible',
+      created_at: cree,
+      updated_at: cree,
+    })),
     crises: [],
     demandes: [],
     reponses_mission: [],
@@ -172,6 +198,7 @@ function completer(table: string, ligne: Ligne): Ligne {
   if (table === 'demandes') Object.assign(l, { statut: 'transmise', reponse_mairie: '', ...ligne })
   if (['missions', 'zones_danger'].includes(table) && l.active === undefined) l.active = true
   if (['hebergements', 'entraides'].includes(table) && !l.statut) l.statut = 'proposee'
+  if (['entreprises_convention', 'benevoles_association'].includes(table) && !l.statut) l.statut = 'disponible'
   return l
 }
 
@@ -276,6 +303,9 @@ class Requete implements PromiseLike<Resultat> {
           if (geste) ev.push(journal(`secours_${geste.type}`, { reference: n.reference, par: geste.par, texte: geste.texte }))
         } else if (t === 'demandes' && modif.statut) ev.push(journal('statut_demande', { reference: n.reference, statut: n.statut }))
         if (t === 'missions' && modif.active === false) ev.push(journal('mission_close', { titre: n.titre, par: n.proposee_par ?? undefined }))
+        // Partenaires : chaque sollicitation ou mobilisation est tracée
+        if (t === 'entreprises_convention' && modif.statut) ev.push(journal(`entreprise_${n.statut}`, { titre: n.nom }))
+        if (t === 'benevoles_association' && modif.statut) ev.push(journal(`benevole_${n.statut}`, { titre: n.nom }))
         if (t === 'zones_danger' && modif.active === true && n.proposee_par) ev.push(journal('zone_validee', { titre: n.nom, par: n.proposee_par }))
       }
     } else {

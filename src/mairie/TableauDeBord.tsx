@@ -1,9 +1,11 @@
 import { createContext, useCallback, useContext, useEffect, useState, type FormEvent } from 'react'
+import { Link, useLocation } from 'react-router-dom'
 import CarteInteractive, { type Repere } from '../components/CarteInteractive.tsx'
 import Logo from '../components/Logo.tsx'
 import ChampAdresse from '../components/ChampAdresse.tsx'
 import PanneauHabilitations from './PanneauHabilitations.tsx'
 import PanneauPush from './PanneauPush.tsx'
+import { PanneauBenevoles, PanneauEntreprises, type Benevole, type Entreprise } from './Partenaires.tsx'
 import { besoins as listeBesoins, centreCommune, libelleLieu, ressources as listeRessources, situations } from '../data/fictif.ts'
 import {
   heure,
@@ -62,7 +64,25 @@ type Donnees = {
   propositions: ZoneServeur[]
   zonesRisque: ZoneRisqueServeur[]
   journal: Evenement[]
+  // Partenaires (entreprises sous convention, bénévoles d'association)
+  entreprises: Entreprise[]
+  benevoles: Benevole[]
 }
+
+// Pages de l'espace mairie : ce qui sert pendant la crise d'abord, la préparation (rarement modifiée) à part
+type Page = '' | 'demandes' | 'volontaires' | 'benevoles' | 'entreprises' | 'lieux' | 'commune' | 'bilan'
+const pagesCrise: { id: Page; titre: string }[] = [
+  { id: '', titre: 'Accueil' },
+  { id: 'demandes', titre: 'Demandes d’aide' },
+  { id: 'volontaires', titre: 'Volontaires et missions' },
+  { id: 'benevoles', titre: 'Bénévoles' },
+  { id: 'entreprises', titre: 'Entreprises' },
+  { id: 'lieux', titre: 'Lieux d’accueil' },
+]
+const pagesPreparation: { id: Page; titre: string }[] = [
+  { id: 'commune', titre: 'Risques et commune' },
+  { id: 'bilan', titre: 'Journal' },
+]
 
 // Les cas les plus graves d'abord, puis les plus anciens
 function priorite(d: DemandeServeur) {
@@ -140,6 +160,12 @@ const libelleAction: Record<string, string> = {
   zone_publiee: 'Zone à éviter publiée',
   zone_validee: 'Zone proposée validée',
   zone_refusee: 'Zone proposée refusée',
+  entreprise_sollicitee: 'Entreprise sollicitée',
+  entreprise_engagee: 'Matériel engagé',
+  entreprise_disponible: 'Entreprise de nouveau disponible',
+  benevole_mobilise: 'Bénévole mobilisé',
+  benevole_disponible: 'Bénévole disponible',
+  benevole_indisponible: 'Bénévole indisponible',
 }
 
 const libelleGeste: Record<GesteSecours, string> = {
@@ -160,7 +186,7 @@ export default function TableauDeBord({ coordinateur }: { coordinateur: Coordina
   const [modeleMission, setModeleMission] = useState<ModeleMission | null>(null)
 
   const charger = useCallback(async () => {
-    const [crise, demandes, lieux, missions, reponses, volontaires, hebergements, zones, journal, communeLue, entraides, zonesRisque, propositions] = await Promise.all([
+    const [crise, demandes, lieux, missions, reponses, volontaires, hebergements, zones, journal, communeLue, entraides, zonesRisque, propositions, entreprises, benevoles] = await Promise.all([
       client.from('crises').select('id, titre, consigne, active, declenchee_a').eq('commune_id', commune).eq('active', true).maybeSingle(),
       client.from('demandes').select('*').eq('commune_id', commune).order('created_at', { ascending: false }).limit(300),
       client.from('lieux').select('*').eq('commune_id', commune).order('nom'),
@@ -169,7 +195,7 @@ export default function TableauDeBord({ coordinateur }: { coordinateur: Coordina
       client.from('volontaires').select('*').eq('commune_id', commune).eq('disponible', true).order('updated_at', { ascending: false }),
       client.from('hebergements').select('id, demande_id, hebergeur, personnes, statut, updated_at').eq('commune_id', commune).order('created_at'),
       client.from('zones_danger').select('id, nom, consigne, points').eq('commune_id', commune).eq('active', true).order('created_at'),
-      client.from('journal').select('id, action, details, created_at').eq('commune_id', commune).order('id', { ascending: false }).limit(12),
+      client.from('journal').select('id, action, details, created_at').eq('commune_id', commune).order('id', { ascending: false }).limit(50),
       client.from('communes').select('*').eq('id', commune).maybeSingle(),
       // Absente tant que la migration 0011 n'est pas lancée : le tableau reste utilisable
       client.from('entraides').select('id, demande_id, besoin, aidant, statut, updated_at').eq('commune_id', commune).order('created_at'),
@@ -177,6 +203,8 @@ export default function TableauDeBord({ coordinateur }: { coordinateur: Coordina
       client.from('zones_risque').select('id, risque, nom, consigne, source, points').eq('commune_id', commune).order('created_at'),
       // Zones proposées par les secours (inactives tant que la mairie ne les a pas validées)
       client.from('zones_danger').select('*').eq('commune_id', commune).eq('active', false).order('created_at'),
+      client.from('entreprises_convention').select('*').eq('commune_id', commune).order('nom'),
+      client.from('benevoles_association').select('*').eq('commune_id', commune).order('nom'),
     ])
     const echec = [crise, demandes, lieux, missions, reponses, volontaires, hebergements, zones, journal].find((r) => r.error)
     if (echec) {
@@ -204,6 +232,8 @@ export default function TableauDeBord({ coordinateur }: { coordinateur: Coordina
       // Seules comptent les disponibilités données pendant la crise en cours
       volontaires: criseActive ? (volontaires.data as Volontaire[]).filter((v) => v.updated_at >= criseActive.declenchee_a) : [],
       journal: journal.data as Evenement[],
+      entreprises: (entreprises.data as Entreprise[] | null) ?? [],
+      benevoles: (benevoles.data as Benevole[] | null) ?? [],
     })
   }, [client, commune])
 
@@ -213,7 +243,7 @@ export default function TableauDeBord({ coordinateur }: { coordinateur: Coordina
     void charger()
     const filtre = `commune_id=eq.${commune}`
     const canal = client.channel(`mairie-${commune}`)
-    for (const table of ['crises', 'demandes', 'lieux', 'missions', 'volontaires', 'hebergements', 'entraides', 'zones_danger', 'zones_risque', 'journal']) {
+    for (const table of ['crises', 'demandes', 'lieux', 'missions', 'volontaires', 'hebergements', 'entraides', 'zones_danger', 'zones_risque', 'journal', 'entreprises_convention', 'benevoles_association']) {
       canal.on('postgres_changes', { event: '*', schema: 'public', table, filter: filtre }, () => void charger())
     }
     canal.on('postgres_changes', { event: '*', schema: 'public', table: 'reponses_mission' }, () => void charger())
@@ -226,7 +256,9 @@ export default function TableauDeBord({ coordinateur }: { coordinateur: Coordina
   }, [client, commune, charger])
 
   const enCrise = !!donnees?.crise
-  const demandesOuvertes = donnees ? donnees.demandes.filter((d) => d.statut !== 'close' && d.statut !== 'aide_organisee').length : 0
+  const location = useLocation()
+  const page = (location.pathname.replace(/^\/mairie\/?/, '').split('/')[0] || '') as Page
+  const centre: [number, number] = donnees?.position ? [donnees.position.lat, donnees.position.lng] : centreCommune
   return (
     <ContexteAcces.Provider value={{ partenaire: secours ? coordinateur.nom : undefined, communeId: commune }}>
     <div className="mairie">
@@ -263,73 +295,247 @@ export default function TableauDeBord({ coordinateur }: { coordinateur: Coordina
       {!donnees ? (
         <p style={{ padding: 24 }}>Chargement…</p>
       ) : (
-        <main className="mairie-contenu">
-          <div className="mairie-colonne">
-            {enCrise && <Compteurs demandes={donnees.demandes} />}
-            <CarteMairie
-              lieux={donnees.lieux}
-              demandes={donnees.demandes}
-              zones={donnees.zones}
-              propositions={donnees.propositions}
-              zonesRisque={donnees.zonesRisque}
-              risques={donnees.risques}
-              communeId={commune}
-              enCrise={!!donnees.crise}
-              centre={donnees.position ? [donnees.position.lat, donnees.position.lng] : centreCommune}
-              partenaire={secours ? coordinateur.nom : undefined}
-            />
-            {enCrise && (
-              <>
-            <PanneauBesoins
-              demandes={donnees.demandes}
-              volontaires={donnees.volontaires}
-              onMission={(m) => {
-                setModeleMission({ ...m, numero: Date.now() })
-                window.setTimeout(() => document.getElementById('titre-missions')?.scrollIntoView({ behavior: 'smooth' }), 50)
-              }}
-            />
-            <PanneauHebergement demandes={donnees.demandes} volontaires={donnees.volontaires} hebergements={donnees.hebergements} communeId={commune} />
-            <PanneauEntraides demandes={donnees.demandes} volontaires={donnees.volontaires} entraides={donnees.entraides} communeId={commune} />
-              </>
+        <div className="mairie-cadre">
+          <Navigation page={page} donnees={donnees} secours={secours} />
+          <main className="mairie-page" aria-labelledby="titre-page">
+            <h1 id="titre-page" className="mairie-titre-page">
+              {[...pagesCrise, ...pagesPreparation].find((p) => p.id === page)?.titre ?? 'Accueil'}
+            </h1>
+            {page === '' && (
+              <div className="mairie-contenu">
+                <div className="mairie-colonne">
+                  {enCrise && <AFaire donnees={donnees} />}
+                  {enCrise && <Compteurs demandes={donnees.demandes} />}
+                  <CarteMairie
+                    mode="crise"
+                    lieux={donnees.lieux}
+                    demandes={donnees.demandes}
+                    zones={donnees.zones}
+                    propositions={donnees.propositions}
+                    zonesRisque={donnees.zonesRisque}
+                    risques={donnees.risques}
+                    communeId={commune}
+                    enCrise={enCrise}
+                    centre={centre}
+                    partenaire={secours ? coordinateur.nom : undefined}
+                  />
+                </div>
+                <div className="mairie-colonne">
+                  {/* Les secours ont tout l'espace, sauf déclencher la crise, alerter et le référentiel de la commune */}
+                  {secours ? <PanneauPartenaire crise={donnees.crise} /> : <PanneauCrise key={donnees.crise?.id ?? 'veille'} crise={donnees.crise} communeId={commune} />}
+                  {!enCrise && !secours && <Preparation donnees={donnees} />}
+                  <PanneauJournal journal={donnees.journal.slice(0, 8)} lienTout />
+                </div>
+              </div>
             )}
-            {/* En veille, la gestion de crise est masquée ; seule reste une demande isolée encore ouverte
-                (incendie, personne âgée...), pour qu'elle ne passe jamais inaperçue. */}
-            {(enCrise || demandesOuvertes > 0) && (
-              <Demandes demandes={donnees.demandes} depuis={donnees.crise?.declenchee_a ?? null} partenaire={secours ? coordinateur.nom : undefined} lieux={donnees.lieux} />
+            {page === 'demandes' && (
+              <div className="mairie-pile">
+                <Demandes demandes={donnees.demandes} depuis={donnees.crise?.declenchee_a ?? null} partenaire={secours ? coordinateur.nom : undefined} lieux={donnees.lieux} />
+                {enCrise && (
+                  <div className="mairie-face-a-face">
+                    <PanneauHebergement demandes={donnees.demandes} volontaires={donnees.volontaires} hebergements={donnees.hebergements} communeId={commune} />
+                    <PanneauEntraides demandes={donnees.demandes} volontaires={donnees.volontaires} entraides={donnees.entraides} communeId={commune} />
+                  </div>
+                )}
+              </div>
             )}
-          </div>
-          <div className="mairie-colonne">
-            {/* Les secours ont tout l'espace, sauf déclencher la crise, alerter et le référentiel de la commune */}
-            {secours ? (
-              <PanneauPartenaire crise={donnees.crise} />
-            ) : (
-              <>
-                <PanneauCrise key={donnees.crise?.id ?? 'veille'} crise={donnees.crise} communeId={commune} />
-                <PanneauRisques risques={donnees.risques} communeId={commune} enCrise={!!donnees.crise} onEnregistre={() => void charger()} />
-                <PanneauPosition position={donnees.position ?? null} communeId={commune} onEnregistre={() => void charger()} />
-              </>
+            {page === 'volontaires' && (
+              <div className="mairie-contenu">
+                <div className="mairie-colonne">
+                  {enCrise ? (
+                    <>
+                      <PanneauBesoins
+                        demandes={donnees.demandes}
+                        volontaires={donnees.volontaires}
+                        onMission={(m) => {
+                          setModeleMission({ ...m, numero: Date.now() })
+                          window.setTimeout(() => document.getElementById('titre-missions')?.scrollIntoView({ behavior: 'smooth' }), 50)
+                        }}
+                      />
+                      <PanneauMissions
+                        key={modeleMission?.numero ?? 0}
+                        modele={modeleMission}
+                        missions={donnees.missions}
+                        reponses={donnees.reponses}
+                        volontaires={donnees.volontaires}
+                        communeId={commune}
+                        partenaire={secours ? coordinateur.nom : undefined}
+                      />
+                    </>
+                  ) : (
+                    <section className="mairie-panneau">
+                      <h2>Hors crise</h2>
+                      <p className="texte-doux" style={{ fontSize: 14, lineHeight: 1.5 }}>
+                        Les besoins et les missions s'ouvrent quand la mairie déclenche une crise ou un exercice.
+                      </p>
+                    </section>
+                  )}
+                </div>
+                <div className="mairie-colonne">
+                  <PanneauVolontaires volontaires={donnees.volontaires} enCrise={enCrise} />
+                </div>
+              </div>
             )}
-            <PanneauLieux lieux={donnees.lieux} communeId={commune} />
-            <PanneauVolontaires volontaires={donnees.volontaires} enCrise={!!donnees.crise} />
-            {!secours && <PanneauHabilitations communeId={commune} />}
-            {enCrise && (
-            <PanneauMissions
-              key={modeleMission?.numero ?? 0}
-              modele={modeleMission}
-              missions={donnees.missions}
-              reponses={donnees.reponses}
-              volontaires={donnees.volontaires}
-              communeId={commune}
-              partenaire={secours ? coordinateur.nom : undefined}
-            />
+            {page === 'benevoles' && (
+              <div className="mairie-pile">
+                <PanneauBenevoles benevoles={donnees.benevoles} communeId={commune} enCrise={enCrise} />
+                {!secours && <PanneauHabilitations communeId={commune} />}
+              </div>
             )}
-            <PanneauJournal journal={donnees.journal} />
-            {!secours && <PanneauPush />}
-          </div>
-        </main>
+            {page === 'entreprises' && (
+              <div className="mairie-pile">
+                <PanneauEntreprises entreprises={donnees.entreprises} communeId={commune} enCrise={enCrise} />
+              </div>
+            )}
+            {page === 'lieux' && (
+              <div className="mairie-pile">
+                <PanneauLieux lieux={donnees.lieux} communeId={commune} />
+              </div>
+            )}
+            {page === 'commune' && !secours && (
+              <div className="mairie-contenu">
+                <div className="mairie-colonne">
+                  <CarteMairie
+                    mode="risques"
+                    lieux={donnees.lieux}
+                    demandes={donnees.demandes}
+                    zones={donnees.zones}
+                    propositions={donnees.propositions}
+                    zonesRisque={donnees.zonesRisque}
+                    risques={donnees.risques}
+                    communeId={commune}
+                    enCrise={enCrise}
+                    centre={centre}
+                    partenaire={secours ? coordinateur.nom : undefined}
+                  />
+                  <PanneauPosition position={donnees.position ?? null} communeId={commune} onEnregistre={() => void charger()} />
+                </div>
+                <div className="mairie-colonne">
+                  <PanneauRisques risques={donnees.risques} communeId={commune} enCrise={enCrise} onEnregistre={() => void charger()} />
+                  <PanneauPush />
+                </div>
+              </div>
+            )}
+            {page === 'bilan' && (
+              <div className="mairie-pile">
+                <PanneauJournal journal={donnees.journal} />
+              </div>
+            )}
+          </main>
+        </div>
       )}
     </div>
     </ContexteAcces.Provider>
+  )
+}
+
+// Menu des pages : la crise d'abord, avec le nombre de choses qui attendent la cellule
+function Navigation({ page, donnees, secours }: { page: Page; donnees: Donnees; secours: boolean }) {
+  const attente: Partial<Record<Page, number>> = {
+    demandes: donnees.demandes.filter((d) => d.statut === 'transmise').length,
+  }
+  const lien = (p: { id: Page; titre: string }) => (
+    <Link key={p.id} to={p.id ? `/mairie/${p.id}` : '/mairie'} className="mairie-nav-lien" aria-current={page === p.id ? 'page' : undefined}>
+      {p.titre}
+      {attente[p.id] ? <span className="mairie-nav-compteur">{attente[p.id]}</span> : null}
+    </Link>
+  )
+  return (
+    <nav className="mairie-nav" aria-label="Pages de l'espace mairie">
+      <span className="mairie-nav-groupe">{donnees.crise?.exercice ? 'Gérer l’exercice' : donnees.crise ? 'Gérer la crise' : 'Au quotidien'}</span>
+      {pagesCrise.map(lien)}
+      <span className="mairie-nav-groupe">Préparer</span>
+      {pagesPreparation.filter((p) => !secours || p.id !== 'commune').map(lien)}
+    </nav>
+  )
+}
+
+// Accueil en crise : ce qui attend une action, du plus urgent au moins urgent, chacun avec son bouton
+function AFaire({ donnees }: { donnees: Donnees }) {
+  const aTraiter = donnees.demandes.filter((d) => d.statut === 'transmise')
+  const prioritaires = aTraiter.filter((d) => priorite(d) < 2).length
+  const lieuxOuverts = donnees.lieux.filter((l) => l.ouvert).length
+  const benevoles = donnees.benevoles
+  const mobilises = benevoles.filter((b) => b.statut === 'mobilise').length
+  const disponibles = benevoles.filter((b) => b.statut === 'disponible').length
+  const entreprises = donnees.entreprises
+  const engagees = entreprises.filter((e) => e.statut !== 'disponible').length
+  const gestes: { texte: string; detail: string; lien: string; bouton: string; urgent?: boolean }[] = [
+    aTraiter.length > 0
+      ? {
+          texte: `${aTraiter.length} demande${aTraiter.length > 1 ? 's' : ''} à traiter`,
+          detail: prioritaires > 0 ? `dont ${prioritaires} prioritaire${prioritaires > 1 ? 's' : ''} (blessé, évacuation, personne fragile)` : 'les plus graves en premier',
+          lien: '/mairie/demandes',
+          bouton: 'Traiter les demandes',
+          urgent: true,
+        }
+      : { texte: 'Aucune demande en attente', detail: 'les nouvelles arrivent ici en direct', lien: '/mairie/demandes', bouton: 'Voir les demandes' },
+    {
+      texte: `${lieuxOuverts} lieu${lieuxOuverts > 1 ? 'x' : ''} d'accueil ouvert${lieuxOuverts > 1 ? 's' : ''} sur ${donnees.lieux.length}`,
+      detail: 'les habitants voient seulement les lieux ouverts',
+      lien: '/mairie/lieux',
+      bouton: 'Ouvrir ou fermer un lieu',
+    },
+    {
+      texte: `${mobilises} bénévole${mobilises > 1 ? 's' : ''} mobilisé${mobilises > 1 ? 's' : ''}`,
+      detail: `${disponibles} encore disponible${disponibles > 1 ? 's' : ''} dans l'association`,
+      lien: '/mairie/benevoles',
+      bouton: 'Mobiliser des bénévoles',
+    },
+    {
+      texte: `${engagees} entreprise${engagees > 1 ? 's' : ''} sollicitée${engagees > 1 ? 's' : ''}`,
+      detail: `${entreprises.length} sous convention pour prêter du matériel`,
+      lien: '/mairie/entreprises',
+      bouton: 'Demander du matériel',
+    },
+  ]
+  return (
+    <section className="mairie-panneau" aria-labelledby="titre-a-faire" style={{ borderColor: 'var(--urgence)', borderWidth: 2 }}>
+      <h2 id="titre-a-faire">À faire maintenant</h2>
+      {gestes.map((g) => (
+        <div key={g.lien} className="mairie-geste">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+            <strong style={{ color: g.urgent ? 'var(--urgence-fonce)' : 'var(--bleu-nuit)' }}>{g.texte}</strong>
+            <span className="texte-doux" style={{ fontSize: 13 }}>
+              {g.detail}
+            </span>
+          </div>
+          <Link to={g.lien} className={`mairie-bouton${g.urgent ? ' mairie-bouton--urgence' : ''}`} style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center' }}>
+            {g.bouton}
+          </Link>
+        </div>
+      ))}
+    </section>
+  )
+}
+
+// Accueil en veille : ce qui doit être prêt avant une crise
+function Preparation({ donnees }: { donnees: Donnees }) {
+  const points = [
+    { ok: donnees.risques.length > 0, texte: 'Risques de la commune renseignés', lien: '/mairie/commune' },
+    { ok: donnees.zonesRisque.length > 0, texte: 'Zones exposées aux risques tracées sur la carte', lien: '/mairie/commune' },
+    { ok: donnees.lieux.length > 0, texte: "Lieux d'accueil et de secours enregistrés", lien: '/mairie/lieux' },
+    { ok: donnees.benevoles.length > 0, texte: 'Bénévoles de l’association enregistrés', lien: '/mairie/benevoles' },
+    { ok: donnees.entreprises.length > 0, texte: 'Entreprises sous convention enregistrées', lien: '/mairie/entreprises' },
+  ]
+  return (
+    <section className="mairie-panneau" aria-labelledby="titre-preparation">
+      <h2 id="titre-preparation">Être prêt avant la crise</h2>
+      {points.map((p) => (
+        <Link key={p.texte} to={p.lien} className="mairie-geste" style={{ textDecoration: 'none', color: 'inherit' }}>
+          <span>
+            <span aria-hidden="true" style={{ marginRight: 8, fontWeight: 800, color: p.ok ? 'var(--bleu)' : 'var(--urgence-fonce)' }}>
+              {p.ok ? '✓' : '!'}
+            </span>
+            {p.texte}
+            <span className="sr-only">{p.ok ? ' : fait' : ' : à faire'}</span>
+          </span>
+          <span className="texte-doux" style={{ fontSize: 13 }}>
+            {p.ok ? 'Voir' : 'Compléter'}
+          </span>
+        </Link>
+      ))}
+    </section>
   )
 }
 
@@ -765,6 +971,8 @@ type PropsCarte = {
   communeId: string
   enCrise: boolean
   centre: [number, number]
+  // Crise : demandes et zones à éviter ; risques : zones permanentes du TIM et du DICRIM
+  mode: 'crise' | 'risques'
   // Partenaire secours connecté : il propose des zones à éviter, la mairie les valide
   partenaire?: string
 }
@@ -824,7 +1032,7 @@ function useVerrou(enCrise: boolean, objet: string) {
 // Zone tracée à la main : à éviter (crise en cours, rouge) ou exposée à un risque du TIM (permanente)
 type Trace = { type: 'danger' | 'risque'; points: [number, number][] }
 
-function CarteMairie({ lieux, demandes, zones, propositions, zonesRisque, risques, communeId, enCrise, centre, partenaire }: PropsCarte) {
+function CarteMairie({ lieux, demandes, zones, propositions, zonesRisque, risques, communeId, enCrise, centre, partenaire, mode }: PropsCarte) {
   // Zone proposée affichée en pointillés sur la carte (la première par défaut)
   const [apercu, setApercu] = useState<string | null>(null)
   const zoneApercue = propositions.find((z) => z.id === apercu) ?? propositions[0]
@@ -982,7 +1190,7 @@ function CarteMairie({ lieux, demandes, zones, propositions, zonesRisque, risque
       titre: `${l.nom} · ${l.ouvert ? 'ouvert' : 'fermé'}`,
       attenue: !l.ouvert,
     })),
-    ...ouvertes.flatMap((d) => {
+    ...(mode === 'risques' ? [] : ouvertes).flatMap((d) => {
       const c = coordonneesDemande(d)
       if (!c) return []
       const urgent = d.situation === 'blesse' || d.situation === 'evac' || d.personne_vulnerable
@@ -992,7 +1200,13 @@ function CarteMairie({ lieux, demandes, zones, propositions, zonesRisque, risque
   const sansPosition = ouvertes.filter((d) => !coordonneesDemande(d)).length
   return (
     <section className="mairie-panneau" aria-labelledby="titre-carte">
-      <h2 id="titre-carte">Carte de la commune</h2>
+      <h2 id="titre-carte">{mode === 'risques' ? 'Zones exposées aux risques' : 'Carte de la commune'}</h2>
+      {mode === 'risques' && (
+        <p className="texte-doux" style={{ fontSize: 14, lineHeight: 1.5 }}>
+          Zones connues pour être exposées (inondation, barrage, site industriel…), reprises des cartes que la préfecture envoie à la mairie
+          (TIM, transmission d'informations au maire) ou du DICRIM. Les habitants les voient en pointillés, toute l'année.
+        </p>
+      )}
       <CarteInteractive
         reperes={reperes}
         zones={zones}
@@ -1004,19 +1218,19 @@ function CarteMairie({ lieux, demandes, zones, propositions, zonesRisque, risque
         hauteur={380}
       />
       <div className="texte-doux" style={{ display: 'flex', gap: 14, flexWrap: 'wrap', fontSize: 13 }}>
-        <Legende couleur="#c2410c" texte="Demande prioritaire" />
-        <Legende couleur="#e9a23b" texte="Autre demande" />
+        {mode === 'crise' && <Legende couleur="#c2410c" texte="Demande prioritaire" />}
+        {mode === 'crise' && <Legende couleur="#e9a23b" texte="Autre demande" />}
         <Legende couleur={couleurLieu.accueil} texte="Accueil" />
         <Legende couleur={couleurLieu.soins} texte="Secours" />
         <Legende couleur={couleurLieu.eau} texte="Eau" />
         <Legende couleur="#d92d20" texte="Zone à éviter" />
-        <Legende couleur="#86ddff" texte="Zone de risque (TIM)" />
+        <Legende couleur="#86ddff" texte="Zone exposée à un risque" />
         {propositions.length > 0 && <Legende couleur="#c2410c" texte="Zone proposée (pointillés)" />}
       </div>
       {trace ? (
         <form onSubmit={enregistrer} style={{ display: 'flex', flexDirection: 'column', gap: 10, borderTop: '1px solid var(--bordure)', paddingTop: 12 }}>
           <p style={{ fontSize: 14, fontWeight: 700 }}>
-            {trace.type === 'risque' ? 'Zone de risque du TIM : r' : 'Zone à éviter : r'}eprenez le contour en cliquant sur la carte ({trace.points.length} point
+            {trace.type === 'risque' ? 'Zone exposée à un risque : r' : 'Zone à éviter : r'}eprenez le contour en cliquant sur la carte ({trace.points.length} point
             {trace.points.length > 1 ? 's' : ''}, 3 minimum).
           </p>
           {trace.type === 'risque' && champsRisque}
@@ -1076,7 +1290,7 @@ function CarteMairie({ lieux, demandes, zones, propositions, zonesRisque, risque
             </button>
           </div>
         </div>
-      ) : partenaire ? (
+      ) : partenaire || mode === 'crise' ? (
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           <button type="button" className="mairie-bouton" onClick={() => commencer('danger')}>
             Tracer une zone à éviter
@@ -1084,16 +1298,13 @@ function CarteMairie({ lieux, demandes, zones, propositions, zonesRisque, risque
         </div>
       ) : (
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          <button type="button" className="mairie-bouton" onClick={() => commencer('danger')}>
-            Tracer une zone à éviter
-          </button>
           {(verrou.modifiable || (!enCrise && zonesRisque.length === 0)) && (
             <>
               <button type="button" className="mairie-bouton" onClick={() => commencer('risque')}>
-                Tracer une zone du TIM
+                Tracer une zone exposée
               </button>
               <label className="mairie-bouton" style={{ cursor: 'pointer', position: 'relative', display: 'inline-flex', alignItems: 'center' }}>
-                Importer un fichier du TIM (GeoJSON)
+                Importer une carte (fichier GeoJSON)
                 <input
                   type="file"
                   accept=".geojson,.json,application/geo+json,application/json"
@@ -1108,7 +1319,7 @@ function CarteMairie({ lieux, demandes, zones, propositions, zonesRisque, risque
           )}
         </div>
       )}
-      {zones.map((z) => (
+      {mode === 'crise' && zones.map((z) => (
         <div key={z.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10 }}>
           <span style={{ fontSize: 14 }}>
             <strong style={{ color: 'var(--danger)' }}>{z.nom}</strong>
@@ -1122,7 +1333,7 @@ function CarteMairie({ lieux, demandes, zones, propositions, zonesRisque, risque
           )}
         </div>
       ))}
-      {propositions.map((z) => (
+      {mode === 'crise' && propositions.map((z) => (
         <div key={z.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, flexWrap: 'wrap', borderLeft: '4px dashed #c2410c', paddingLeft: 10 }}>
           <span style={{ fontSize: 14 }}>
             <strong>Proposée par {z.proposee_par}</strong> · {z.nom}
@@ -1148,8 +1359,8 @@ function CarteMairie({ lieux, demandes, zones, propositions, zonesRisque, risque
           </span>
         </div>
       ))}
-      {zonesRisque.length > 0 && !partenaire && verrou.bandeau}
-      {zonesRisque.map((z) => (
+      {mode === 'risques' && zonesRisque.length > 0 && !partenaire && verrou.bandeau}
+      {mode === 'risques' && zonesRisque.map((z) => (
         <div key={z.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10 }}>
           <span style={{ fontSize: 14 }}>
             <strong style={{ color: 'var(--bleu-nuit)' }}>
@@ -1171,7 +1382,7 @@ function CarteMairie({ lieux, demandes, zones, propositions, zonesRisque, risque
           {message}
         </p>
       )}
-      {sansPosition > 0 && (
+      {mode === 'crise' && sansPosition > 0 && (
         <p className="texte-doux" style={{ fontSize: 13 }}>
           {sansPosition} demande{sansPosition > 1 ? 's' : ''} sans GPS (adresse saisie à la main) : voir la liste.
         </p>
@@ -2044,10 +2255,10 @@ function PanneauPartenaire({ crise }: { crise: CriseServeur | null }) {
   )
 }
 
-function PanneauJournal({ journal }: { journal: Evenement[] }) {
+function PanneauJournal({ journal, lienTout = false }: { journal: Evenement[]; lienTout?: boolean }) {
   return (
     <section className="mairie-panneau" aria-labelledby="titre-journal">
-      <h2 id="titre-journal">Journal</h2>
+      <h2 id="titre-journal">{lienTout ? 'Dernières actions' : 'Journal'}</h2>
       {journal.length === 0 && <p className="texte-doux">Aucune action enregistrée.</p>}
       <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 6 }}>
         {journal.map((j) => (
@@ -2062,6 +2273,11 @@ function PanneauJournal({ journal }: { journal: Evenement[] }) {
           </li>
         ))}
       </ul>
+      {lienTout && journal.length > 0 && (
+        <Link to="/mairie/bilan" style={{ fontSize: 14 }}>
+          Tout le journal
+        </Link>
+      )}
     </section>
   )
 }
