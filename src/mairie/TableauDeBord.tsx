@@ -376,7 +376,6 @@ export default function TableauDeBord({ coordinateur }: { coordinateur: Coordina
                   {/* Les secours ont tout l'espace, sauf déclencher la crise, alerter et le référentiel de la commune */}
                   {secours ? <PanneauPartenaire crise={donnees.crise} /> : <PanneauCrise key={donnees.crise?.id ?? 'veille'} crise={donnees.crise} communeId={commune} />}
                   {!enCrise && !secours && <Preparation donnees={donnees} />}
-                  <PanneauJournal journal={donnees.journal.slice(0, 8)} lienTout />
                 </div>
               </div>
             )}
