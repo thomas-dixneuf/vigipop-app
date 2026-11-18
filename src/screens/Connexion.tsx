@@ -1,9 +1,9 @@
 import { useState, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import ChampAdresse from '../components/ChampAdresse.tsx'
 import ChampTelephone from '../components/ChampTelephone.tsx'
 import EnTeteRetour from '../components/EnTeteRetour.tsx'
 import Logo from '../components/Logo.tsx'
-import { commune as communeDemo } from '../data/fictif.ts'
 import { numeroValide, type EtatCode } from '../outils/formulaire.ts'
 import { useAppState } from '../state/AppState.tsx'
 import { envoyerCode } from '../services/codeSms.ts'
@@ -12,10 +12,12 @@ export default function Connexion() {
   const navigate = useNavigate()
   const { dernierUtilisateur: compte } = useAppState()
   const [telephone, setTelephone] = useState(compte?.telephone ?? '')
+  // Commune choisie dans la liste officielle : l'app affiche ensuite ses services, si elle utilise Vigipop
+  const [commune, setCommune] = useState<string | null>(compte?.commune || null)
   const [envoi, setEnvoi] = useState(false)
   const [erreur, setErreur] = useState('')
 
-  const valide = numeroValide(telephone)
+  const valide = numeroValide(telephone) && commune !== null
 
   const envoyer = async (e: FormEvent) => {
     e.preventDefault()
@@ -25,13 +27,13 @@ export default function Connexion() {
     const resultat = await envoyerCode(telephone, false)
     setEnvoi(false)
     if ('erreur' in resultat) return setErreur(resultat.erreur)
-    // En vrai, le prénom et la commune viendront du serveur ; ici on reprend ceux du téléphone
+    // En vrai, le prénom et la commune viendront du serveur ; ici on reprend ceux du téléphone, et la commune choisie
     const memeCompte = compte && compte.telephone.replace(/\D/g, '') === telephone.replace(/\D/g, '')
     const etat: EtatCode = {
       prenom: memeCompte ? compte.prenom : '',
       nom: memeCompte ? compte.nom : undefined,
       telephone,
-      commune: memeCompte ? compte.commune : communeDemo,
+      commune: commune ?? '',
       nouveauCompte: false,
       typeCode: resultat.type,
     }
@@ -50,6 +52,15 @@ export default function Connexion() {
           <Logo taille={80} />
         </div>
         <ChampTelephone valeur={telephone} onChange={setTelephone} />
+        <ChampAdresse
+          variante="app"
+          commune
+          obligatoire
+          libelleChamp="Ma commune"
+          valeurInitiale={compte?.commune ?? ''}
+          verifieeInitialement={!!compte?.commune}
+          onChoix={(r) => setCommune(r?.libelle ?? null)}
+        />
 
         {erreur && (
           <p role="alert" style={{ color: 'var(--danger)', fontSize: 14, fontWeight: 700 }}>
