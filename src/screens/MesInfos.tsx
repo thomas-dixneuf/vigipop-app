@@ -148,7 +148,7 @@ export default function MesInfos() {
             <li>Si vous êtes volontaire : l'aide que vous proposez et votre disponibilité.</li>
             {hebergeur && (
               <li>
-                L'adresse du logement où vous pouvez héberger des sinistrés : {accueil.adresse || 'non renseignée'}. Elle n'est jamais montrée aux
+                L'adresse du logement où vous pouvez héberger des sinistré(e)s : {accueil.adresse || 'non renseignée'}. Elle n'est jamais montrée aux
                 autres habitants, seulement à la personne que vous acceptez d'accueillir.
               </li>
             )}

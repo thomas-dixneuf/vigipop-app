@@ -28,11 +28,13 @@ type Props = {
   // Tracé en cours (espace mairie) et clic sur la carte pour l'allonger
   trace?: [number, number][]
   onClicCarte?: (point: [number, number]) => void
+  // Crise en cours : les zones exposées connues s'estompent pour que les zones touchées (rouge) ressortent
+  attenuerRisques?: boolean
 }
 
 // Fond OpenStreetMap : gratuit, sans clé ; si les tuiles ne chargent pas (hors ligne),
 // la liste des lieux affichée sous la carte reste utilisable.
-export default function CarteInteractive({ reperes, centre, position, selection, onSelection, hauteur = 320, zones = [], zonesRisque = [], couleurTrace = '#b42318', trace, onClicCarte }: Props) {
+export default function CarteInteractive({ reperes, centre, position, selection, onSelection, hauteur = 320, zones = [], zonesRisque = [], couleurTrace = '#b42318', trace, onClicCarte, attenuerRisques = false }: Props) {
   const conteneur = useRef<HTMLDivElement>(null)
   const carte = useRef<L.Map | null>(null)
   const calque = useRef<L.LayerGroup | null>(null)
@@ -69,13 +71,20 @@ export default function CarteInteractive({ reperes, centre, position, selection,
     // Les zones d'abord, pour que les repères restent cliquables par-dessus ;
     // les zones de risque (permanentes) sous les zones à éviter (crise en cours)
     for (const z of zonesRisque) {
-      L.polygon(z.points, { color: '#0e3a52', weight: 2, dashArray: '6 5', fillColor: '#86ddff', fillOpacity: 0.25 })
-        .bindTooltip(`Risque ${z.risque.toLowerCase()} : ${z.nom}`, { sticky: true })
+      L.polygon(z.points, {
+        color: '#0e3a52',
+        weight: attenuerRisques ? 1.5 : 2,
+        opacity: attenuerRisques ? 0.6 : 1,
+        dashArray: '6 5',
+        fillColor: '#86ddff',
+        fillOpacity: attenuerRisques ? 0.08 : 0.25,
+      })
+        .bindTooltip(`Zone exposée (risque connu, pas forcément touchée) · ${z.risque.toLowerCase()} : ${z.nom}`, { sticky: true })
         .addTo(groupe)
     }
     for (const z of zones) {
       L.polygon(z.points, { color: '#b42318', weight: 2, fillColor: '#d92d20', fillOpacity: 0.3 })
-        .bindTooltip(`Zone à éviter : ${z.nom}`, { sticky: true })
+        .bindTooltip(`Zone touchée, à éviter : ${z.nom}`, { sticky: true })
         .addTo(groupe)
     }
     if (trace && trace.length > 0) {
@@ -111,7 +120,7 @@ export default function CarteInteractive({ reperes, centre, position, selection,
       instance.fitBounds(L.latLngBounds(points), { padding: [30, 30], maxZoom: 16 })
       cadree.current = true
     }
-  }, [reperes, position, selection, onSelection, zones, zonesRisque, couleurTrace, trace])
+  }, [reperes, position, selection, onSelection, zones, zonesRisque, couleurTrace, trace, attenuerRisques])
 
   useEffect(() => {
     const r = reperes.find((x) => x.id === selection)
