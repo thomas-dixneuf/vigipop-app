@@ -75,8 +75,8 @@ const groupesPages: { groupe: string; pages: { id: Page; titre: string }[] }[] =
   {
     groupe: 'Habitants',
     pages: [
-      { id: 'demandes', titre: 'Demandes d’aide' },
-      { id: 'volontaires', titre: 'Volontaires habitants' },
+      { id: 'demandes', titre: 'Ont besoin d’aide' },
+      { id: 'volontaires', titre: 'Proposent leur aide' },
     ],
   },
   {
@@ -108,9 +108,9 @@ function pagesVisibles(donnees: Donnees): Page[] {
 // Une phrase sous le titre de chaque page : à quoi elle sert, en une lecture
 const descriptionsPages: Record<Page, string> = {
   '': '',
-  demandes: 'Les habitants qui ont besoin d’aide. Traitez-les dans l’ordre : prendre en charge, organiser l’aide, prévenir l’habitant.',
+  demandes: 'Les demandes d’aide envoyées par les habitants. Traitez-les dans l’ordre : prendre en charge, organiser l’aide, prévenir l’habitant.',
   volontaires:
-    'Les habitants inscrits dans l’app pour aider. Hébergement, transport et matériel leur sont proposés automatiquement ; pour le reste (eau, médicaments, animaux…), envoyez une mission.',
+    'Les habitants volontaires, prêts à aider leurs voisins. Hébergement, transport et matériel leur sont proposés automatiquement ; pour le reste (eau, médicaments, animaux…), envoyez une mission.',
   benevoles: 'Les bénévoles formés de l’association (réserve communale, Protection civile…) : la mairie les connaît et les appelle directement.',
   entreprises: 'Les entreprises qui ont signé une convention pour prêter du matériel ou des engins pendant une crise.',
   lieux: 'Gymnases, salles et points d’eau : seuls les lieux ouverts s’affichent chez les habitants.',
@@ -313,11 +313,20 @@ export default function TableauDeBord({ coordinateur }: { coordinateur: Coordina
               <div className="mairie-contenu">
                 <div className="mairie-colonne">
                   {donnees.crise && <AFaire donnees={donnees} />}
+                  {!donnees.crise && pagesVisibles(donnees).includes('demandes') && (
+                    <section className="mairie-panneau" style={{ borderColor: 'var(--urgence)', borderWidth: 2 }}>
+                      <h2>Demande d’aide reçue hors crise</h2>
+                      <p style={{ margin: 0, fontSize: 14 }}>Un habitant a demandé de l’aide alors qu’aucune crise n’est déclenchée.</p>
+                      <Link to="/mairie/demandes" className="mairie-bouton mairie-bouton--principal" style={{ alignSelf: 'flex-start', textDecoration: 'none' }}>
+                        Voir la demande
+                      </Link>
+                    </section>
+                  )}
                   {donnees.crise && <Compteurs demandes={donnees.demandes} />}
                   <CarteMairie
-                    mode="crise"
+                    mode={donnees.crise ? 'crise' : 'veille'}
                     lieux={donnees.lieux}
-                    demandes={donnees.demandes}
+                    demandes={donnees.crise ? donnees.demandes : []}
                     zones={donnees.zones}
                     zonesRisque={donnees.zonesRisque}
                     risques={donnees.risques}
@@ -440,7 +449,8 @@ function Navigation({ page, donnees }: { page: Page; donnees: Donnees }) {
   return (
     <nav className="mairie-nav" aria-label="Pages de l'espace mairie">
       {groupesPages.map((g) => {
-        const pages = g.pages.filter((p) => visibles.includes(p.id))
+        // Hors crise, le menu ne montre que les informations de la mairie
+        const pages = g.pages.filter((p) => visibles.includes(p.id) && (!!donnees.crise || !pagesHabitants.includes(p.id)))
         if (!pages.length) return null
         return (
           <div key={g.groupe || 'accueil'} className="mairie-nav-bloc">
@@ -449,8 +459,8 @@ function Navigation({ page, donnees }: { page: Page; donnees: Donnees }) {
           </div>
         )
       })}
-      {!donnees.crise && !visibles.includes('demandes') && (
-        <p className="mairie-nav-note">Demandes d’aide et volontaires apparaissent ici dès que le mode crise est déclenché.</p>
+      {!donnees.crise && (
+        <p className="mairie-nav-note">Les habitants qui ont besoin d’aide et ceux qui proposent leur aide apparaissent ici dès que le mode crise est déclenché.</p>
       )}
     </nav>
   )
@@ -852,7 +862,8 @@ type PropsCarte = {
   communeId: string
   centre: [number, number]
   // Crise : demandes et zones à éviter ; risques : zones permanentes du TIM et du DICRIM
-  mode: 'crise' | 'risques'
+  // veille : simple consultation (lieux, zones exposées), sans demandes ni tracé
+  mode: 'crise' | 'risques' | 'veille'
 }
 
 // Zone tracée à la main : à éviter (crise en cours, rouge) ou exposée à un risque du TIM (permanente)
@@ -1023,7 +1034,7 @@ function CarteMairie({ lieux, demandes, zones, zonesRisque, risques, communeId, 
         <Legende couleur={couleurLieu.accueil} texte="Accueil" />
         <Legende couleur={couleurLieu.soins} texte="Secours" />
         <Legende couleur={couleurLieu.eau} texte="Eau" />
-        <Legende couleur="#d92d20" texte="Zone à éviter" />
+        {mode === 'crise' && <Legende couleur="#d92d20" texte="Zone à éviter" />}
         <Legende couleur="#86ddff" texte="Zone exposée à un risque" />
       </div>
       {trace ? (
@@ -1089,7 +1100,7 @@ function CarteMairie({ lieux, demandes, zones, zonesRisque, risques, communeId, 
             </button>
           </div>
         </div>
-      ) : (
+      ) : mode === 'veille' ? null : (
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           {mode === 'crise' ? (
             <button type="button" className="mairie-bouton" onClick={() => commencer('danger')}>
