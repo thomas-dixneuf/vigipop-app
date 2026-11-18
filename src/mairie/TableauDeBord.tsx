@@ -91,11 +91,12 @@ const groupesPages: { groupe: string; pages: { id: Page; titre: string }[] }[] =
     pages: [
       { id: 'lieux', titre: 'Lieux d’accueil' },
       { id: 'bilan', titre: 'Journal et bilan' },
-      { id: 'parametres', titre: 'Paramètres de la ville' },
     ],
   },
 ]
-const toutesPages = groupesPages.flatMap((g) => g.pages)
+// Rarement modifiés : en bas du menu, à part
+const pageParametres: { id: Page; titre: string } = { id: 'parametres', titre: 'Paramètres de la ville' }
+const toutesPages = [...groupesPages.flatMap((g) => g.pages), pageParametres]
 // Hors crise, l'espace mairie ne montre que les informations de la mairie (lieux, risques, renforts, journal).
 // Les pages des habitants n'apparaissent qu'en crise, ou s'il reste une demande ouverte à traiter.
 const pagesHabitants: Page[] = ['demandes', 'volontaires']
@@ -114,7 +115,7 @@ const descriptionsPages: Record<Page, string> = {
   benevoles: 'Les bénévoles formés de l’association (réserve communale, Protection civile…) : la mairie les connaît et les appelle directement.',
   entreprises: 'Les entreprises qui ont signé une convention pour prêter du matériel ou des engins pendant une crise.',
   lieux: 'Gymnases, salles et points d’eau : seuls les lieux ouverts s’affichent chez les habitants.',
-  parametres: 'Réglages rarement modifiés : risques connus de la commune (DICRIM), périmètre pour les visiteurs, alertes sur les téléphones.',
+  parametres: 'Réglages rarement modifiés : risques connus de la commune (DICRIM) et alertes sur les téléphones.',
   bilan: 'Tout ce que la cellule de crise a fait, et le bilan à transmettre (sans nom ni numéro).',
 }
 
@@ -362,6 +363,9 @@ export default function TableauDeBord({ coordinateur }: { coordinateur: Coordina
                     communeId={commune}
                     centre={centre}
                   />
+                  {!donnees.crise && (
+                    <PanneauPosition position={donnees.position ?? null} communeId={commune} communeNom={coordinateur.communeNom} onEnregistre={() => void charger()} />
+                  )}
                 </div>
                 <div className="mairie-colonne">
                   <PanneauCrise crise={donnees.crise} communeId={commune} />
@@ -428,7 +432,6 @@ export default function TableauDeBord({ coordinateur }: { coordinateur: Coordina
               <div className="mairie-contenu">
                 <div className="mairie-colonne">
                   <PanneauRisques risques={donnees.risques} communeId={commune} onEnregistre={() => void charger()} />
-                  <PanneauPosition position={donnees.position ?? null} communeId={commune} communeNom={coordinateur.communeNom} onEnregistre={() => void charger()} />
                 </div>
                 <div className="mairie-colonne">
                   <PanneauPush />
@@ -480,6 +483,7 @@ function Navigation({ page, donnees }: { page: Page; donnees: Donnees }) {
       {!donnees.crise && (
         <p className="mairie-nav-note">Les habitants qui ont besoin d’aide et ceux qui proposent leur aide apparaissent ici dès que le mode crise est déclenché.</p>
       )}
+      <div className="mairie-nav-bloc mairie-nav-bas">{lien(pageParametres)}</div>
     </nav>
   )
 }
