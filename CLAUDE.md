@@ -37,7 +37,8 @@ les secours et l'alerte officielle (FR-Alert), elle ne les remplace jamais.
   Quand la cellule agit sur une demande eau ou médicaments, la mission est créée automatiquement (liée à la demande,
   sans l'adresse de l'habitant, donnée par téléphone au volontaire qui accepte).
 - **Qui peut aider** : une seule liste mélangée (volontaires, Protection civile, entreprises pour le matériel), étiquetée
-  par sorte, les libres et les plus proches d'abord.
+  par sorte, les libres et les plus proches d'abord. Les entreprises ne répondent qu'au besoin « Matériel ». En crise, la page
+  « Demandes et aidants » n'a pas d'onglets ; « Besoins à couvrir » dit pour chaque besoin par qui et comment il est réglé.
 - **Paires automatiques** : besoin « Transport » → volontaire avec véhicule, « Matériel » → volontaire
   avec matériel, proposés au plus proche disponible (table `entraides`, une sollicitation à la fois par
   volontaire). Coordonnées échangées seulement après l'accord. Les autres besoins (eau, médicaments,

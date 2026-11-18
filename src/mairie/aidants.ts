@@ -20,9 +20,10 @@ export type Volontaire = {
 // Ce qu'un aidant fait déjà (hébergement ou entraide en cours), pour ne pas le solliciter deux fois
 export type Engagement = { aidant: string; reference: string; libelle: string }
 
-// Pour chaque besoin d'habitant : ce qui y répond chez les volontaires, les bénévoles et les entreprises
+// Pour chaque besoin d'habitant : ce qui y répond chez les volontaires, les bénévoles et les entreprises.
+// Les entreprises conventionnées ne répondent qu'au besoin « Matériel ».
 export const correspondances: Record<string, { ressources: string[]; qualifications: string[]; materiel: string[]; mission?: { titre: string; categorie: string } }> = {
-  heb: { ressources: ['heb'], qualifications: ['Accueil et hébergement'], materiel: ['Lits et couvertures', 'Bâches et mise à l’abri'] },
+  heb: { ressources: ['heb'], qualifications: ['Accueil et hébergement'], materiel: [] },
   // Les entreprises conventionnées prêtent du matériel ; elles ne font jamais de mission ni de transport de personnes
   transport: { ressources: ['vehicule'], qualifications: ['Conduite poids lourd', 'Logistique'], materiel: [] },
   materiel: {
@@ -30,7 +31,7 @@ export const correspondances: Record<string, { ressources: string[]; qualificati
     qualifications: ['Logistique', 'Déblaiement et bricolage'],
     materiel: ['Pompes et motopompes', 'Groupes électrogènes', 'Outillage et déblaiement', 'Sacs de sable et barrières', 'Bâches et mise à l’abri', 'Engins de chantier'],
   },
-  eau: { ressources: ['mainoeuvre', 'vehicule'], qualifications: ['Logistique'], materiel: ['Eau et vivres'], mission: { titre: "Distribution d'eau et de repas", categorie: 'mainoeuvre' } },
+  eau: { ressources: ['mainoeuvre', 'vehicule'], qualifications: ['Logistique'], materiel: [], mission: { titre: "Distribution d'eau et de repas", categorie: 'mainoeuvre' } },
   med: { ressources: ['vehicule', 'competences'], qualifications: ['Secourisme (PSE1 / PSE2)'], materiel: [], mission: { titre: 'Livraison de médicaments', categorie: 'vehicule' } },
   // Blessé ou évacuation sans besoin coché : les secouristes
   secours: { ressources: ['competences'], qualifications: ['Secourisme (PSE1 / PSE2)', 'Soutien psychologique'], materiel: [] },
