@@ -23,7 +23,9 @@ les secours et l'alerte officielle (FR-Alert), elle ne les remplace jamais.
 - **Carte** : fond OpenStreetMap (Leaflet), adresses officielles via la Base Adresse Nationale,
   « Itinéraire » ouvre Google Maps. Jamais d'adresse privée (hébergement chez l'habitant) sur
   la carte des habitants : seulement un nombre de foyers. Le serveur propose automatiquement le
-  foyer le plus proche, l'hébergeur accepte ou refuse, la mairie supervise et peut réattribuer.
+  foyer le plus proche (répartition automatique désactivable par la mairie, migration 0018), l'hébergeur accepte ou
+  refuse, puis la personne sinistrée voit l'offre et peut la décliner : le foyer suivant lui est proposé (jamais deux
+  fois le même). La mairie supervise et peut réattribuer.
   Zones à éviter tracées par la mairie, en rouge. Zones exposées aux risques connus (TIM fourni par la
   commune, DICRIM) : tracées ou importées en GeoJSON par la mairie, permanentes, en pointillés bleu nuit.
 - **Missions ciblées** : une mission a un type d'aide ; un volontaire ne reçoit que celles des

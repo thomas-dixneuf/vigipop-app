@@ -51,6 +51,8 @@ type Donnees = {
   risques: string[]
   // Centre et rayon de la commune (migration 0015) ; absent : pas encore placée
   position?: PositionCommune | null
+  // Répartition automatique de l'hébergement (migration 0018) ; activée si la colonne n'existe pas encore
+  hebergementAuto?: boolean
   demandes: DemandeServeur[]
   lieux: LieuServeur[]
   missions: MissionServeur[]
@@ -146,6 +148,7 @@ const libelleAction: Record<string, string> = {
   hebergement_acceptee: 'Hébergement accepté',
   hebergement_refusee: 'Hébergement refusé',
   hebergement_annulee: 'Hébergement annulé',
+  hebergement_declinee: 'Hébergement décliné par la personne',
   entraide_proposee: 'Volontaire sollicité',
   entraide_acceptee: 'Aide acceptée',
   entraide_refusee: 'Aide refusée',
@@ -203,6 +206,7 @@ export default function TableauDeBord({ coordinateur }: { coordinateur: Coordina
     const lues: Donnees = {
       crise: criseActive,
       risques: (communeLue.data as { risques?: string[] } | null)?.risques ?? [],
+      hebergementAuto: (communeLue.data as { hebergement_auto?: boolean } | null)?.hebergement_auto ?? true,
       position: (() => {
         const c = communeLue.data as { lat?: number | null; lng?: number | null; rayon_km?: number | null } | null
         return c?.lat != null && c?.lng != null ? { lat: c.lat, lng: c.lng, rayon_km: Number(c.rayon_km ?? 5) } : null
@@ -353,7 +357,14 @@ export default function TableauDeBord({ coordinateur }: { coordinateur: Coordina
                     communeId={commune}
                   />
                   <h2 className="mairie-intertitre">3. Proposé automatiquement aux volontaires</h2>
-                  <PanneauHebergement demandes={donnees.demandes} volontaires={donnees.volontaires} hebergements={donnees.hebergements} communeId={commune} />
+                  <PanneauHebergement
+                    demandes={donnees.demandes}
+                    volontaires={donnees.volontaires}
+                    hebergements={donnees.hebergements}
+                    communeId={commune}
+                    auto={donnees.hebergementAuto ?? true}
+                    onAuto={() => void charger()}
+                  />
                   <PanneauEntraides demandes={donnees.demandes} volontaires={donnees.volontaires} entraides={donnees.entraides} communeId={commune} />
                 </div>
                 <div className="mairie-colonne">
@@ -1609,7 +1620,13 @@ type PropsHebergement = { demandes: DemandeServeur[]; volontaires: Volontaire[];
 
 // Besoins et foyers face à face. Le serveur propose seul le foyer le plus proche ;
 // la mairie supervise : elle peut changer de foyer ou relancer la recherche.
-function PanneauHebergement({ demandes, volontaires, hebergements, communeId }: PropsHebergement) {
+function PanneauHebergement({ demandes, volontaires, hebergements, communeId, auto, onAuto }: PropsHebergement & { auto: boolean; onAuto: () => void }) {
+  const [messageAuto, setMessageAuto] = useState('')
+  const basculerAuto = async () => {
+    const { data, error } = await serveur!.from('communes').update({ hebergement_auto: !auto }).eq('id', communeId).select('id')
+    setMessageAuto(error || !data?.length ? 'Non enregistré. Lancez d’abord la migration 0018 dans Supabase.' : '')
+    onAuto()
+  }
   const besoins = demandes.filter((d) => d.statut !== 'close' && (d.besoins.includes('heb') || hebergements.some((h) => h.demande_id === d.id && actif(h))))
   // Ceux qui accueillent déjà d'abord, puis ceux qui ont une réponse à donner, puis les disponibles
   const rang = (v: Volontaire) => {
@@ -1621,9 +1638,20 @@ function PanneauHebergement({ demandes, volontaires, hebergements, communeId }: 
   return (
     <section className="mairie-panneau" aria-labelledby="titre-hebergement">
       <h2 id="titre-hebergement">Hébergement chez l'habitant</h2>
-      <p className="texte-doux" style={{ marginTop: -4 }}>
-        Chaque demande est proposée automatiquement au foyer disponible le plus proche. L'hébergeur accepte ou refuse ; en cas de refus, le suivant est sollicité.
-      </p>
+      <div className="mairie-reglage">
+        <span style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+          <strong>Répartition automatique : {auto ? 'activée' : 'désactivée'}</strong>
+          <span className="texte-doux">
+            {auto
+              ? "Chaque demande part seule au foyer disponible le plus proche. L'hébergeur accepte ou refuse ; la personne voit l'offre et peut demander un autre foyer, jusqu'à en trouver un qui lui convient."
+              : 'Aucun foyer n’est sollicité tout seul : vous proposez vous-même un foyer pour chaque demande.'}
+          </span>
+        </span>
+        <button type="button" className="mairie-bouton" onClick={() => void basculerAuto()}>
+          {auto ? 'Désactiver' : 'Activer'}
+        </button>
+      </div>
+      {messageAuto && <p role="status" style={{ fontSize: 14 }}>{messageAuto}</p>}
       <div className="mairie-face-a-face">
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           <h3 style={{ fontSize: 15 }}>
@@ -1685,13 +1713,15 @@ function HebergementDemande({ demande, volontaires, hebergements, communeId }: {
   const lies = hebergements.filter((h) => h.demande_id === demande.id)
   const enCours = lies.find(actif)
   const refus = new Set(lies.filter((h) => h.statut === 'refusee').map((h) => h.hebergeur))
+  // Offres que la personne a déclinées : ces foyers ne lui sont plus proposés
+  const declines = new Set(lies.filter((h) => h.statut === 'declinee').map((h) => h.hebergeur))
   const position = coordonneesDemande(demande)
   const nom = (auteur: string) => volontaires.find((v) => v.auteur === auteur)
 
   const restantes = (v: Volontaire) => placesRestantes(v, hebergements)
   const distance = (v: Volontaire) => (position && v.lat !== null && v.lng !== null ? distanceMetres(position, { lat: v.lat, lng: v.lng }) : null)
   const candidats = volontaires
-    .filter((v) => v.ressources.includes('heb') && !refus.has(v.auteur) && restantes(v) >= demande.personnes)
+    .filter((v) => v.ressources.includes('heb') && !refus.has(v.auteur) && !declines.has(v.auteur) && restantes(v) >= demande.personnes)
     .sort((a, b) => (distance(a) ?? Infinity) - (distance(b) ?? Infinity))
 
   const proposer = async (v: Volontaire) => {
@@ -1747,6 +1777,11 @@ function HebergementDemande({ demande, volontaires, hebergements, communeId }: {
       {refus.size > 0 && (
         <span className="texte-doux">
           Refusé par : {[...refus].map((a) => nom(a)?.prenom || 'un volontaire').join(', ')}
+        </span>
+      )}
+      {declines.size > 0 && (
+        <span className="texte-doux">
+          Ne convenait pas à la personne : {[...declines].map((a) => nom(a)?.prenom || 'un volontaire').join(', ')}
         </span>
       )}
       <span>

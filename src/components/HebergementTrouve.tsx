@@ -18,6 +18,7 @@ function lireCache(demande: string): MonHebergementServeur | null {
 // Gardé sur le téléphone pour rester lisible sans réseau.
 export default function HebergementTrouve({ demande, recherche }: { demande: string; recherche: boolean }) {
   const [hebergement, setHebergement] = useState<MonHebergementServeur | null>(() => lireCache(demande))
+  const [message, setMessage] = useState('')
 
   const charger = useCallback(async () => {
     if (!serveur) return
@@ -72,6 +73,16 @@ export default function HebergementTrouve({ demande, recherche }: { demande: str
     )
   }
 
+  // « Ne me convient pas » : le foyer est libéré et prévenu, un autre foyer est sollicité
+  const decliner = async () => {
+    if (!serveur) return
+    if (!window.confirm('Cet hébergement ne vous convient pas ? Un autre foyer vous sera proposé s’il y en a un de disponible. Vous ne pourrez pas revenir sur ce choix.')) return
+    const { error } = await serveur.rpc('decliner_hebergement', { p_demande: demande })
+    if (error) return setMessage('Votre réponse n’a pas pu être envoyée. Vérifiez la connexion et réessayez.')
+    setMessage('C’est noté : nous cherchons un autre foyer.')
+    void charger()
+  }
+
   const itineraire =
     hebergement.lat !== null && hebergement.lng !== null
       ? lienItineraire({ lat: hebergement.lat, lng: hebergement.lng })
@@ -100,6 +111,14 @@ export default function HebergementTrouve({ demande, recherche }: { demande: str
       <span className="texte-doux" style={{ lineHeight: 1.4 }}>
         Ne prenez la route que si c'est sans danger. Évitez les zones en rouge sur la carte.
       </span>
+      <button type="button" className="bouton bouton--clair" style={{ minHeight: 44, fontSize: 15 }} onClick={() => void decliner()}>
+        Ne me convient pas, proposer un autre foyer
+      </button>
+      {message && (
+        <span role="status" style={{ fontSize: 14 }}>
+          {message}
+        </span>
+      )}
     </section>
   )
 }

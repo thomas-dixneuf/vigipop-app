@@ -111,7 +111,7 @@ export function heure(iso: string) {
   return new Date(iso).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
 }
 
-export type StatutHebergement = 'proposee' | 'acceptee' | 'refusee' | 'annulee'
+export type StatutHebergement = 'proposee' | 'acceptee' | 'refusee' | 'annulee' | 'declinee'
 
 // Proposition vue par l'hébergeur : coordonnées de la personne seulement après son accord
 export type PropositionHebergementServeur = {
