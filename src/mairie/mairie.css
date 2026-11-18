@@ -273,3 +273,20 @@ textarea.mairie-champ { resize: vertical; min-height: 72px; }
   line-height: 1.4;
   color: var(--texte-doux, #4a6070);
 }
+
+.mairie-reglage {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  background: var(--bleu-voile);
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-size: 14px;
+  line-height: 1.4;
+}
+.mairie-reglage > span {
+  flex: 1;
+  min-width: 220px;
+}
