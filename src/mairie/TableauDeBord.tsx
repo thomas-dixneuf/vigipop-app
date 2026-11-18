@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useState, type FormEvent } from 'react'
-import { Link, useLocation } from 'react-router-dom'
+import { Link, Navigate, useLocation } from 'react-router-dom'
 import CarteInteractive, { type Repere } from '../components/CarteInteractive.tsx'
 import Logo from '../components/Logo.tsx'
 import ChampAdresse from '../components/ChampAdresse.tsx'
@@ -22,7 +22,7 @@ import {
   type ZoneRisqueServeur,
   type ZoneServeur,
 } from '../services/serveur.ts'
-import { couleurLieu, distanceLisible, distanceMetres, estPlace, zonesDepuisGeoJSON, type ResultatAdresse, type ZoneImportee } from '../outils/carte.ts'
+import { chercherAdresse, couleurLieu, distanceLisible, distanceMetres, estPlace, zonesDepuisGeoJSON, type ResultatAdresse, type ZoneImportee } from '../outils/carte.ts'
 
 // role « secours » : pompiers, police, gendarmerie, SAMU. Ils voient la carte et les demandes,
 // notent leurs interventions et proposent des zones à éviter ; la crise, les alertes et les missions restent à la mairie.
@@ -69,20 +69,55 @@ type Donnees = {
   benevoles: Benevole[]
 }
 
-// Pages de l'espace mairie : ce qui sert pendant la crise d'abord, la préparation (rarement modifiée) à part
+// Pages de l'espace mairie, regroupées par sujet : les habitants, les renforts, la commune
 type Page = '' | 'demandes' | 'volontaires' | 'benevoles' | 'entreprises' | 'lieux' | 'commune' | 'bilan'
-const pagesCrise: { id: Page; titre: string }[] = [
-  { id: '', titre: 'Accueil' },
-  { id: 'demandes', titre: 'Demandes d’aide' },
-  { id: 'volontaires', titre: 'Volontaires et missions' },
-  { id: 'benevoles', titre: 'Bénévoles' },
-  { id: 'entreprises', titre: 'Entreprises' },
-  { id: 'lieux', titre: 'Lieux d’accueil' },
+const groupesPages: { groupe: string; pages: { id: Page; titre: string }[] }[] = [
+  { groupe: '', pages: [{ id: '', titre: 'Accueil' }] },
+  {
+    groupe: 'Habitants',
+    pages: [
+      { id: 'demandes', titre: 'Demandes d’aide' },
+      { id: 'volontaires', titre: 'Volontaires habitants' },
+    ],
+  },
+  {
+    groupe: 'Renforts',
+    pages: [
+      { id: 'benevoles', titre: 'Protection civile' },
+      { id: 'entreprises', titre: 'Entreprises conventionnées' },
+    ],
+  },
+  {
+    groupe: 'Commune',
+    pages: [
+      { id: 'lieux', titre: 'Lieux d’accueil' },
+      { id: 'commune', titre: 'Risques et zones' },
+      { id: 'bilan', titre: 'Journal et bilan' },
+    ],
+  },
 ]
-const pagesPreparation: { id: Page; titre: string }[] = [
-  { id: 'commune', titre: 'Risques et commune' },
-  { id: 'bilan', titre: 'Journal' },
-]
+const toutesPages = groupesPages.flatMap((g) => g.pages)
+// Hors crise, l'espace mairie ne montre que les informations de la mairie (lieux, risques, renforts, journal).
+// Les pages des habitants n'apparaissent qu'en crise, ou s'il reste une demande ouverte à traiter.
+const pagesHabitants: Page[] = ['demandes', 'volontaires']
+function pagesVisibles(donnees: Donnees): Page[] {
+  const demandeOuverte = donnees.demandes.some((d) => d.statut === 'transmise' || d.statut === 'prise_en_charge')
+  return toutesPages
+    .map((p) => p.id)
+    .filter((id) => !pagesHabitants.includes(id) || !!donnees.crise || (id === 'demandes' && demandeOuverte))
+}
+// Une phrase sous le titre de chaque page : à quoi elle sert, en une lecture
+const descriptionsPages: Record<Page, string> = {
+  '': '',
+  demandes: 'Les habitants qui ont besoin d’aide. Traitez-les dans l’ordre : prendre en charge, organiser l’aide, prévenir l’habitant.',
+  volontaires:
+    'Les habitants inscrits dans l’app pour aider. Hébergement, transport et matériel leur sont proposés automatiquement ; pour le reste (eau, médicaments, animaux…), envoyez une mission.',
+  benevoles: 'Les bénévoles formés de l’association (réserve communale, Protection civile…) : la mairie les connaît et les appelle directement.',
+  entreprises: 'Les entreprises qui ont signé une convention pour prêter du matériel ou des engins pendant une crise.',
+  lieux: 'Gymnases, salles et points d’eau : seuls les lieux ouverts s’affichent chez les habitants.',
+  commune: 'À préparer une fois, hors crise, puis rarement modifié : risques connus, zones exposées, périmètre de la commune, alertes sur les téléphones.',
+  bilan: 'Tout ce que la cellule de crise a fait, et le bilan à transmettre (sans nom ni numéro).',
+}
 
 // Les cas les plus graves d'abord, puis les plus anciens
 function priorite(d: DemandeServeur) {
@@ -266,7 +301,8 @@ export default function TableauDeBord({ coordinateur }: { coordinateur: Coordina
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <Logo taille={40} />
           <div style={{ display: 'flex', flexDirection: 'column' }}>
-            {secours ? <strong>Vigipop · {coordinateur.communeNom}</strong> : <NomCommune communeId={commune} nomInitial={coordinateur.communeNom} />}
+            {/* Le nom vient du compte de la mairie : pas de renommage ici */}
+            <strong>Vigipop · {coordinateur.communeNom}</strong>
             <span style={{ fontSize: 13, color: 'var(--bleu-clair)' }}>
               {secours ? `Partenaire secours · ${coordinateur.nom}` : coordinateur.nom}
             </span>
@@ -294,13 +330,16 @@ export default function TableauDeBord({ coordinateur }: { coordinateur: Coordina
 
       {!donnees ? (
         <p style={{ padding: 24 }}>Chargement…</p>
+      ) : !pagesVisibles(donnees).includes(page) ? (
+        <Navigate to="/mairie" replace />
       ) : (
         <div className="mairie-cadre">
           <Navigation page={page} donnees={donnees} secours={secours} />
           <main className="mairie-page" aria-labelledby="titre-page">
             <h1 id="titre-page" className="mairie-titre-page">
-              {[...pagesCrise, ...pagesPreparation].find((p) => p.id === page)?.titre ?? 'Accueil'}
+              {toutesPages.find((p) => p.id === page)?.titre ?? 'Accueil'}
             </h1>
+            {descriptionsPages[page] && <p className="mairie-description-page">{descriptionsPages[page]}</p>}
             {page === '' && (
               <div className="mairie-contenu">
                 <div className="mairie-colonne">
@@ -331,45 +370,31 @@ export default function TableauDeBord({ coordinateur }: { coordinateur: Coordina
             {page === 'demandes' && (
               <div className="mairie-pile">
                 <Demandes demandes={donnees.demandes} depuis={donnees.crise?.declenchee_a ?? null} partenaire={secours ? coordinateur.nom : undefined} lieux={donnees.lieux} />
-                {enCrise && (
-                  <div className="mairie-face-a-face">
-                    <PanneauHebergement demandes={donnees.demandes} volontaires={donnees.volontaires} hebergements={donnees.hebergements} communeId={commune} />
-                    <PanneauEntraides demandes={donnees.demandes} volontaires={donnees.volontaires} entraides={donnees.entraides} communeId={commune} />
-                  </div>
-                )}
               </div>
             )}
             {page === 'volontaires' && (
               <div className="mairie-contenu">
                 <div className="mairie-colonne">
-                  {enCrise ? (
-                    <>
-                      <PanneauBesoins
-                        demandes={donnees.demandes}
-                        volontaires={donnees.volontaires}
-                        onMission={(m) => {
-                          setModeleMission({ ...m, numero: Date.now() })
-                          window.setTimeout(() => document.getElementById('titre-missions')?.scrollIntoView({ behavior: 'smooth' }), 50)
-                        }}
-                      />
-                      <PanneauMissions
-                        key={modeleMission?.numero ?? 0}
-                        modele={modeleMission}
-                        missions={donnees.missions}
-                        reponses={donnees.reponses}
-                        volontaires={donnees.volontaires}
-                        communeId={commune}
-                        partenaire={secours ? coordinateur.nom : undefined}
-                      />
-                    </>
-                  ) : (
-                    <section className="mairie-panneau">
-                      <h2>Hors crise</h2>
-                      <p className="texte-doux" style={{ fontSize: 14, lineHeight: 1.5 }}>
-                        Les besoins et les missions s'ouvrent quand la mairie déclenche une crise ou un exercice.
-                      </p>
-                    </section>
-                  )}
+                  <PanneauBesoins
+                    demandes={donnees.demandes}
+                    volontaires={donnees.volontaires}
+                    onMission={(m) => {
+                      setModeleMission({ ...m, numero: Date.now() })
+                      window.setTimeout(() => document.getElementById('titre-missions')?.scrollIntoView({ behavior: 'smooth' }), 50)
+                    }}
+                  />
+                  <PanneauMissions
+                    key={modeleMission?.numero ?? 0}
+                    modele={modeleMission}
+                    missions={donnees.missions}
+                    reponses={donnees.reponses}
+                    volontaires={donnees.volontaires}
+                    communeId={commune}
+                    partenaire={secours ? coordinateur.nom : undefined}
+                  />
+                  <h2 className="mairie-intertitre">3. Proposé automatiquement aux volontaires</h2>
+                  <PanneauHebergement demandes={donnees.demandes} volontaires={donnees.volontaires} hebergements={donnees.hebergements} communeId={commune} />
+                  <PanneauEntraides demandes={donnees.demandes} volontaires={donnees.volontaires} entraides={donnees.entraides} communeId={commune} />
                 </div>
                 <div className="mairie-colonne">
                   <PanneauVolontaires volontaires={donnees.volontaires} enCrise={enCrise} />
@@ -408,7 +433,7 @@ export default function TableauDeBord({ coordinateur }: { coordinateur: Coordina
                     centre={centre}
                     partenaire={secours ? coordinateur.nom : undefined}
                   />
-                  <PanneauPosition position={donnees.position ?? null} communeId={commune} onEnregistre={() => void charger()} />
+                  <PanneauPosition position={donnees.position ?? null} communeId={commune} communeNom={coordinateur.communeNom} onEnregistre={() => void charger()} />
                 </div>
                 <div className="mairie-colonne">
                   <PanneauRisques risques={donnees.risques} communeId={commune} enCrise={enCrise} onEnregistre={() => void charger()} />
@@ -434,6 +459,7 @@ function Navigation({ page, donnees, secours }: { page: Page; donnees: Donnees; 
   const attente: Partial<Record<Page, number>> = {
     demandes: donnees.demandes.filter((d) => d.statut === 'transmise').length,
   }
+  const visibles = pagesVisibles(donnees)
   const lien = (p: { id: Page; titre: string }) => (
     <Link key={p.id} to={p.id ? `/mairie/${p.id}` : '/mairie'} className="mairie-nav-lien" aria-current={page === p.id ? 'page' : undefined}>
       {p.titre}
@@ -442,10 +468,19 @@ function Navigation({ page, donnees, secours }: { page: Page; donnees: Donnees; 
   )
   return (
     <nav className="mairie-nav" aria-label="Pages de l'espace mairie">
-      <span className="mairie-nav-groupe">{donnees.crise?.exercice ? 'Gérer l’exercice' : donnees.crise ? 'Gérer la crise' : 'Au quotidien'}</span>
-      {pagesCrise.map(lien)}
-      <span className="mairie-nav-groupe">Préparer</span>
-      {pagesPreparation.filter((p) => !secours || p.id !== 'commune').map(lien)}
+      {groupesPages.map((g) => {
+        const pages = g.pages.filter((p) => visibles.includes(p.id) && (!secours || p.id !== 'commune'))
+        if (!pages.length) return null
+        return (
+          <div key={g.groupe || 'accueil'} className="mairie-nav-bloc">
+            {g.groupe && <span className="mairie-nav-groupe">{g.groupe}</span>}
+            {pages.map(lien)}
+          </div>
+        )
+      })}
+      {!donnees.crise && !visibles.includes('demandes') && (
+        <p className="mairie-nav-note">Demandes d’aide et volontaires apparaissent ici dès que le mode crise est déclenché.</p>
+      )}
     </nav>
   )
 }
@@ -477,13 +512,13 @@ function AFaire({ donnees }: { donnees: Donnees }) {
       bouton: 'Ouvrir ou fermer un lieu',
     },
     {
-      texte: `${mobilises} bénévole${mobilises > 1 ? 's' : ''} mobilisé${mobilises > 1 ? 's' : ''}`,
+      texte: `Protection civile : ${mobilises} bénévole${mobilises > 1 ? 's' : ''} mobilisé${mobilises > 1 ? 's' : ''}`,
       detail: `${disponibles} encore disponible${disponibles > 1 ? 's' : ''} dans l'association`,
       lien: '/mairie/benevoles',
-      bouton: 'Mobiliser des bénévoles',
+      bouton: 'Appeler la protection civile',
     },
     {
-      texte: `${engagees} entreprise${engagees > 1 ? 's' : ''} sollicitée${engagees > 1 ? 's' : ''}`,
+      texte: `${engagees} entreprise${engagees > 1 ? 's' : ''} conventionnée${engagees > 1 ? 's' : ''} sollicitée${engagees > 1 ? 's' : ''}`,
       detail: `${entreprises.length} sous convention pour prêter du matériel`,
       lien: '/mairie/entreprises',
       bouton: 'Demander du matériel',
@@ -515,8 +550,8 @@ function Preparation({ donnees }: { donnees: Donnees }) {
     { ok: donnees.risques.length > 0, texte: 'Risques de la commune renseignés', lien: '/mairie/commune' },
     { ok: donnees.zonesRisque.length > 0, texte: 'Zones exposées aux risques tracées sur la carte', lien: '/mairie/commune' },
     { ok: donnees.lieux.length > 0, texte: "Lieux d'accueil et de secours enregistrés", lien: '/mairie/lieux' },
-    { ok: donnees.benevoles.length > 0, texte: 'Bénévoles de l’association enregistrés', lien: '/mairie/benevoles' },
-    { ok: donnees.entreprises.length > 0, texte: 'Entreprises sous convention enregistrées', lien: '/mairie/entreprises' },
+    { ok: (donnees.benevoles ?? []).length > 0, texte: 'Bénévoles de la protection civile enregistrés', lien: '/mairie/benevoles' },
+    { ok: (donnees.entreprises ?? []).length > 0, texte: 'Entreprises conventionnées enregistrées', lien: '/mairie/entreprises' },
   ]
   return (
     <section className="mairie-panneau" aria-labelledby="titre-preparation">
@@ -648,20 +683,28 @@ function Demandes({
     <section className="mairie-panneau" aria-labelledby="titre-demandes">
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
         <h2 id="titre-demandes">Demandes d'aide</h2>
-        <div className="mairie-onglets" role="group" aria-label="Filtrer les demandes">
-          {(
-            [
-              ['a-traiter', 'À traiter'],
-              ['en-cours', 'En cours'],
-              ['terminees', 'Terminées'],
-            ] as const
-          ).map(([id, libelle]) => (
-            <button key={id} type="button" className="mairie-bouton" aria-pressed={filtre === id} onClick={() => setFiltre(id)}>
-              {libelle}
-            </button>
-          ))}
-        </div>
       </div>
+      <div className="mairie-etapes" role="group" aria-label="Étapes de traitement des demandes">
+        {(
+          [
+            ['a-traiter', '1. À traiter', demandes.filter((d) => d.statut === 'transmise').length],
+            ['en-cours', '2. Prises en charge', demandes.filter((d) => d.statut === 'prise_en_charge').length],
+            ['terminees', '3. Terminées', demandes.filter((d) => ['aide_organisee', 'close'].includes(d.statut) && d.updated_at >= limite).length],
+          ] as const
+        ).map(([id, libelle, nombre]) => (
+          <button key={id} type="button" className="mairie-etape" aria-pressed={filtre === id} onClick={() => setFiltre(id)}>
+            <strong>{nombre}</strong>
+            <span>{libelle}</span>
+          </button>
+        ))}
+      </div>
+      <p className="mairie-consigne-etape">
+        {filtre === 'a-traiter'
+          ? 'Les plus graves sont en haut. Appelez la personne si elle a laissé un numéro, puis cliquez sur « Prendre en charge ».'
+          : filtre === 'en-cours'
+            ? "Organisez l'aide (hébergement, transport, mission, protection civile…), puis cliquez sur « Aide organisée » pour dire à l'habitant ce qui est prévu."
+            : "Demandes dont l'aide est organisée ou qui sont closes. « Rouvrir » si la situation change."}
+      </p>
 
       {visibles.length === 0 && <p className="texte-doux">Aucune demande dans cette catégorie.</p>}
 
@@ -1500,19 +1543,37 @@ function PanneauRisques({
 
 // Centre et rayon de la commune : un visiteur dans ce rayon voit les services de la commune
 // (géolocalisation acceptée par l'habitant ; sa position n'est jamais enregistrée)
-function PanneauPosition({ position, communeId, onEnregistre }: { position: PositionCommune | null; communeId: string; onEnregistre: () => void }) {
+function PanneauPosition({ position, communeId, communeNom, onEnregistre }: { position: PositionCommune | null; communeId: string; communeNom: string; onEnregistre: () => void }) {
   const [centre, setCentre] = useState<ResultatAdresse | null>(null)
+  // La mairie n'a pas à retaper le nom de sa propre commune : son centre est trouvé automatiquement
+  const [centreAuto, setCentreAuto] = useState<ResultatAdresse | null>(null)
+  const [deplacer, setDeplacer] = useState(false)
+  useEffect(() => {
+    if (position) return
+    let annule = false
+    chercherAdresse(communeNom, 'municipality')
+      .then((r) => {
+        const trouve = r.find((c) => c.libelle.toLowerCase().startsWith(communeNom.trim().toLowerCase())) ?? null
+        if (!annule) setCentreAuto(trouve)
+      })
+      .catch(() => {})
+    return () => {
+      annule = true
+    }
+  }, [position, communeNom])
+  const centreChoisi = centre ?? (position ? null : centreAuto)
   const [rayon, setRayon] = useState(String(position?.rayon_km ?? 5))
   const [message, setMessage] = useState('')
   const enregistrer = async (e: FormEvent) => {
     e.preventDefault()
     const km = Number(rayon.replace(',', '.'))
     if (!(km >= 0.5 && km <= 50)) return setMessage('Rayon entre 0,5 et 50 km.')
-    const modifs = centre ? { lat: centre.lat, lng: centre.lng, rayon_km: km } : { rayon_km: km }
+    const modifs = centreChoisi ? { lat: centreChoisi.lat, lng: centreChoisi.lng, rayon_km: km } : { rayon_km: km }
     const { data, error } = await serveur!.from('communes').update(modifs).eq('id', communeId).select('id')
     if (error || !data?.length) return setMessage('Non enregistré. Lancez d’abord la migration 0015 dans Supabase.')
     setMessage('Enregistré.')
     setCentre(null)
+    setDeplacer(false)
     onEnregistre()
   }
   return (
@@ -1525,15 +1586,23 @@ function PanneauPosition({ position, communeId, onEnregistre }: { position: Posi
       <p style={{ margin: 0, fontSize: 14 }}>
         {position
           ? `Centre placé · rayon ${String(position.rayon_km).replace('.', ',')} km`
-          : 'Commune pas encore placée : les visiteurs ne voient pas vos services.'}
+          : centreAuto
+            ? `Centre : ${centreAuto.libelle}, trouvé automatiquement. Choisissez le rayon puis enregistrez.`
+            : 'Commune pas encore placée : les visiteurs ne voient pas vos services.'}
       </p>
       <form onSubmit={(e) => void enregistrer(e)} style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-        <ChampAdresse commune onChoix={setCentre} libelleChamp={position ? 'Déplacer le centre (facultatif)' : 'Centre : nom de la commune'} />
+        {deplacer || (!position && !centreAuto) ? (
+          <ChampAdresse commune onChoix={setCentre} libelleChamp={position || centreAuto ? 'Autre centre (facultatif)' : 'Centre : nom de la commune'} />
+        ) : (
+          <button type="button" className="mairie-bouton" onClick={() => setDeplacer(true)} style={{ alignSelf: 'flex-start' }}>
+            Placer le centre ailleurs
+          </button>
+        )}
         <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 14, fontWeight: 700, maxWidth: 160 }}>
           Rayon (km)
           <input className="mairie-champ" inputMode="decimal" value={rayon} onChange={(e) => setRayon(e.target.value)} />
         </label>
-        <button type="submit" className="mairie-bouton mairie-bouton--principal" disabled={!position && !centre} style={{ alignSelf: 'flex-start' }}>
+        <button type="submit" className="mairie-bouton mairie-bouton--principal" disabled={!position && !centreChoisi} style={{ alignSelf: 'flex-start' }}>
           Enregistrer
         </button>
       </form>
@@ -1687,9 +1756,10 @@ function PanneauBesoins({ demandes, volontaires, onMission }: PropsBesoins) {
   const ouvertes = demandes.filter((d) => d.statut !== 'close')
   return (
     <section className="mairie-panneau" aria-labelledby="titre-besoins">
-      <h2 id="titre-besoins">Besoins et volontaires</h2>
+      <h2 id="titre-besoins">1. Besoins à couvrir</h2>
       <p className="texte-doux" style={{ marginTop: -4 }}>
-        Demandes ouvertes par besoin, face aux volontaires disponibles qui peuvent y répondre.
+        Pour chaque besoin : combien de demandes l'attendent, et combien de volontaires peuvent y répondre. En rouge : personne ne peut aider,
+        appelez la protection civile ou une entreprise conventionnée.
       </p>
       <div style={{ overflowX: 'auto' }}>
         <table className="mairie-tableau tableau-besoins" style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
@@ -1774,7 +1844,7 @@ function PanneauEntraides({ demandes, volontaires, entraides, communeId }: Props
 
   return (
     <section className="mairie-panneau" aria-labelledby="titre-entraides">
-      <h2 id="titre-entraides">Transport et matériel</h2>
+      <h2 id="titre-entraides">Transport et matériel prêtés par des volontaires</h2>
       <p className="texte-doux" style={{ marginTop: -4 }}>
         Chaque besoin est proposé automatiquement au volontaire disponible le plus proche. En cas de refus, le suivant est sollicité.
       </p>
@@ -1862,7 +1932,7 @@ function PanneauHebergement({ demandes, volontaires, hebergements, communeId }: 
   const reference = (id: string) => demandes.find((d) => d.id === id)?.reference ?? '?'
   return (
     <section className="mairie-panneau" aria-labelledby="titre-hebergement">
-      <h2 id="titre-hebergement">Hébergement solidaire</h2>
+      <h2 id="titre-hebergement">Hébergement chez l'habitant</h2>
       <p className="texte-doux" style={{ marginTop: -4 }}>
         Chaque demande est proposée automatiquement au foyer disponible le plus proche. L'hébergeur accepte ou refuse ; en cas de refus, le suivant est sollicité.
       </p>
@@ -2035,7 +2105,7 @@ function PanneauVolontaires({ volontaires, enCrise }: { volontaires: Volontaire[
   return (
     <section className="mairie-panneau" aria-labelledby="titre-volontaires">
       <h2 id="titre-volontaires">
-        Volontaires disponibles <span className="mairie-etiquette">{volontaires.length}</span>
+        Qui est disponible <span className="mairie-etiquette">{volontaires.length}</span>
       </h2>
       {volontaires.length === 0 && (
         <p className="texte-doux">
@@ -2140,7 +2210,10 @@ function PanneauMissions({ missions, reponses, volontaires, communeId, modele, p
 
   return (
     <section className="mairie-panneau" aria-labelledby="titre-missions">
-      <h2 id="titre-missions">Missions volontaires</h2>
+      <h2 id="titre-missions">2. Missions envoyées</h2>
+      <p className="texte-doux" style={{ marginTop: -4 }}>
+        Une mission part seulement aux volontaires qui proposent ce type d'aide. Suivez ici qui a accepté.
+      </p>
       {missions.length === 0 && <p className="texte-doux">Aucune mission ouverte.</p>}
       {missions.map((m) => {
         const concernes = volontaires.filter((v) => m.categorie === '' || v.ressources.includes(m.categorie)).length
@@ -2282,45 +2355,3 @@ function PanneauJournal({ journal, lienTout = false }: { journal: Evenement[]; l
   )
 }
 
-// Nom de la commune, affiché en haut de l'app des habitants : la mairie le corrige ici
-function NomCommune({ communeId, nomInitial }: { communeId: string; nomInitial: string }) {
-  const [nom, setNom] = useState(nomInitial)
-  const [saisie, setSaisie] = useState<string | null>(null)
-  const [erreur, setErreur] = useState('')
-
-  const enregistrer = async (e: FormEvent) => {
-    e.preventDefault()
-    const nouveau = (saisie ?? '').trim()
-    if (!nouveau || nouveau === nom) return setSaisie(null)
-    const { data, error } = await serveur!.from('communes').update({ nom: nouveau }).eq('id', communeId).select('nom')
-    if (error || !data?.length) return setErreur('Nom non enregistré. Lancez d’abord la migration 0009 dans Supabase.')
-    setNom(nouveau)
-    setSaisie(null)
-    setErreur('')
-  }
-
-  if (saisie === null)
-    return (
-      <span style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-        <strong>Vigipop · {nom}</strong>
-        <button
-          type="button"
-          onClick={() => setSaisie(nom)}
-          style={{ minHeight: 44, padding: '0 8px', border: 'none', background: 'transparent', color: 'var(--cyan)', fontSize: 13, fontWeight: 700, textDecoration: 'underline' }}
-        >
-          Renommer
-        </button>
-      </span>
-    )
-  return (
-    <form onSubmit={(e) => void enregistrer(e)} style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-      <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontWeight: 700 }}>
-        Nom de la commune
-        <input className="mairie-champ" value={saisie} onChange={(e) => setSaisie(e.target.value)} maxLength={80} autoFocus style={{ width: 200, color: 'var(--texte)' }} />
-      </label>
-      <button type="submit" className="mairie-bouton mairie-bouton--principal">Enregistrer</button>
-      <button type="button" className="mairie-bouton" onClick={() => { setSaisie(null); setErreur('') }}>Annuler</button>
-      {erreur && <span role="alert" style={{ color: 'var(--cyan)', fontSize: 13, width: '100%' }}>{erreur}</span>}
-    </form>
-  )
-}

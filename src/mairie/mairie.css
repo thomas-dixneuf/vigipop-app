@@ -232,3 +232,44 @@ textarea.mairie-champ { resize: vertical; min-height: 72px; }
 @media (min-width: 901px) {
   .mairie-nav { min-height: calc(100dvh - 72px); }
 }
+
+/* Une phrase sous le titre de page, et les étapes de traitement des demandes */
+.mairie-description-page {
+  max-width: 1280px;
+  margin: 4px auto 0;
+  padding: 0 24px;
+  font-size: 15px;
+  line-height: 1.5;
+  color: var(--texte-doux, #4a6170);
+}
+.mairie-intertitre { font-size: 17px; font-weight: 800; color: var(--bleu-nuit); margin-top: 8px; }
+.mairie-etapes { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.mairie-etape {
+  min-height: 64px;
+  border: 2px solid var(--bordure);
+  border-radius: 12px;
+  background: var(--blanc);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 2px;
+  padding: 8px 14px;
+  color: var(--bleu-nuit);
+  font-weight: 700;
+  font-size: 14px;
+  text-align: left;
+}
+.mairie-etape strong { font-size: 24px; }
+.mairie-etape[aria-pressed='true'] { background: var(--bleu-nuit); border-color: var(--bleu-nuit); color: var(--blanc); }
+.mairie-consigne-etape { font-size: 14px; line-height: 1.5; background: var(--bleu-voile); border-radius: 10px; padding: 10px 12px; }
+@media (max-width: 900px) { .mairie-description-page { padding: 0 16px; } }
+.mairie-nav-bloc { display: flex; flex-direction: column; gap: 4px; }
+@media (max-width: 900px) { .mairie-nav-bloc { flex-direction: row; } }
+
+.mairie-nav-note {
+  margin: 8px 12px 0;
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--texte-doux, #4a6070);
+}
