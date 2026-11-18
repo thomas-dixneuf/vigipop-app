@@ -290,3 +290,13 @@ textarea.mairie-champ { resize: vertical; min-height: 72px; }
   flex: 1;
   min-width: 220px;
 }
+
+/* Paramètres de la ville : tout en bas du menu */
+.mairie-nav-bas {
+  margin-top: auto;
+  padding-top: 12px;
+  border-top: 1px solid var(--bordure);
+}
+@media (max-width: 900px) {
+  .mairie-nav-bas { margin-top: 0; padding-top: 0; border-top: none; }
+}
