@@ -53,7 +53,7 @@ export default function CarteInteractive({ reperes, centre, position, selection,
     // « fichier@sud,ouest,nord,est;… », du plus large au plus détaillé. Placés sous les tuiles,
     // ils ne se voient que si elles ne chargent pas ; la carte reste alors dans leur emprise.
     const fonds = ((import.meta.env.VITE_FOND_CARTE as string | undefined) ?? '')
-      .split(';')
+      .split(/;(?!base64,)/) // le fichier hors ligne y met des images « data:…;base64,… »
       .map((f) => {
         const [fichier, limites = ''] = f.split('@')
         const n = limites.split(',').map(Number)

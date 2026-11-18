@@ -6,6 +6,7 @@ import { VitePWA } from 'vite-plugin-pwa'
 export default defineConfig({
   // Chemins relatifs : l'app fonctionne quel que soit le dossier d'hébergement
   base: './',
+  build: process.env.FICHIER_UNIQUE === '1' ? { rollupOptions: { output: { inlineDynamicImports: true } } } : {},
   plugins: [
     react(),
     VitePWA({

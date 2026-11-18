@@ -26,3 +26,7 @@ dist-ssr
 # Captures pour les stores (npm run captures)
 dist-captures
 captures-stores
+
+# Fichier hors ligne à double-cliquer
+dist-*
+*-hors-ligne.html
