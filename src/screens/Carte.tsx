@@ -8,13 +8,14 @@ import BandeauVille from '../components/BandeauVille.tsx'
 import { hebergementsSolidairesDemo, libelleLieu, lieuxDemo, missionsDemo, zonesDemo, zonesRisqueDemo } from '../data/fictif.ts'
 import { couleurLieu, dansZone, distanceLisible, distanceMetres, estPlace, lienItineraire, type Coordonnees } from '../outils/carte.ts'
 import { serveur, type LieuServeur } from '../services/serveur.ts'
+import { useMesTrajets } from '../outils/mesTrajets.ts'
 import { useAppState } from '../state/AppState.tsx'
 
 type Filtre = 'tous' | LieuServeur['type']
 
 const filtres: [Filtre, string][] = [
   ['tous', 'Tout'],
-  ['accueil', 'Hébergement'],
+  ['accueil', 'Centres d’accueil'],
   ['soins', 'Secours'],
   ['eau', 'Eau'],
 ]
@@ -22,17 +23,35 @@ const filtres: [Filtre, string][] = [
 const aucunLieu: LieuServeur[] = []
 
 export default function Carte() {
-  const { mode, lieux, zones: zonesServeur, zonesRisque: zonesRisqueServeur, missions, communeAffichee, communeActiveId, centreActif, communeVisitee } = useAppState()
-  // Arrivée depuis une mission acceptée : son point de rendez-vous est mis en avant
-  const idMission = (useLocation().state as { mission?: string } | null)?.mission
-  const mission = idMission ? (serveur ? missions : missionsDemo).find((m) => m.id === idMission) ?? null : null
+  const {
+    mode,
+    lieux,
+    zones: zonesServeur,
+    zonesRisque: zonesRisqueServeur,
+    missions,
+    communeAffichee,
+    communeActiveId,
+    centreActif,
+    communeVisitee,
+    demande,
+    utilisateur,
+    missionServeur,
+    mission: reponseMission,
+  } = useAppState()
   const enCrise = mode === 'crise'
+  // Arrivée depuis une mission acceptée : son point de rendez-vous est mis en avant.
+  // En crise, une mission acceptée apparaît de toute façon dans « Mes trajets ».
+  const idMission = (useLocation().state as { mission?: string } | null)?.mission
+  const mission =
+    (idMission ? (serveur ? missions : missionsDemo).find((m) => m.id === idMission) : null) ??
+    (enCrise && reponseMission === 'acceptee' ? missionServeur : null) ??
+    null
   // Démo locale : une zone fictive apparaît quand la crise est simulée
   const zones = zonesServeur ?? (enCrise && !serveur ? zonesDemo : [])
   // Zones exposées aux risques connus (TIM de la commune) : en veille comme en crise
   const zonesRisque = zonesRisqueServeur ?? (serveur ? [] : zonesRisqueDemo)
   const [filtre, setFiltre] = useState<Filtre>('tous')
-  const [selection, setSelection] = useState<string | null>(mission ? 'mission' : null)
+  const [selection, setSelection] = useState<string | null>(idMission ? 'trajet-mission' : null)
   const [position, setPosition] = useState<Coordonnees | null>(null)
   const [solidaires, setSolidaires] = useState<number | null>(serveur ? null : hebergementsSolidairesDemo)
 
@@ -73,15 +92,19 @@ export default function Carte() {
     const lieu = tous.find((l) => estPlace(l) && l.nom.trim().toLowerCase() === mission.lieu.trim().toLowerCase())
     return lieu && estPlace(lieu) ? { lat: lieu.lat, lng: lieu.lng } : null
   }, [mission, tous])
-  const itineraireMission = mission
-    ? rendezVous
-      ? lienItineraire(rendezVous)
-      : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${mission.adresse || mission.lieu}, ${communeAffichee}`)}`
-    : null
+  // Mes trajets : hébergement trouvé, mission acceptée, personnes que j'aide (en crise seulement)
+  const trajets = useMesTrajets({
+    actif: enCrise,
+    demande: demande?.envoyee && demande.statut !== 'close' ? demande.id : null,
+    mission,
+    rendezVous,
+    commune: communeAffichee,
+    connecte: !!utilisateur,
+  })
 
   const reperes: Repere[] = useMemo(
     () => [
-      ...(mission && rendezVous ? [{ id: 'mission', ...rendezVous, couleur: '#0e3a52', titre: `Rendez-vous mission · ${mission.lieu}` }] : []),
+      ...trajets.flatMap((t) => (t.point ? [{ id: t.id, ...t.point, couleur: '#0e3a52', titre: `${t.bouton} · ${t.titre}` }] : [])),
       ...visibles.filter(estPlace).map((l) => ({
         id: l.id,
         lat: l.lat,
@@ -91,7 +114,7 @@ export default function Carte() {
         attenue: enCrise && !l.ouvert,
       })),
     ],
-    [visibles, enCrise, mission, rendezVous],
+    [visibles, enCrise, trajets],
   )
 
   const zoneActuelle = position ? zones.find((z) => dansZone(position, z.points)) : undefined
@@ -99,7 +122,7 @@ export default function Carte() {
 
   const choisir = useCallback((id: string) => {
     setSelection(id)
-    document.getElementById(`lieu-${id}`)?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+    document.getElementById(id.startsWith('trajet-') ? id : `lieu-${id}`)?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
   }, [])
 
   return (
@@ -112,6 +135,19 @@ export default function Carte() {
       </header>
 
       <main className="contenu" style={{ paddingTop: 8, gap: 12 }}>
+        {trajets.length > 0 && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <span className="titre-section" style={{ fontSize: 13 }}>Mes trajets</span>
+            <div role="group" aria-label="Mes trajets" style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+              {trajets.map((t) => (
+                <button key={t.id} type="button" className="puce puce--trajet" aria-pressed={selection === t.id} onClick={() => choisir(t.id)}>
+                  <Icone nom={t.type === 'hebergement' ? 'accueil' : t.type === 'mission' ? 'main' : 'itineraire'} taille={16} /> {t.bouton}
+                </button>
+              ))}
+            </div>
+            <span className="titre-section" style={{ fontSize: 13, marginTop: 4 }}>Lieux de la mairie</span>
+          </div>
+        )}
         <div role="group" aria-label="Filtrer les lieux" style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
           {filtres.map(([id, libelle]) => (
             <button key={id} type="button" className="puce" aria-pressed={filtre === id} onClick={() => setFiltre(id)}>
@@ -151,6 +187,37 @@ export default function Carte() {
           attenuerRisques={enCrise}
         />
 
+        {trajets.map((t) => (
+          <section
+            key={t.id}
+            id={t.id}
+            aria-label={t.bouton}
+            className="carte"
+            onClick={() => setSelection(t.id)}
+            style={{ display: 'flex', flexDirection: 'column', gap: 8, borderColor: 'var(--bleu)', borderWidth: 2, outline: selection === t.id ? '3px solid var(--cyan)' : 'none' }}
+          >
+            <span style={{ fontSize: 12, fontWeight: 800, color: 'var(--bleu)', textTransform: 'uppercase', letterSpacing: 0.8 }}>{t.bouton}</span>
+            <strong style={{ fontSize: 17, color: 'var(--bleu-nuit)', lineHeight: 1.3 }}>{t.titre}</strong>
+            <span style={{ fontSize: 14 }}>
+              {t.detail}
+              {position && t.point ? ` · à ${distanceLisible(distanceMetres(position, t.point))}` : ''}
+            </span>
+            <a href={t.itineraire} target="_blank" rel="noreferrer" className="bouton bouton--principal" style={{ minHeight: 48, fontSize: 16 }}>
+              <Icone nom="itineraire" taille={18} /> Itinéraire
+            </a>
+            {t.telephone && (
+              <a href={`tel:${t.telephone.replace(/[\s.-]/g, '')}`} className="bouton bouton--contour" style={{ minHeight: 44, fontSize: 15 }}>
+                Appeler {t.telephone}
+              </a>
+            )}
+            {t.lien && (
+              <Link to={t.lien} style={{ textAlign: 'center', fontWeight: 700, minHeight: 44, padding: 10 }}>
+                Voir le détail de la mission
+              </Link>
+            )}
+          </section>
+        ))}
+
         {(zones.length > 0 || zonesRisque.length > 0) && (
           <div aria-label="Légende des zones" style={{ display: 'flex', flexDirection: 'column', gap: 6, fontSize: 14, lineHeight: 1.35 }}>
             {(enCrise || zones.length > 0) && (
@@ -174,23 +241,6 @@ export default function Carte() {
               <span className="texte-doux">La mairie n’a pas encore signalé de zone touchée. Suivez ses consignes.</span>
             )}
           </div>
-        )}
-
-        {mission && itineraireMission && (
-          <section aria-label="Ma mission" className="carte" style={{ display: 'flex', flexDirection: 'column', gap: 8, borderColor: 'var(--bleu)', borderWidth: 2 }}>
-            <span style={{ fontSize: 12, fontWeight: 800, color: 'var(--bleu)', textTransform: 'uppercase', letterSpacing: 0.8 }}>Ma mission · rendez-vous {mission.rendez_vous}</span>
-            <strong style={{ fontSize: 17, color: 'var(--bleu-nuit)', lineHeight: 1.3 }}>{mission.titre}</strong>
-            <span style={{ fontSize: 14 }}>
-              {mission.lieu}
-              {mission.adresse ? ` · ${mission.adresse}` : ''}
-            </span>
-            <a href={itineraireMission} target="_blank" rel="noreferrer" className="bouton bouton--principal" style={{ minHeight: 48, fontSize: 16 }}>
-              <Icone nom="itineraire" taille={18} /> Itinéraire vers le rendez-vous
-            </a>
-            <Link to="/mission" style={{ textAlign: 'center', fontWeight: 700, minHeight: 44, padding: 10 }}>
-              Voir le détail de la mission
-            </Link>
-          </section>
         )}
 
         {zones.length > 0 && (

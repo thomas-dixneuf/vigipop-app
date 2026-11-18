@@ -89,6 +89,8 @@ export type DemandeServeur = {
   prenom: string
   // Nom de famille, facultatif (migration 0019)
   nom?: string
+  // Membre de la cellule qui s'occupe de la demande (migration 0020)
+  suivie_par?: string
   telephone: string
   statut: StatutDemande
   // Ce que la mairie a prévu, lu par l'habitant (migration 0010)

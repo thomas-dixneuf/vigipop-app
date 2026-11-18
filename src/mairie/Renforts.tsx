@@ -26,10 +26,12 @@ type Props = {
   sansVolontaires?: boolean
   // Besoin présélectionné (clic dans le tableau des besoins)
   besoinInitial?: string
+  // Fiche d'une demande : appeler, mobiliser ou solliciter fait passer la demande « en cours »
+  onAgir?: () => void
 }
 
 // Liste unique des aidants, avec le geste utile pour chacun : appeler, mobiliser, solliciter
-export function QuiPeutAider({ volontaires, benevoles, entreprises, engagements, enCrise, besoin: besoinImpose, position, compact = false, titre, sansVolontaires = false, besoinInitial = '' }: Props) {
+export function QuiPeutAider({ volontaires, benevoles, entreprises, engagements, enCrise, besoin: besoinImpose, position, compact = false, titre, sansVolontaires = false, besoinInitial = '', onAgir }: Props) {
   const [source, setSource] = useState<Source>('')
   const [besoinChoisi, setBesoinChoisi] = useState(besoinInitial)
   const [message, setMessage] = useState('')
@@ -47,10 +49,12 @@ export function QuiPeutAider({ volontaires, benevoles, entreprises, engagements,
   const limite = compact ? 3 : Infinity
 
   const statutBenevole = async (b: Benevole, statut: StatutBenevole) => {
+    if (statut === 'mobilise') onAgir?.()
     const { error } = await serveur!.from('benevoles_association').update({ statut }).eq('id', b.id)
     setMessage(error ? "Échec : le statut n'a pas changé." : statut === 'mobilise' ? `${b.nom} est noté mobilisé. Appelez-le pour lui donner la mission.` : '')
   }
   const statutEntreprise = async (e: Entreprise, statut: StatutEntreprise) => {
+    if (statut === 'sollicitee') onAgir?.()
     const { error } = await serveur!.from('entreprises_convention').update({ statut }).eq('id', e.id)
     setMessage(error ? "Échec : le statut n'a pas changé." : statut === 'sollicitee' ? `${e.nom} est notée sollicitée. Appelez son numéro d'astreinte.` : '')
   }
@@ -58,7 +62,7 @@ export function QuiPeutAider({ volontaires, benevoles, entreprises, engagements,
   const bouton = 'mairie-bouton'
   const appeler = (tel: string, libelle = 'Appeler') =>
     tel ? (
-      <a href={lienTelephone(tel)} className={bouton} style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center' }}>
+      <a href={lienTelephone(tel)} onClick={onAgir} className={bouton} style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center' }}>
         {libelle} · {tel}
       </a>
     ) : null
@@ -227,7 +231,7 @@ export function QuiPeutAider({ volontaires, benevoles, entreprises, engagements,
           )}
           {compact && s.nombre > limite && (
             <span className="texte-doux" style={{ fontSize: 13 }}>
-              et {s.nombre - limite} autre{s.nombre - limite > 1 ? 's' : ''} dans « Aidants et renforts »
+              et {s.nombre - limite} autre{s.nombre - limite > 1 ? 's' : ''} dans la liste « Qui peut aider »
             </span>
           )}
         </div>
