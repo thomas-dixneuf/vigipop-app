@@ -170,7 +170,9 @@ export default function TableauDeBord({ coordinateur }: { coordinateur: Coordina
   // Dernière liste reçue, gardée sur l'ordinateur : affichée tout de suite, et si le serveur ne répond plus
   const [donnees, setDonnees] = useState<Donnees | null>(() => lireCache<Donnees>(`tableau-${commune}`)?.valeur ?? null)
   // Première connexion de la mairie : elle renseigne d'abord les risques de sa commune
-  const [passageTermine, setPassageTermine] = useState(false)
+  // Elle peut passer l'étape si elle ne les connaît pas encore : l'écran revient alors tous les 7 jours,
+  // et un rappel reste sur l'Accueil tant que les risques ne sont pas renseignés.
+  const [passageTermine, setPassageTermine] = useState(() => reporteRecemment(commune))
   const premierPassage = !passageTermine && !!donnees && donnees.risques.length === 0
   const setPremierPassage = (v: boolean) => setPassageTermine(!v)
   const [copieDu, setCopieDu] = useState<string | null>(() => lireCache<Donnees>(`tableau-${commune}`)?.a ?? null)
@@ -304,7 +306,16 @@ export default function TableauDeBord({ coordinateur }: { coordinateur: Coordina
       {!donnees ? (
         <p style={{ padding: 24 }}>Chargement…</p>
       ) : premierPassage && !donnees.crise ? (
-        <PremierPassage risques={donnees.risques} communeId={commune} communeNom={coordinateur.communeNom} onEnregistre={() => void charger()} onTermine={() => setPremierPassage(false)} />
+        <PremierPassage
+          risques={donnees.risques}
+          communeId={commune}
+          communeNom={coordinateur.communeNom}
+          onEnregistre={() => void charger()} onTermine={() => setPremierPassage(false)}
+          onPlusTard={() => {
+            reporterRisques(commune)
+            setPremierPassage(false)
+          }}
+        />
       ) : !pagesVisibles(donnees).includes(page) ? (
         <Navigate to="/mairie" replace />
       ) : (
@@ -319,6 +330,17 @@ export default function TableauDeBord({ coordinateur }: { coordinateur: Coordina
               <div className="mairie-contenu">
                 <div className="mairie-colonne">
                   {donnees.crise && <AFaire donnees={donnees} />}
+                  {!donnees.crise && donnees.risques.length === 0 && (
+                    <section className="mairie-panneau" style={{ borderColor: 'var(--consigne)', borderWidth: 2 }}>
+                      <h2>Rappel : risques de la commune à renseigner</h2>
+                      <p style={{ margin: 0, fontSize: 14 }}>
+                        Les habitants ne voient aucun risque pour se préparer. Reprenez ceux de votre DICRIM ou demandez-les à la préfecture.
+                      </p>
+                      <Link to="/mairie/parametres" className="mairie-bouton mairie-bouton--principal" style={{ alignSelf: 'flex-start', textDecoration: 'none' }}>
+                        Renseigner les risques
+                      </Link>
+                    </section>
+                  )}
                   {!donnees.crise && pagesVisibles(donnees).includes('demandes') && (
                     <section className="mairie-panneau" style={{ borderColor: 'var(--urgence)', borderWidth: 2 }}>
                       <h2>Demande d’aide reçue hors crise</h2>
@@ -1248,7 +1270,25 @@ function PanneauRisques({ risques, communeId, onEnregistre }: { risques: string[
 
 // Première connexion : la mairie indique les risques de sa commune avant tout le reste.
 // Ensuite, ils se modifient dans « Paramètres de la ville ».
-function PremierPassage({ risques, communeId, communeNom, onEnregistre, onTermine }: { risques: string[]; communeId: string; communeNom: string; onEnregistre: () => void; onTermine: () => void }) {
+const cleReport = (commune: string) => `vigipop-risques-reportes-${commune}`
+const delaiRappel = 7 * 24 * 3600 * 1000
+function reporteRecemment(commune: string) {
+  try {
+    const quand = Number(localStorage.getItem(cleReport(commune)) ?? 0)
+    return Date.now() - quand < delaiRappel
+  } catch {
+    return false
+  }
+}
+function reporterRisques(commune: string) {
+  try {
+    localStorage.setItem(cleReport(commune), String(Date.now()))
+  } catch {
+    // Stockage indisponible : l'écran reviendra à la prochaine ouverture
+  }
+}
+
+function PremierPassage({ risques, communeId, communeNom, onEnregistre, onTermine, onPlusTard }: { risques: string[]; communeId: string; communeNom: string; onEnregistre: () => void; onTermine: () => void; onPlusTard: () => void }) {
   return (
     <main className="mairie-page" style={{ maxWidth: 760, margin: '0 auto' }} aria-labelledby="titre-bienvenue">
       <h1 id="titre-bienvenue" className="mairie-titre-page">
@@ -1259,9 +1299,21 @@ function PremierPassage({ risques, communeId, communeNom, onEnregistre, onTermin
         pour se préparer. Vous pourrez les modifier plus tard dans « Paramètres de la ville ».
       </p>
       <PanneauRisques risques={risques} communeId={communeId} onEnregistre={onEnregistre} />
-      <button type="button" className="mairie-bouton mairie-bouton--principal" disabled={risques.length === 0} onClick={onTermine} style={{ alignSelf: 'flex-start', marginTop: 16 }}>
-        {risques.length === 0 ? 'Ajoutez au moins un risque pour continuer' : 'Continuer vers l’espace mairie'}
-      </button>
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 16 }}>
+        <button type="button" className="mairie-bouton mairie-bouton--principal" disabled={risques.length === 0} onClick={onTermine}>
+          {risques.length === 0 ? 'Ajoutez au moins un risque pour continuer' : 'Continuer vers l’espace mairie'}
+        </button>
+        {risques.length === 0 && (
+          <button type="button" className="mairie-bouton" onClick={onPlusTard}>
+            Je ne les connais pas encore
+          </button>
+        )}
+      </div>
+      {risques.length === 0 && (
+        <p className="texte-doux" style={{ fontSize: 13 }}>
+          Sans risques renseignés, un rappel restera sur l’accueil et cet écran reviendra chaque semaine.
+        </p>
+      )}
     </main>
   )
 }
