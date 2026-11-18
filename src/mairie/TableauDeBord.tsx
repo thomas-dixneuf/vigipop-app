@@ -2023,14 +2023,22 @@ function PageRenforts({
   ]
   return (
     <div className="mairie-pile">
-      <nav className="mairie-etapes" aria-label="Onglets" style={{ gridTemplateColumns: `repeat(${onglets.length}, minmax(0, 1fr))` }}>
-        {onglets.map((o) => (
-          <Link key={o.id} to={o.id ? `/mairie/renforts/${o.id}` : '/mairie/renforts'} className="mairie-etape" aria-current={actuel === o.id ? 'page' : undefined} style={{ textDecoration: 'none' }}>
-            <span style={{ fontSize: 16, fontWeight: 800 }}>{o.titre}</span>
-            <span style={{ fontWeight: 400 }}>{o.detail}</span>
-          </Link>
-        ))}
-      </nav>
+      {/* En crise, pas d'onglets : une seule page pour savoir qui répond à quoi. Les fiches restent accessibles en bas. */}
+      {!enCrise && (
+        <nav className="mairie-etapes" aria-label="Onglets" style={{ gridTemplateColumns: `repeat(${onglets.length}, minmax(0, 1fr))` }}>
+          {onglets.map((o) => (
+            <Link key={o.id} to={o.id ? `/mairie/renforts/${o.id}` : '/mairie/renforts'} className="mairie-etape" aria-current={actuel === o.id ? 'page' : undefined} style={{ textDecoration: 'none' }}>
+              <span style={{ fontSize: 16, fontWeight: 800 }}>{o.titre}</span>
+              <span style={{ fontWeight: 400 }}>{o.detail}</span>
+            </Link>
+          ))}
+        </nav>
+      )}
+      {enCrise && actuel !== '' && (
+        <Link to="/mairie/renforts" className="mairie-bouton" style={{ alignSelf: 'flex-start', textDecoration: 'none' }}>
+          ← Retour aux demandes et aidants
+        </Link>
+      )}
       {actuel === '' && (
         <>
           <div className="mairie-contenu mairie-contenu--moitie">
@@ -2095,6 +2103,12 @@ function PageRenforts({
           )}
         </>
       )}
+      {enCrise && actuel === '' && (
+        <p className="texte-doux" style={{ fontSize: 14 }}>
+          Ajouter quelqu’un en renfort : <Link to="/mairie/renforts/protection-civile">fiches de la Protection civile</Link> ·{' '}
+          <Link to="/mairie/renforts/entreprises">fiches des entreprises conventionnées</Link>
+        </p>
+      )}
       {actuel === 'protection-civile' && (
         <>
           <PanneauBenevoles benevoles={benevoles} communeId={communeId} enCrise={enCrise} />
@@ -2109,9 +2123,11 @@ function PageRenforts({
 // Pour chaque besoin : combien de demandes l'attendent, et combien d'aidants de chaque sorte peuvent y répondre.
 // Hébergement, transport et matériel sont proposés automatiquement aux volontaires (0011) ; le reste passe par une mission.
 const besoinsAuto: Record<string, string> = {
-  heb: 'Proposé automatiquement aux foyers volontaires',
-  transport: 'Proposé automatiquement au plus proche',
-  materiel: 'Proposé automatiquement au plus proche',
+  heb: 'Proposé tout seul au foyer volontaire le plus proche',
+  transport: 'Proposé tout seul au volontaire avec véhicule le plus proche',
+  materiel: 'Proposé tout seul au volontaire le plus proche ; gros matériel : entreprises',
+  eau: 'Mission envoyée aux volontaires dès que vous vous occupez de la demande',
+  med: 'Mission envoyée aux volontaires dès que vous vous occupez de la demande',
 }
 
 function PanneauBesoins({ donnees, onChoisir, onMission }: { donnees: Donnees; onChoisir: (besoin: string) => void; onMission: (m: { titre: string; categorie: string }) => void }) {
@@ -2120,8 +2136,8 @@ function PanneauBesoins({ donnees, onChoisir, onMission }: { donnees: Donnees; o
     <section className="mairie-panneau" aria-labelledby="titre-besoins">
       <h2 id="titre-besoins">Besoins à couvrir</h2>
       <p className="texte-doux" style={{ marginTop: -4 }}>
-        Pour chaque besoin : les demandes qui l'attendent et ceux qui peuvent y répondre. Cliquez sur « Qui peut aider » pour voir les noms. En
-        rouge : personne ne peut aider, orientez vers un lieu d'accueil.
+        Comment chaque besoin est réglé, et par qui. Cliquez sur « Qui peut aider » pour voir les noms. En rouge : personne ne peut aider,
+        orientez vers un lieu d'accueil.
       </p>
       <div style={{ overflowX: 'auto' }}>
         <table className="mairie-tableau tableau-besoins" style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
@@ -2129,8 +2145,8 @@ function PanneauBesoins({ donnees, onChoisir, onMission }: { donnees: Donnees; o
             <tr style={{ textAlign: 'left' }}>
               <th scope="col">Besoin</th>
               <th scope="col">Demandes</th>
-              <th scope="col">Peuvent aider</th>
-              <th scope="col">Réponse</th>
+              <th scope="col">Par qui</th>
+              <th scope="col">Comment</th>
             </tr>
           </thead>
           <tbody>
@@ -2157,17 +2173,20 @@ function PanneauBesoins({ donnees, onChoisir, onMission }: { donnees: Donnees; o
                         Qui peut aider ({total})
                       </button>
                       <span className="texte-doux" style={{ display: 'block', fontWeight: 400, fontSize: 13 }}>
-                        {a.volontaires.length} volontaire{a.volontaires.length > 1 ? 's' : ''} · {a.benevoles.length} bénévole{a.benevoles.length > 1 ? 's' : ''} · {a.entreprises.length} entreprise{a.entreprises.length > 1 ? 's' : ''}
+                        {[
+                          `${a.volontaires.length} volontaire${a.volontaires.length > 1 ? 's' : ''}`,
+                          `${a.benevoles.length} Protection civile`,
+                          ...(correspondances[b].materiel.length ? [`${a.entreprises.length} entreprise${a.entreprises.length > 1 ? 's' : ''}`] : []),
+                        ].join(' · ')}
                       </span>
                     </td>
                     <td style={{ padding: 6 }}>
-                      {besoinsAuto[b] ? (
-                        <span className="texte-doux">{besoinsAuto[b]}</span>
-                      ) : mission ? (
-                        <button type="button" className="mairie-bouton" disabled={concernees.length === 0} onClick={() => onMission(mission)}>
-                          Créer une mission
+                      <span className="texte-doux">{besoinsAuto[b]}</span>
+                      {mission && concernees.length > 1 && (
+                        <button type="button" className="mairie-lien-bouton" style={{ display: 'block' }} onClick={() => onMission(mission)}>
+                          Une mission pour toutes ces demandes
                         </button>
-                      ) : null}
+                      )}
                     </td>
                   </tr>
                 )
