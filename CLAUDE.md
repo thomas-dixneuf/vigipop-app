@@ -55,6 +55,13 @@ les secours et l'alerte officielle (FR-Alert), elle ne les remplace jamais.
   IGN/BAN ; sans réponse, liste embarquée `src/data/adressesEmbarquees.ts`). Inscription, profil, foyer, hébergement et
   mairie exigent un choix dans la liste ; le signalement accepte le texte tapé (jamais bloquant).
 - **Localisation proposée au lancement** (une fois, refusable avec « Plus tard », jamais en mode crise sans compte).
+- **Espace mairie en pages** (`#/mairie/...`) : Accueil (en crise, « À faire maintenant » : un geste par ligne,
+  avec son bouton), Demandes d'aide, Volontaires et missions, Bénévoles, Entreprises, Lieux d'accueil ; à part,
+  « Préparer » : Risques et commune (rarement modifiés), Bilan et journal. En crise, seuls les gestes utiles restent
+  à l'écran. Pas de sigle sans explication (TIM → « zones exposées aux risques »).
+- **Partenaires** (migration 0017, mairie seule) : entreprises sous convention (matériel, SIRET, fin de convention ;
+  solliciter → matériel engagé → rendu) et bénévoles d'association type réserve communale / Protection civile
+  (compétences ; mobiliser → fin de mission). Chaque changement de statut passe au journal.
 - **Mairie hors ligne** : dernière liste gardée sur l'ordinateur (effacée à la déconnexion), impression
   et export des demandes, bilan de crise sans donnée nominative.
 - Accessibilité : zones tactiles ≥ 44 px, vrais `<button>` et `<a>`, contrastes AA.

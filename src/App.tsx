@@ -46,7 +46,7 @@ export default function App({ dansPresentation = false }: { dansPresentation?: b
       <Route path="/aider" element={<AccesProtege compteObligatoire><Aider /></AccesProtege>} />
       <Route path="/mission" element={<AccesProtege compteObligatoire><Mission /></AccesProtege>} />
       {/* Espace mairie : tableau de bord des coordinateurs (compte e-mail + mot de passe) */}
-      <Route path="/mairie" element={<MairieApp />} />
+      <Route path="/mairie/*" element={<MairieApp />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
     </>
