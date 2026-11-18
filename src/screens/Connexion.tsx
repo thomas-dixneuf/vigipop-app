@@ -29,6 +29,7 @@ export default function Connexion() {
     const memeCompte = compte && compte.telephone.replace(/\D/g, '') === telephone.replace(/\D/g, '')
     const etat: EtatCode = {
       prenom: memeCompte ? compte.prenom : '',
+      nom: memeCompte ? compte.nom : undefined,
       telephone,
       commune: memeCompte ? compte.commune : communeDemo,
       nouveauCompte: false,
