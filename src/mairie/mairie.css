@@ -308,7 +308,7 @@ textarea.mairie-champ { resize: vertical; min-height: 72px; }
 .mairie-nav-lien[aria-current='page'] .mairie-nav-sous { color: var(--bleu-clair); }
 @media (max-width: 900px) { .mairie-nav-sous { display: none; } .mairie-nav-lien { min-height: 44px; } }
 
-/* Onglets de la page Aidants et renforts */
+/* Onglets de la page Demandes et aidants */
 a.mairie-etape[aria-current='page'] { background: var(--bleu-nuit); border-color: var(--bleu-nuit); color: var(--blanc); }
 @media (max-width: 700px) { nav.mairie-etapes { grid-template-columns: minmax(0, 1fr) !important; } }
 
