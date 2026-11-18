@@ -60,11 +60,12 @@ les secours et l'alerte officielle (FR-Alert), elle ne les remplace jamais.
   mairie exigent un choix dans la liste ; le signalement accepte le texte tapé (jamais bloquant).
 - **Localisation proposée au lancement** (une fois, refusable avec « Plus tard », jamais en mode crise sans compte).
 - **Espace mairie en pages** (`#/mairie/...`), menu simple, chaque lien avec une ligne qui dit à quoi il sert : Accueil
-  (en crise, « À faire maintenant » : un geste par ligne, avec son bouton) ; Demandes d'aide (étapes 1. À traiter,
-  2. Prises en charge, 3. Terminées ; sous chaque demande, « Qui peut aider ? » montre volontaires, Protection civile et
-  entreprises pour chacun de ses besoins, sans changer de page) ; Aidants et renforts (`#/mairie/renforts` : en crise,
-  besoins à couvrir + liste unique « Qui peut aider » + missions + propositions automatiques ; onglets Protection civile
-  et Entreprises conventionnées pour les fiches ; hors crise « Renforts », ces deux onglets seuls) ; Lieux d'accueil ;
+  (en crise, « À faire maintenant » : un geste par ligne, avec son bouton) ; Demandes et aidants (`#/mairie/renforts`,
+  une seule page en crise : à gauche les demandes, étapes 1. Nouvelles, 2. En cours, 3. Terminées, sans bouton « Prendre
+  en charge » : la demande passe en cours au nom du membre de la cellule dès qu'il agit, migration 0020 ; sous chaque
+  demande, « Qui peut aider ? » ; à droite besoins à couvrir + liste unique « Qui peut aider » ; dessous missions et
+  propositions automatiques ; onglets Protection civile et Entreprises conventionnées pour les fiches ; hors crise
+  « Renforts », ces deux onglets seuls, plus les demandes s'il en reste une ouverte) ; Lieux d'accueil ;
   Journal et bilan ; tout en bas du menu, « Paramètres » (risques du DICRIM, alertes). Hors crise, l'Accueil sert aussi à tracer ou importer les zones exposées et à
   régler le périmètre des visiteurs géolocalisés. À la première connexion, la mairie renseigne d'abord les risques de sa commune ; elle peut passer
   l'étape (« Je ne les connais pas encore ») : rappel permanent sur l'Accueil et écran de nouveau proposé chaque semaine. **Hors crise**, seules les infos de la
