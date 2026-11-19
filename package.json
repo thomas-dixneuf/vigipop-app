@@ -10,9 +10,14 @@
     "fichier:mairie": "FICHIER_UNIQUE=1 VITE_VUE=mairie VITE_SERVEUR_LOCAL=1 vite build --mode captures --outDir dist-fichier && node scripts/fichier-hors-ligne.mjs dist-fichier vigipop-mairie-hors-ligne.html",
     "lint": "oxlint",
     "preview": "vite preview",
-    "captures": "vite build --mode captures --outDir dist-captures && node scripts/captures-stores.mjs"
+    "captures": "vite build --mode captures --outDir dist-captures && node scripts/captures-stores.mjs",
+    "natif:build": "tsc -b && APP_NATIVE=1 vite build",
+    "natif:sync": "npm run natif:build && cap sync"
   },
   "dependencies": {
+    "@capacitor/android": "^8.6.2",
+    "@capacitor/core": "^8.6.2",
+    "@capacitor/ios": "^8.6.2",
     "@supabase/supabase-js": "^2.118.0",
     "leaflet": "^1.9.4",
     "react": "^19.3.1",
@@ -20,6 +25,7 @@
     "react-router-dom": "^7.18.4"
   },
   "devDependencies": {
+    "@capacitor/cli": "^8.6.2",
     "@types/leaflet": "^1.9.22",
     "@types/node": "^24.19.2",
     "@types/react": "^19.3.0",
