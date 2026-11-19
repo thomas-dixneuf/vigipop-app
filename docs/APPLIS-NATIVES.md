@@ -19,10 +19,10 @@ Sans compte Apple, il vérifie seulement que l'app se construit ; avec le compte
 directement sur TestFlight (test sur iPad/iPhone) puis l'App Store.
 
 ## Tester sur un téléphone Android dès maintenant
-1. GitHub → **Actions** → dernier lancement vert de **Applications Android et iOS**.
-2. **Artifacts** → `vigipop-android-test-apk` → télécharge le zip sur le téléphone et ouvre-le.
-3. Touche `app-debug.apk` → autorise « installer des applis inconnues » pour ton navigateur ou
-   ton gestionnaire de fichiers → **Installer**.
+1. Sur le téléphone, ouvre https://github.com/thomas-dixneuf/vigipop-app/releases/download/android-test/vigipop-test.apk
+   (toujours la dernière version de `main`).
+2. Ouvre le fichier téléchargé → autorise « installer des applis inconnues » pour ton navigateur
+   → **Installer**. Pour une nouvelle version, refais la même chose : elle remplace l'ancienne.
 
 ## Ce qui reste à faire quand les comptes existeront
 
