@@ -101,6 +101,15 @@ function descriptionPage(page: Page, enCrise: boolean): string {
 }
 
 // Les cas les plus graves d'abord, puis les plus anciens
+// Types d'aide, repris du formulaire « J'ai besoin d'aide » : la situation (blessé, évacuation, bloqué)
+// et les besoins cochés. Chaque type a sa couleur, partout dans l'espace mairie.
+const typesAide: { id: string; libelle: string; concerne: (d: DemandeServeur) => boolean }[] = [
+  { id: 'secours', libelle: 'Secours (blessé, évacuation)', concerne: (d) => d.situation === 'blesse' || d.situation === 'evac' },
+  { id: 'bloque', libelle: 'Bloqué(e) chez soi', concerne: (d) => d.situation === 'bloque' },
+  ...listeBesoins.map((b) => ({ id: b.id as string, libelle: b.label as string, concerne: (d: DemandeServeur) => d.besoins.includes(b.id) })),
+]
+const typesDe = (d: DemandeServeur) => typesAide.filter((t) => t.concerne(d))
+
 function priorite(d: DemandeServeur) {
   const base = { blesse: 0, evac: 1, bloque: 2, sinistre: 3 }[d.situation] ?? 3
   return base - (d.personne_vulnerable ? 0.5 : 0)
@@ -539,19 +548,23 @@ function Demandes({ donnees, communeId, communeNom, coordinateurNom }: { donnees
   const demandes = donnees.demandes
   const depuis = donnees.crise?.declenchee_a ?? null
   const [filtre, setFiltre] = useState<Filtre>('a-traiter')
+  // Type d'aide choisi (vide : tous)
+  const [type, setType] = useState('')
   // Fiche « Qui peut aider ? » ouverte sous une demande : on organise l'aide sans changer de page
   const [aideOuverte, setAideOuverte] = useState<string | null>(null)
   const [organisation, setOrganisation] = useState<{ id: string; texte: string } | null>(null)
   const [ouverture] = useState(() => Date.now())
   const limite = depuis ?? new Date(ouverture - 48 * 3600 * 1000).toISOString()
-  const visibles = demandes
-    .filter((d) =>
-      filtre === 'a-traiter'
-        ? d.statut === 'transmise'
-        : filtre === 'en-cours'
-          ? d.statut === 'prise_en_charge'
-          : ['aide_organisee', 'close'].includes(d.statut) && d.updated_at >= limite,
-    )
+  const dEtape = demandes.filter((d) =>
+    filtre === 'a-traiter'
+      ? d.statut === 'transmise'
+      : filtre === 'en-cours'
+        ? d.statut === 'prise_en_charge'
+        : ['aide_organisee', 'close'].includes(d.statut) && d.updated_at >= limite,
+  )
+  const typeActif = typesAide.find((t) => t.id === type)
+  const visibles = dEtape
+    .filter((d) => !typeActif || typeActif.concerne(d))
     .sort((a, b) => priorite(a) - priorite(b) || a.created_at.localeCompare(b.created_at))
 
   const changerStatut = async (id: string, statut: StatutDemande) => {
@@ -610,7 +623,29 @@ function Demandes({ donnees, communeId, communeNom, coordinateurNom }: { donnees
       </p>
       <ActionsListe demandes={demandes} communeNom={communeNom} />
 
-      {visibles.length === 0 && <p className="texte-doux">Aucune demande dans cette catégorie.</p>}
+      <div className="mairie-types" role="group" aria-label="Type d'aide demandée">
+        <span className="mairie-types-titre">Type d'aide demandée</span>
+        <button type="button" className="mairie-type-filtre" aria-pressed={type === ''} onClick={() => setType('')}>
+          Toutes ({dEtape.length})
+        </button>
+        {typesAide.map((t) => {
+          const n = dEtape.filter(t.concerne).length
+          return (
+            <button
+              key={t.id}
+              type="button"
+              className={`mairie-type-filtre mairie-type--${t.id}`}
+              aria-pressed={type === t.id}
+              disabled={n === 0 && type !== t.id}
+              onClick={() => setType(type === t.id ? '' : t.id)}
+            >
+              {t.libelle} ({n})
+            </button>
+          )
+        })}
+      </div>
+
+      {visibles.length === 0 && <p className="texte-doux">Aucune demande {typeActif ? `« ${typeActif.libelle} » ` : ''}dans cette étape.</p>}
 
       {visibles.map((d) => {
         const urgent = d.situation === 'blesse' || d.situation === 'evac'
@@ -633,11 +668,17 @@ function Demandes({ donnees, communeId, communeNom, coordinateurNom }: { donnees
               <span className="mairie-etiquette">
                 {d.personnes} personne{d.personnes > 1 ? 's' : ''}
               </span>
-              {d.besoins.map((b) => (
-                <span key={b} className="mairie-etiquette">
-                  {listeBesoins.find((x) => x.id === b)?.label ?? b}
-                </span>
-              ))}
+            </div>
+            <div className="mairie-types-demande" aria-label="Aide demandée">
+              {typesDe(d).length === 0 ? (
+                <span className="texte-doux" style={{ fontSize: 14 }}>Aucune aide précise demandée : appelez pour savoir.</span>
+              ) : (
+                typesDe(d).map((t) => (
+                  <span key={t.id} className={`mairie-type mairie-type--${t.id}`}>
+                    {t.libelle}
+                  </span>
+                ))
+              )}
             </div>
             {d.message_sms && (
               <blockquote style={{ fontSize: 14, background: 'var(--bleu-voile)', borderRadius: 8, padding: '8px 10px', whiteSpace: 'pre-line' }}>
@@ -777,7 +818,7 @@ async function creerMissionDemande(d: DemandeServeur, besoin: string, missions: 
 function AideDemande({ demande, donnees, communeId, coordinateurNom, onAgir }: { demande: DemandeServeur; donnees: Donnees; communeId: string; coordinateurNom: string; onAgir: () => void }) {
   // Blessé ou évacuation : les secouristes d'abord ; sans besoin coché, eux seuls
   const urgent = demande.situation === 'blesse' || demande.situation === 'evac'
-  const coches = demande.besoins.filter((b) => correspondances[b])
+  const coches = [...(demande.situation === 'bloque' ? ['bloque'] : []), ...demande.besoins.filter((b) => correspondances[b])]
   const besoins = urgent || coches.length === 0 ? ['secours', ...coches] : coches
   const [besoin, setBesoin] = useState(besoins[0])
   const [message, setMessage] = useState('')
@@ -1803,6 +1844,7 @@ function PageRenforts({
 // Pour chaque besoin : combien de demandes l'attendent, et combien d'aidants de chaque sorte peuvent y répondre.
 // Hébergement, transport et matériel sont proposés automatiquement aux volontaires (0011) ; le reste passe par une mission.
 const besoinsAuto: Record<string, string> = {
+  bloque: "Appelez la personne (danger : 112), puis envoyez la Protection civile ou des volontaires pour dégager l'accès",
   heb: 'Proposé tout seul au foyer volontaire le plus proche',
   transport: 'Proposé tout seul au volontaire avec véhicule le plus proche',
   materiel: 'Proposé tout seul au volontaire le plus proche ; gros matériel : entreprises',
@@ -1833,7 +1875,7 @@ function PanneauBesoins({ donnees, onChoisir, onMission }: { donnees: Donnees; o
             {Object.keys(correspondances)
               .filter((b) => b !== 'secours')
               .map((b) => {
-                const concernees = ouvertes.filter((d) => d.besoins.includes(b))
+                const concernees = ouvertes.filter((d) => (b === 'bloque' ? d.situation === 'bloque' : d.besoins.includes(b)))
                 const personnes = concernees.reduce((n, d) => n + d.personnes, 0)
                 const a = aidantsPour(b, donnees.volontaires, donnees.benevoles ?? [], donnees.entreprises ?? [])
                 const total = a.volontaires.length + a.benevoles.length + a.entreprises.length
@@ -1842,7 +1884,7 @@ function PanneauBesoins({ donnees, onChoisir, onMission }: { donnees: Donnees; o
                 return (
                   <tr key={b} style={{ borderTop: '1px solid var(--bordure)' }}>
                     <th scope="row" style={{ padding: '8px 6px 8px 0', textAlign: 'left' }}>
-                      {libelleBesoin(b)}
+                      <span className={`mairie-type mairie-type--${b}`}>{libelleBesoin(b)}</span>
                     </th>
                     <td style={{ padding: 6, fontWeight: concernees.length ? 800 : 400 }}>
                       {concernees.length}

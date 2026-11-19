@@ -39,6 +39,9 @@ les secours et l'alerte officielle (FR-Alert), elle ne les remplace jamais.
 - **Qui peut aider** : une seule liste mélangée (volontaires, Protection civile, entreprises pour le matériel), étiquetée
   par sorte, les libres et les plus proches d'abord. Les entreprises ne répondent qu'au besoin « Matériel ». En crise, la page
   « Demandes et aidants » n'a pas d'onglets ; « Besoins à couvrir » dit pour chaque besoin par qui et comment il est réglé.
+- **Types d'aide** (mairie) : repris du formulaire « J'ai besoin d'aide » (Secours blessé/évacuation, Bloqué(e) chez soi,
+  Hébergement, Eau & repas, Médicaments, Transport, Matériel), une couleur par type (`.mairie-type--*`), filtre au-dessus
+  des demandes et étiquettes sur chaque demande.
 - **Paires automatiques** : besoin « Transport » → volontaire avec véhicule, « Matériel » → volontaire
   avec matériel, proposés au plus proche disponible (table `entraides`, une sollicitation à la fois par
   volontaire). Coordonnées échangées seulement après l'accord. Les autres besoins (eau, médicaments,
