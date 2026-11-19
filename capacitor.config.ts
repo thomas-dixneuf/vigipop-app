@@ -16,6 +16,10 @@ const config: CapacitorConfig = {
     backgroundColor: '#0E3A52',
     contentInset: 'never',
   },
+  plugins: {
+    // Alerte reçue pendant que l'app est ouverte : elle s'affiche aussi en bandeau
+    PushNotifications: { presentationOptions: ['badge', 'sound', 'alert'] },
+  },
 }
 
 export default config

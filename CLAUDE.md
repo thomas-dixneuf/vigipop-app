@@ -44,7 +44,8 @@ les secours et l'alerte officielle (FR-Alert), elle ne les remplace jamais.
   volontaire). Coordonnées échangées seulement après l'accord. Les autres besoins (eau, médicaments,
   animaux) passent par le tableau « Besoins et volontaires » de la mairie, qui crée une mission ciblée.
 - **Notifications** : centre de notifications dans l'app, alertes du téléphone, push app fermée
-  (`docs/NOTIFICATIONS.md`). Clé privée VAPID uniquement dans les secrets Supabase, jamais dans
+  (`docs/NOTIFICATIONS.md`). Applications Android/iOS : push natif (Firebase / Apple, migration 0022) avec un
+  message **anonyme** seulement (« Nouvelle alerte de votre commune »), jamais le contenu de l'alerte. Clé privée VAPID uniquement dans les secrets Supabase, jamais dans
   le dépôt ni dans une conversation. Complète FR-Alert, ne le remplace jamais.
 - **SMS** : SMS de secours reçus dans le tableau de bord (`recevoir-sms`, migration 0013, sans doublon
   avec l'app) ; vrai code de connexion activé par `VITE_CONNEXION_SMS=1` (`docs/SMS.md`).
@@ -110,5 +111,7 @@ Logos dans `public/` : `logo.png` (recadré, petites tailles), `logo-slogan.png`
 
 ## Code
 - React + TypeScript + Vite, PWA via `vite-plugin-pwa`, `HashRouter`.
+- Applications Android et iOS : coque Capacitor (`android/`, `ios/`, `docs/APPLIS-NATIVES.md`), construites par le
+  workflow « Applications Android et iOS ». Ne pas y mettre de logique : tout reste dans l'app web.
 - Nommage et textes en français. Un écran par fichier dans `src/screens/`.
 - Avant de livrer : `npm run build` et `npm run lint` doivent passer.

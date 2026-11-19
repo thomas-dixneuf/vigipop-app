@@ -34,6 +34,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       CLE: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+      FIREBASE: ${{ secrets.GOOGLE_SERVICES_JSON }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -46,6 +47,12 @@ jobs:
           java-version: 21
           cache: gradle
       - run: npm ci
+      # Alertes « app fermée » sur Android : fichier google-services.json du projet Firebase (secret facultatif)
+      - name: Fichier Firebase (si le secret existe)
+        if: env.FIREBASE != ''
+        run: |
+          echo "$FIREBASE" > android/app/google-services.json
+          echo "VITE_PUSH_ANDROID=1" >> "$GITHUB_ENV"
       - name: App web pour les applications
         run: npm run natif:build
       - run: npx cap sync android

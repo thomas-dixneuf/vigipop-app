@@ -57,5 +57,43 @@ de `assets/` puis `npx @capacitor/assets generate --android --ios`.
 - Identifiant `fr.vigipop.app` : ne plus le changer après la première publication.
 - Numéro de version : `VERSION_NAME` dans `.github/workflows/applis-natives.yml` (à monter à chaque
   publication) ; le numéro de construction augmente tout seul.
-- Notifications « app fermée » : le push web (VAPID) ne fonctionne pas dans les applications.
-  Le centre de notifications (la cloche) fonctionne. Le push natif (Firebase / Apple) est à brancher.
+- Notifications « app fermée » : voir la partie ci-dessous. Le code est dans `src/outils/alertes.ts`
+  (plugin `@capacitor/push-notifications`) et `supabase/functions/envoyer-push/index.ts`.
+
+## Alertes « app fermée » dans les applications (push natif)
+
+Le push web (VAPID) ne fonctionne pas dans les applications. Elles utilisent le push natif :
+Firebase (Google) pour Android, le service d'Apple pour iOS. **Choix de Thomas (19/11/2026) : messages
+anonymes.** Le téléphone affiche seulement « Nouvelle alerte de votre commune. Ouvrez Vigipop pour la
+voir. » ; le détail est dans la cloche, à l'ouverture. Google et Apple ne voient donc ni la consigne,
+ni la demande, ni le nom de la personne. La version web garde son push (chiffré de bout en bout).
+
+Sans les réglages ci-dessous, rien ne casse : l'app fonctionne, seule l'alerte app fermée manque.
+
+### 1. Base de données (une fois)
+Supabase → **SQL Editor** → colle `supabase/migrations/0022_push_natif.sql` → **Run**.
+Puis **Edge Functions** → `envoyer-push` → remplace le code par celui de
+`supabase/functions/envoyer-push/index.ts` → **Deploy**.
+
+### 2. Android : projet Firebase (gratuit, ≈ 10 minutes, possible dès maintenant)
+1. https://console.firebase.google.com avec le Gmail dédié Vigipop → **Créer un projet** → nom
+   `Vigipop` → désactive Google Analytics (inutile) → **Créer**.
+2. Dans le projet : icône Android → nom du package `fr.vigipop.app` → **Enregistrer l'application**
+   → télécharge `google-services.json`. Ignore les étapes suivantes (déjà faites dans le code).
+3. GitHub → **Settings** → **Secrets and variables** → **Actions** → **New repository secret** :
+   nom `GOOGLE_SERVICES_JSON`, valeur : tout le contenu du fichier `google-services.json`.
+4. Firebase → ⚙️ **Paramètres du projet** → **Comptes de service** → **Générer une nouvelle clé
+   privée** → un fichier `.json` se télécharge. **C'est une clé secrète : ne l'envoie à personne.**
+5. Supabase → **Edge Functions** → **Secrets** → nouveau secret `FIREBASE_COMPTE_SERVICE`, valeur :
+   tout le contenu de ce fichier. Puis supprime le fichier de ton ordinateur.
+
+### 3. iOS : clé Apple (quand le compte Apple Developer existe)
+1. developer.apple.com → **Certificates, IDs & Profiles** → **Keys** → **+** → coche
+   **Apple Push Notifications service (APNs)** → télécharge le fichier `.p8` (une seule fois possible).
+2. Supabase → **Edge Functions** → **Secrets** : `APNS_CLE_P8` (contenu du `.p8`), `APNS_CLE_ID`
+   (identifiant de la clé, 10 caractères), `APNS_EQUIPE_ID` (Team ID), `APNS_BUNDLE` = `fr.vigipop.app`.
+
+### Tester
+Installe l'app (APK de test Android, TestFlight pour iOS) → cloche → **Activer les alertes** →
+autorise. Ferme l'app, puis déclenche une crise d'essai depuis l'espace mairie : le téléphone doit
+afficher « Nouvelle alerte de votre commune ». Un appui ouvre l'app sur le bon écran.
