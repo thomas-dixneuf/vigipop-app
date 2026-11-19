@@ -11,6 +11,9 @@ Vigipop prévient les habitants de trois façons :
 
 Vigipop complète l'alerte officielle FR-Alert, il ne la remplace jamais.
 
+Applications Android et iOS : le push web ci-dessous ne fonctionne pas dans les applications, elles
+utilisent le push natif avec un message anonyme. Réglages : `docs/APPLIS-NATIVES.md`.
+
 ## Mettre en place le push (≈ 15 minutes, une seule fois)
 
 La clé privée ne doit passer que par toi et Supabase : ne l'envoie à personne.

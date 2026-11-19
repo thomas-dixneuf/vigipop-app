@@ -10,6 +10,9 @@ export default defineConfig(({ mode }) => {
   const mairie = env.VITE_VUE === 'mairie'
   // Démonstration hors ligne (données fictives) : un nom distinct pour ne pas la confondre avec la vraie
   const demo = env.VITE_SERVEUR_LOCAL === '1' ? ' (démo)' : ''
+  // APP_NATIVE=1 : version embarquée dans les applications Android et iOS (Capacitor, npm run natif:sync).
+  // Les fichiers sont déjà dans l'application : pas de service worker (mise à jour par les stores).
+  const natif = process.env.APP_NATIVE === '1'
   return {
     // Chemins relatifs : l'app fonctionne quel que soit le dossier d'hébergement
     base: './',
@@ -24,6 +27,7 @@ export default defineConfig(({ mode }) => {
           mairie ? html.replace(/<title>[^<]*<\/title>/, `<title>Vigipop Mairie${demo}</title>`) : html,
       },
       VitePWA({
+        disable: natif,
         registerType: 'autoUpdate',
         includeAssets: ['favicon.png', 'logo.png', 'logo-slogan.png'],
         workbox: {
