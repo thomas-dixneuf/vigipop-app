@@ -61,8 +61,11 @@ export default defineConfig(({ mode }) => {
                 orientation: 'any' as const,
               }
             : {
+                // Identité stable de l'app installée (Windows, Microsoft Store) : ne plus la changer
+                id: './',
                 name: 'Vigipop',
                 short_name: 'Vigipop',
+                categories: ['utilities', 'news'],
                 description: "Signaler sa situation, trouver de l'aide, aider ses voisins.",
                 start_url: './',
                 orientation: 'portrait' as const,

@@ -119,5 +119,7 @@ Logos dans `public/` : `logo.png` (recadré, petites tailles), `logo-slogan.png`
 - React + TypeScript + Vite, PWA via `vite-plugin-pwa`, `HashRouter`.
 - Applications Android et iOS : coque Capacitor (`android/`, `ios/`, `docs/APPLIS-NATIVES.md`), construites par le
   workflow « Applications Android et iOS ». Ne pas y mettre de logique : tout reste dans l'app web.
+- Windows : pas de `.exe`. L'app web s'installe depuis le site (bouton « Installer l'app sur cet appareil »,
+  `src/outils/installation.ts`) ; Microsoft Store via PWABuilder (`docs/WINDOWS.md`).
 - Nommage et textes en français. Un écran par fichier dans `src/screens/`.
 - Avant de livrer : `npm run build` et `npm run lint` doivent passer.

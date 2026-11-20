@@ -3,6 +3,8 @@ import { createRoot } from 'react-dom/client'
 import { HashRouter } from 'react-router-dom'
 import { registerSW } from 'virtual:pwa-register'
 import './index.css'
+// Garde l'invitation « Installer l'app » du navigateur dès le démarrage
+import './outils/installation.ts'
 import App from './App.tsx'
 import { AppStateProvider } from './state/AppState.tsx'
 import Presentation from './presentation/Presentation.tsx'
