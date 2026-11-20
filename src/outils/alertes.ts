@@ -14,6 +14,14 @@ const natif = plateforme !== 'web'
 const pushNatifPossible = plateforme === 'ios' || (plateforme === 'android' && import.meta.env.VITE_PUSH_ANDROID === '1')
 const CLE_ETAT_NATIF = 'vigipop-alertes-natif'
 
+function ecrireEtatNatif(etat: NotificationPermission) {
+  try {
+    localStorage.setItem(CLE_ETAT_NATIF, etat)
+  } catch {
+    // Stockage indisponible : on redemandera
+  }
+}
+
 function lireEtatNatif(): NotificationPermission {
   try {
     const etat = localStorage.getItem(CLE_ETAT_NATIF)
@@ -39,11 +47,7 @@ export async function demanderAlertes() {
     if (natif) {
       const { receive } = await PushNotifications.requestPermissions()
       const etat: NotificationPermission = receive === 'granted' ? 'granted' : receive === 'denied' ? 'denied' : 'default'
-      try {
-        localStorage.setItem(CLE_ETAT_NATIF, etat)
-      } catch {
-        // Stockage indisponible : on redemandera
-      }
+      ecrireEtatNatif(etat)
       return etat
     }
     return await Notification.requestPermission()
@@ -94,6 +98,34 @@ export async function abonnerPush(client: SupabaseClient, communeId: string) {
     return !error
   } catch {
     return false
+  }
+}
+
+// Applications Android et iOS, à chaque ouverture : relit l'autorisation réelle du téléphone (elle a pu
+// changer dans les réglages) et, la toute première fois, affiche la question du système
+// « Autoriser Vigipop à envoyer des notifications ? » (refusable). Puis abonne le téléphone.
+const CLE_DEJA_PROPOSE = 'vigipop-alertes-proposees'
+export async function preparerAlertesNatives(client: SupabaseClient | null, communeId: string) {
+  if (!natif || !pushNatifPossible) return
+  try {
+    const { receive } = await PushNotifications.checkPermissions()
+    if (receive === 'granted') ecrireEtatNatif('granted')
+    else if (receive === 'denied') ecrireEtatNatif('denied')
+    else {
+      let dejaPropose = false
+      try {
+        dejaPropose = localStorage.getItem(CLE_DEJA_PROPOSE) === '1'
+        localStorage.setItem(CLE_DEJA_PROPOSE, '1')
+      } catch {
+        // Stockage indisponible : on propose quand même
+      }
+      ecrireEtatNatif('default')
+      if (dejaPropose) return
+      if ((await demanderAlertes()) !== 'granted') return
+    }
+    if (client && etatAlertes() === 'granted') await abonnerPushNatif(client, communeId)
+  } catch {
+    // Plugin indisponible : la cloche dans l'app reste
   }
 }
 

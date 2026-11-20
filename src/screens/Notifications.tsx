@@ -46,7 +46,7 @@ export default function Notifications() {
         )}
         {alertes === 'denied' && (
           <p className="carte texte-doux" style={{ lineHeight: 1.4 }}>
-            Les alertes sont bloquées pour Vigipop. Pour les recevoir, autorisez les notifications dans les réglages du navigateur ou du téléphone.
+            Les alertes sont bloquées pour Vigipop. Pour les recevoir, autorisez les notifications de Vigipop dans les réglages du téléphone (ou du navigateur).
           </p>
         )}
         {alertes === 'impossible' && (

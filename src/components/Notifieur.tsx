@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import Icone from './Icone.tsx'
-import { abonnerPush, afficherAlerte, etatAlertes } from '../outils/alertes.ts'
+import { abonnerPush, afficherAlerte, etatAlertes, preparerAlertesNatives } from '../outils/alertes.ts'
+import { Capacitor } from '@capacitor/core'
 import { COMMUNE_ID, serveur, type AidantServeur, type MonHebergementServeur, type PropositionHebergementServeur, type SollicitationServeur } from '../services/serveur.ts'
 import { useAppState, type NotificationApp } from '../state/AppState.tsx'
 
@@ -176,8 +177,11 @@ export default function Notifieur() {
   }, [aidant, demandeEntraide])
 
   // Alertes déjà autorisées : on (ré)abonne ce téléphone au push à chaque ouverture
+  // (applications Android et iOS : la question du téléphone est posée d'elle-même à la première ouverture)
   useEffect(() => {
-    if (serveur && !espaceMairie && etatAlertes() === 'granted') void abonnerPush(serveur, COMMUNE_ID)
+    if (espaceMairie) return
+    if (Capacitor.isNativePlatform()) void preparerAlertesNatives(serveur, COMMUNE_ID)
+    else if (serveur && etatAlertes() === 'granted') void abonnerPush(serveur, COMMUNE_ID)
   }, [espaceMairie])
 
   // Le bandeau disparaît seul au bout de quelques secondes
