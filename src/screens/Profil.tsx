@@ -1,6 +1,8 @@
 import { Link, useNavigate } from 'react-router-dom'
 import BarreNav from '../components/BarreNav.tsx'
+import BoutonInstallerApp from '../components/BoutonInstallerApp.tsx'
 import Icone from '../components/Icone.tsx'
+import { useInstallationPossible } from '../outils/installation.ts'
 import { serveur } from '../services/serveur.ts'
 import { useAppState } from '../state/AppState.tsx'
 
@@ -27,6 +29,7 @@ const caseACocher = { width: 24, height: 24, marginTop: 2, flexShrink: 0, accent
 // Version simple du profil : la page complète (offres et prêts) viendra ensuite
 export default function Profil() {
   const navigate = useNavigate()
+  const installable = useInstallationPossible()
   const { utilisateur, mode, lancerVisite, deconnecter, communeAffichee, geoloc, activerGeoloc, statsPassage, choisirStatsPassage, simulerCompteEfface } = useAppState()
 
   const revoirVisite = () => {
@@ -115,6 +118,18 @@ export default function Profil() {
             </span>
           </label>
         </section>
+
+        {installable && (
+          <section className="carte" aria-labelledby="titre-installer" style={{ display: 'flex', flexDirection: 'column', gap: 12, padding: 16 }}>
+            <h2 id="titre-installer" style={{ fontSize: 16, fontWeight: 800, color: 'var(--bleu-nuit)' }}>
+              Installer Vigipop
+            </h2>
+            <span className="texte-doux">
+              L'app s'ouvre dans sa propre fenêtre, avec son icône sur le bureau ou l'écran d'accueil, et reste utilisable sans réseau.
+            </span>
+            <BoutonInstallerApp className="bouton bouton--principal" />
+          </section>
+        )}
 
         {utilisateur && (
           <button type="button" onClick={deconnecter} className="bouton bouton--contour" style={{ minHeight: 48, fontSize: 15 }}>

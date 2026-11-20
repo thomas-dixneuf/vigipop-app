@@ -1,5 +1,6 @@
 import { Link, useNavigate } from 'react-router-dom'
 import BoutonDemo from '../components/BoutonDemo.tsx'
+import BoutonInstallerApp from '../components/BoutonInstallerApp.tsx'
 import Icone from '../components/Icone.tsx'
 import Logo from '../components/Logo.tsx'
 import { useAppState } from '../state/AppState.tsx'
@@ -120,6 +121,8 @@ export default function Lancement() {
           </>
         )}
 
+        {/* Ordinateur ou Android ouvert dans Chrome / Edge : l'app s'installe comme un logiciel (pas en accès d'urgence) */}
+        {!urgenceSansCompte && <BoutonInstallerApp style={{ ...lienClair, background: 'none', border: 'none', justifyContent: 'center' }} />}
         {/* Le 112 reste joignable même sans compte et sans crise déclarée */}
         <a href="tel:112" style={{ ...lienClair, color: 'var(--blanc)', fontWeight: 400, fontSize: 14 }}>
           Danger immédiat ?&nbsp;<strong style={{ color: 'var(--consigne)' }}>Appelez le 112</strong>
