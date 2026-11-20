@@ -2,18 +2,19 @@ import { useState, type FormEvent } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import BarreNav from '../components/BarreNav.tsx'
 import ChampAdresse from '../components/ChampAdresse.tsx'
+import ChampEmail from '../components/ChampEmail.tsx'
 import ChampTelephone from '../components/ChampTelephone.tsx'
 import EnTeteRetour from '../components/EnTeteRetour.tsx'
 import { champ, libelle, numeroValide, type EtatCode } from '../outils/formulaire.ts'
 import { useAppState } from '../state/AppState.tsx'
-import { envoyerCode } from '../services/codeSms.ts'
+import { emailValide, envoyerCode, moyenCode, parSms } from '../services/codeConnexion.ts'
 import MonFoyer from '../components/MonFoyer.tsx'
 import { ressources as listeRessources } from '../data/fictif.ts'
 
 const chiffres = (numero: string) => numero.replace(/[\s.-]/g, '')
 
 // Informations personnelles : affichées en lecture, modifiables sur demande.
-// Un nouveau numéro se confirme par code SMS.
+// L'identifiant de connexion (adresse e-mail, ou numéro en mode SMS) se confirme par un code ; le reste se change directement.
 export default function MesInfos() {
   const navigate = useNavigate()
   const retourDuCode = !!(useLocation().state as { enregistre?: boolean } | null)?.enregistre
@@ -22,6 +23,7 @@ export default function MesInfos() {
   const [prenom, setPrenom] = useState(utilisateur?.prenom ?? '')
   const [nom, setNom] = useState(utilisateur?.nom ?? '')
   const [telephone, setTelephone] = useState(utilisateur?.telephone ?? '')
+  const [email, setEmail] = useState(utilisateur?.email ?? '')
   const [commune, setCommune] = useState(utilisateur?.commune ?? '')
   // Faux dès que le texte change sans choix dans la liste officielle
   const [communeVerifiee, setCommuneVerifiee] = useState(true)
@@ -33,14 +35,18 @@ export default function MesInfos() {
   if (!utilisateur) return null
 
   const nouveauNumero = chiffres(telephone) !== chiffres(utilisateur.telephone)
+  const nouvelleAdresse = !parSms && email.trim().toLowerCase() !== (utilisateur.email ?? '')
+  // Changement de l'identifiant de connexion : confirmé par un code
+  const aConfirmer = parSms ? nouveauNumero : nouvelleAdresse
   const modifie =
-    nouveauNumero || prenom.trim() !== utilisateur.prenom || nom.trim() !== (utilisateur.nom ?? '') || commune.trim() !== utilisateur.commune
-  const valide = prenom.trim() !== '' && numeroValide(telephone) && commune.trim() !== '' && communeVerifiee
+    nouveauNumero || nouvelleAdresse || prenom.trim() !== utilisateur.prenom || nom.trim() !== (utilisateur.nom ?? '') || commune.trim() !== utilisateur.commune
+  const valide = prenom.trim() !== '' && (parSms || emailValide(email)) && numeroValide(telephone) && commune.trim() !== '' && communeVerifiee
 
   const annuler = () => {
     setPrenom(utilisateur.prenom)
     setNom(utilisateur.nom ?? '')
     setTelephone(utilisateur.telephone)
+    setEmail(utilisateur.email ?? '')
     setCommune(utilisateur.commune)
     setCommuneVerifiee(true)
     setEdition(false)
@@ -50,11 +56,12 @@ export default function MesInfos() {
     e.preventDefault()
     if (!valide) return
     if (!modifie) return setEdition(false)
-    const infos = { prenom: prenom.trim(), nom: nom.trim(), commune: commune.trim() }
-    if (nouveauNumero) {
-      const resultat = await envoyerCode(telephone, true)
+    const infos = { prenom: prenom.trim(), nom: nom.trim(), telephone, commune: commune.trim() }
+    if (aConfirmer) {
+      const adresse = email.trim().toLowerCase()
+      const resultat = await envoyerCode(parSms ? telephone : adresse, true)
       if ('erreur' in resultat) return setErreurCode(resultat.erreur)
-      const etat: EtatCode = { ...infos, telephone, nouveauCompte: false, modification: true, typeCode: resultat.type }
+      const etat: EtatCode = { ...infos, email: adresse, nouveauCompte: false, modification: true, typeCode: resultat.type }
       navigate('/code', { state: etat })
       return
     }
@@ -85,6 +92,7 @@ export default function MesInfos() {
             <dl className="carte" style={{ margin: 0, display: 'flex', flexDirection: 'column', gap: 12 }}>
               <Info terme="Prénom" valeur={utilisateur.prenom} />
               <Info terme="Nom" valeur={utilisateur.nom || 'Non renseigné'} vide={!utilisateur.nom} />
+              {!parSms && <Info terme="Adresse e-mail" valeur={utilisateur.email || 'Non renseignée'} vide={!utilisateur.email} />}
               <Info terme="Numéro de mobile" valeur={utilisateur.telephone} />
               <Info terme="Commune" valeur={utilisateur.commune} />
             </dl>
@@ -109,9 +117,12 @@ export default function MesInfos() {
               Nom
               <input type="text" value={nom} onChange={(e) => setNom(e.target.value)} placeholder="Nom de famille" autoComplete="family-name" maxLength={60} style={champ} />
             </label>
+            {!parSms && <ChampEmail valeur={email} onChange={setEmail} />}
             <ChampTelephone valeur={telephone} onChange={setTelephone} />
-            {nouveauNumero && numeroValide(telephone) && (
-              <span className="texte-doux" style={{ marginTop: -6 }}>Un code SMS confirmera ce nouveau numéro.</span>
+            {aConfirmer && (parSms ? numeroValide(telephone) : emailValide(email)) && (
+              <span className="texte-doux" style={{ marginTop: -6 }}>
+                Un code envoyé {moyenCode} confirmera {parSms ? 'ce nouveau numéro' : 'cette nouvelle adresse'}.
+              </span>
             )}
             {erreurCode && (
               <span role="alert" style={{ color: 'var(--danger)', fontSize: 14, fontWeight: 700 }}>
@@ -132,7 +143,7 @@ export default function MesInfos() {
               }}
             />
             <button type="submit" className="bouton bouton--principal" disabled={!valide || !modifie}>
-              {nouveauNumero ? 'Recevoir le code' : 'Enregistrer'}
+              {aConfirmer ? 'Recevoir le code' : 'Enregistrer'}
             </button>
             <button type="button" className="bouton bouton--contour" onClick={annuler}>
               Annuler

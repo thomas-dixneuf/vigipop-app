@@ -1,38 +1,43 @@
 import { useState, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import ChampAdresse from '../components/ChampAdresse.tsx'
+import ChampEmail from '../components/ChampEmail.tsx'
 import ChampTelephone from '../components/ChampTelephone.tsx'
 import EnTeteRetour from '../components/EnTeteRetour.tsx'
 import Logo from '../components/Logo.tsx'
 import { numeroValide, type EtatCode } from '../outils/formulaire.ts'
 import { useAppState } from '../state/AppState.tsx'
-import { envoyerCode } from '../services/codeSms.ts'
+import { emailValide, envoyerCode, moyenCode, parSms } from '../services/codeConnexion.ts'
 
 export default function Connexion() {
   const navigate = useNavigate()
   const { dernierUtilisateur: compte } = useAppState()
+  const [email, setEmail] = useState(compte?.email ?? '')
   const [telephone, setTelephone] = useState(compte?.telephone ?? '')
   // Commune choisie dans la liste officielle : l'app affiche ensuite ses services, si elle utilise Vigipop
   const [commune, setCommune] = useState<string | null>(compte?.commune || null)
   const [envoi, setEnvoi] = useState(false)
   const [erreur, setErreur] = useState('')
 
-  const valide = numeroValide(telephone) && commune !== null
+  const valide = (parSms ? numeroValide(telephone) : emailValide(email)) && commune !== null
 
   const envoyer = async (e: FormEvent) => {
     e.preventDefault()
     if (!valide || envoi) return
     setEnvoi(true)
     setErreur('')
-    const resultat = await envoyerCode(telephone, false)
+    const resultat = await envoyerCode(parSms ? telephone : email, false)
     setEnvoi(false)
     if ('erreur' in resultat) return setErreur(resultat.erreur)
     // En vrai, le prénom et la commune viendront du serveur ; ici on reprend ceux du téléphone, et la commune choisie
-    const memeCompte = compte && compte.telephone.replace(/\D/g, '') === telephone.replace(/\D/g, '')
+    const adresse = email.trim().toLowerCase()
+    const memeCompte =
+      compte && (parSms ? compte.telephone.replace(/\D/g, '') === telephone.replace(/\D/g, '') : compte.email === adresse)
     const etat: EtatCode = {
       prenom: memeCompte ? compte.prenom : '',
       nom: memeCompte ? compte.nom : undefined,
-      telephone,
+      email: parSms ? (memeCompte ? (compte.email ?? '') : '') : adresse,
+      telephone: parSms ? telephone : memeCompte ? compte.telephone : '',
       commune: commune ?? '',
       nouveauCompte: false,
       typeCode: resultat.type,
@@ -51,7 +56,7 @@ export default function Connexion() {
         <div style={{ display: 'flex', justifyContent: 'center', padding: '12px 0' }}>
           <Logo taille={80} />
         </div>
-        <ChampTelephone valeur={telephone} onChange={setTelephone} />
+        {parSms ? <ChampTelephone valeur={telephone} onChange={setTelephone} /> : <ChampEmail valeur={email} onChange={setEmail} />}
         <ChampAdresse
           variante="app"
           commune
@@ -72,7 +77,7 @@ export default function Connexion() {
           {envoi ? 'Envoi du code…' : 'Recevoir mon code'}
         </button>
         <span className="texte-doux" style={{ textAlign: 'center' }}>
-          Vous recevrez un code à 6 chiffres par SMS.
+          Vous recevrez un code à 6 chiffres {moyenCode}.
         </span>
         <p style={{ textAlign: 'center', fontSize: 15 }}>
           Pas encore de compte ?{' '}

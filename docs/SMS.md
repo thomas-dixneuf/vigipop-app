@@ -47,7 +47,12 @@ par SMS reçu (à vérifier sur le devis de la passerelle choisie).
   de 48 h), elle remplace la demande SMS en gardant ce que la mairie a déjà fait (statut,
   réponse). Un SMS reçu après la demande de l'app est seulement noté dans le journal.
 
-## 2. Code de connexion par SMS
+## 2. Code de connexion par SMS (désactivé : la connexion se fait par e-mail)
+
+Choix de Thomas (20/11/2026) : la connexion se fait par un code reçu **par e-mail** (gratuit,
+`docs/CONNEXION.md`). Le SMS reste possible plus tard sans refaire l'app : régler la passerelle
+ci-dessous, puis `VITE_CONNEXION_PAR=sms` **et** `VITE_CONNEXION_SMS=1` dans `.env.production`.
+Le champ e-mail disparaît alors et le numéro de mobile devient l'identifiant.
 
 Supabase envoie lui-même le code (« OTP ») par la passerelle choisie.
 
@@ -56,7 +61,7 @@ Supabase envoie lui-même le code (« OTP ») par la passerelle choisie.
    seulement**.
 2. Dans **SMS message**, garder `{{ .Code }}` dans le texte, par exemple :
    `Vigipop : votre code de connexion est {{ .Code }}. Il expire dans 10 minutes.`
-3. Dans `.env.production`, ajouter `VITE_CONNEXION_SMS=1`.
+3. Dans `.env.production`, ajouter `VITE_CONNEXION_PAR=sms` et `VITE_CONNEXION_SMS=1`.
 
 Tant que `VITE_CONNEXION_SMS` n'est pas à `1`, l'app garde la connexion de démonstration
 (n'importe quel code à 6 chiffres passe) : pratique pour les rendez-vous en mairie.
