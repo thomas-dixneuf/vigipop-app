@@ -1,7 +1,8 @@
 import { useState, type FormEvent } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import BarreNav from '../components/BarreNav.tsx'
-import ChampAdresse from '../components/ChampAdresse.tsx'
+import ChampPaysCommune from '../components/ChampPaysCommune.tsx'
+import { paysDe } from '../data/pays.ts'
 import ChampEmail from '../components/ChampEmail.tsx'
 import ChampTelephone from '../components/ChampTelephone.tsx'
 import EnTeteRetour from '../components/EnTeteRetour.tsx'
@@ -24,6 +25,7 @@ export default function MesInfos() {
   const [nom, setNom] = useState(utilisateur?.nom ?? '')
   const [telephone, setTelephone] = useState(utilisateur?.telephone ?? '')
   const [email, setEmail] = useState(utilisateur?.email ?? '')
+  const [pays, setPays] = useState(utilisateur?.pays ?? 'FR')
   const [commune, setCommune] = useState(utilisateur?.commune ?? '')
   // Faux dès que le texte change sans choix dans la liste officielle
   const [communeVerifiee, setCommuneVerifiee] = useState(true)
@@ -39,14 +41,15 @@ export default function MesInfos() {
   // Changement de l'identifiant de connexion : confirmé par un code
   const aConfirmer = parSms ? nouveauNumero : nouvelleAdresse
   const modifie =
-    nouveauNumero || nouvelleAdresse || prenom.trim() !== utilisateur.prenom || nom.trim() !== (utilisateur.nom ?? '') || commune.trim() !== utilisateur.commune
-  const valide = prenom.trim() !== '' && (parSms || emailValide(email)) && numeroValide(telephone) && commune.trim() !== '' && communeVerifiee
+    nouveauNumero || nouvelleAdresse || prenom.trim() !== utilisateur.prenom || nom.trim() !== (utilisateur.nom ?? '') || commune.trim() !== utilisateur.commune || pays !== (utilisateur.pays ?? 'FR')
+  const valide = prenom.trim() !== '' && (parSms || emailValide(email)) && numeroValide(telephone, pays) && commune.trim() !== '' && communeVerifiee
 
   const annuler = () => {
     setPrenom(utilisateur.prenom)
     setNom(utilisateur.nom ?? '')
     setTelephone(utilisateur.telephone)
     setEmail(utilisateur.email ?? '')
+    setPays(utilisateur.pays ?? 'FR')
     setCommune(utilisateur.commune)
     setCommuneVerifiee(true)
     setEdition(false)
@@ -56,7 +59,7 @@ export default function MesInfos() {
     e.preventDefault()
     if (!valide) return
     if (!modifie) return setEdition(false)
-    const infos = { prenom: prenom.trim(), nom: nom.trim(), telephone, commune: commune.trim() }
+    const infos = { prenom: prenom.trim(), nom: nom.trim(), telephone, commune: commune.trim(), pays }
     if (aConfirmer) {
       const adresse = email.trim().toLowerCase()
       const resultat = await envoyerCode(parSms ? telephone : adresse, true)
@@ -95,6 +98,7 @@ export default function MesInfos() {
               {!parSms && <Info terme="Adresse e-mail" valeur={utilisateur.email || 'Non renseignée'} vide={!utilisateur.email} />}
               <Info terme="Numéro de mobile" valeur={utilisateur.telephone} />
               <Info terme="Commune" valeur={utilisateur.commune} />
+              <Info terme="Pays" valeur={paysDe(utilisateur.pays).nom} />
             </dl>
             <button
               type="button"
@@ -118,7 +122,7 @@ export default function MesInfos() {
               <input type="text" value={nom} onChange={(e) => setNom(e.target.value)} placeholder="Nom de famille" autoComplete="family-name" maxLength={60} style={champ} />
             </label>
             {!parSms && <ChampEmail valeur={email} onChange={setEmail} />}
-            <ChampTelephone valeur={telephone} onChange={setTelephone} />
+            <ChampTelephone valeur={telephone} onChange={setTelephone} pays={pays} />
             {aConfirmer && (parSms ? numeroValide(telephone) : emailValide(email)) && (
               <span className="texte-doux" style={{ marginTop: -6 }}>
                 Un code envoyé {moyenCode} confirmera {parSms ? 'ce nouveau numéro' : 'cette nouvelle adresse'}.
@@ -129,17 +133,14 @@ export default function MesInfos() {
                 {erreurCode}
               </span>
             )}
-            <ChampAdresse
-              variante="app"
-              commune
-              obligatoire
-              libelleChamp="Ma commune"
+            <ChampPaysCommune
+              pays={pays}
+              onPays={setPays}
               valeurInitiale={utilisateur.commune}
               verifieeInitialement
-              onTexte={setCommune}
-              onChoix={(r) => {
-                setCommuneVerifiee(!!r)
-                if (r) setCommune(r.libelle)
+              onCommune={(c) => {
+                setCommuneVerifiee(c !== null)
+                setCommune(c ?? '')
               }}
             />
             <button type="submit" className="bouton bouton--principal" disabled={!valide || !modifie}>

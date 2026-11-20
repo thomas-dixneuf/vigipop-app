@@ -1,4 +1,5 @@
 import { assurerSession, serveur } from './serveur.ts'
+import { paysDe } from '../data/pays.ts'
 
 // Connexion sans mot de passe : un code à 6 chiffres reçu par e-mail (par défaut, gratuit) ou par SMS
 // (payant, VITE_CONNEXION_PAR=sms). Supabase envoie et vérifie le code. Voir docs/CONNEXION.md.
@@ -23,9 +24,9 @@ export function emailValide(email: string) {
 }
 
 // 06 12 34 56 78 → +33612345678
-export function numeroInternational(numero: string) {
-  const chiffres = numero.replace(/[\s.-]/g, '')
-  return chiffres.startsWith('+') ? chiffres : `+33${chiffres.replace(/^0/, '')}`
+export function numeroInternational(numero: string, pays?: string) {
+  const chiffres = numero.replace(/[\s.()-]/g, '')
+  return chiffres.startsWith('+') ? chiffres : `+${paysDe(pays).indicatif}${chiffres.replace(/^0/, '')}`
 }
 
 // L'identifiant qui reçoit le code : l'adresse e-mail, ou le numéro en mode SMS

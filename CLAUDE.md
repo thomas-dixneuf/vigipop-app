@@ -70,7 +70,9 @@ les secours et l'alerte officielle (FR-Alert), elle ne les remplace jamais.
   d'office : rien n'est collecté ni revendu tant que le cadre (agrégation, seuils, avis CNIL) n'est pas validé.
 - **Adresses vérifiées** : toute saisie de commune ou d'adresse passe par `ChampAdresse` (liste du géocodeur officiel
   IGN/BAN ; sans réponse, liste embarquée `src/data/adressesEmbarquees.ts`). Inscription, profil, foyer, hébergement et
-  mairie exigent un choix dans la liste ; le signalement accepte le texte tapé (jamais bloquant).
+  mairie exigent un choix dans la liste ; le signalement accepte le texte tapé (jamais bloquant). L'inscription demande
+  aussi le **pays** (`src/data/pays.ts`, France par défaut) : hors de France, la commune est tapée librement et le
+  numéro accepte l'indicatif du pays (`ChampPaysCommune`).
 - **Localisation proposée au lancement** (une fois, refusable avec « Plus tard », jamais en mode crise sans compte).
 - **Espace mairie en pages** (`#/mairie/...`), menu simple, chaque lien avec une ligne qui dit à quoi il sert : Accueil
   (en crise, « À faire maintenant » : un geste par ligne, avec son bouton) ; Demandes et aidants (`#/mairie/renforts`,
