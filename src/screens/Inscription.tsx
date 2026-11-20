@@ -1,11 +1,12 @@
 import { useState, type FormEvent } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import ChampAdresse from '../components/ChampAdresse.tsx'
+import ChampEmail from '../components/ChampEmail.tsx'
 import ChampTelephone from '../components/ChampTelephone.tsx'
 import EnTeteRetour from '../components/EnTeteRetour.tsx'
 import { champ, libelle, numeroValide, type EtatCode } from '../outils/formulaire.ts'
 import { useAppState } from '../state/AppState.tsx'
-import { envoyerCode } from '../services/codeSms.ts'
+import { emailValide, envoyerCode, identifiant, moyenCode, parSms } from '../services/codeConnexion.ts'
 
 export default function Inscription() {
   const navigate = useNavigate()
@@ -16,6 +17,7 @@ export default function Inscription() {
   const [prenom, setPrenom] = useState(contact?.prenom ?? '')
   // Nom de famille demandé tout de suite : il n'est plus redemandé ensuite
   const [nom, setNom] = useState(contact?.nom ?? '')
+  const [email, setEmail] = useState('')
   const [telephone, setTelephone] = useState(contact?.telephone ?? '')
   // Commune choisie dans la liste officielle (jamais un nom tapé au hasard)
   const [commune, setCommune] = useState<string | null>(null)
@@ -23,18 +25,18 @@ export default function Inscription() {
   const [envoi, setEnvoi] = useState(false)
   const [erreur, setErreur] = useState('')
 
-  const valide = prenom.trim() !== '' && nom.trim() !== '' && numeroValide(telephone) && commune !== null && consentement
+  const valide = prenom.trim() !== '' && nom.trim() !== '' && (parSms || emailValide(email)) && numeroValide(telephone) && commune !== null && consentement
 
   const envoyer = async (e: FormEvent) => {
     e.preventDefault()
     if (!valide || envoi) return
     setEnvoi(true)
     setErreur('')
-    // Le numéro est rattaché à la session de ce téléphone : le compte garde la demande déjà envoyée
-    const resultat = await envoyerCode(telephone, true)
+    // L'adresse (ou le numéro) est rattachée à la session de ce téléphone : le compte garde la demande déjà envoyée
+    const resultat = await envoyerCode(identifiant({ email, telephone }), true)
     setEnvoi(false)
     if ('erreur' in resultat) return setErreur(resultat.erreur)
-    const etat: EtatCode = { prenom: prenom.trim(), nom: nom.trim(), telephone, commune: commune ?? '', nouveauCompte: true, suite, typeCode: resultat.type }
+    const etat: EtatCode = { prenom: prenom.trim(), nom: nom.trim(), email: email.trim().toLowerCase(), telephone, commune: commune ?? '', nouveauCompte: true, suite, typeCode: resultat.type }
     navigate('/code', { state: etat })
   }
 
@@ -61,7 +63,9 @@ export default function Inscription() {
           Nom de famille
           <input type="text" value={nom} onChange={(e) => setNom(e.target.value)} placeholder="Nom de famille" autoComplete="family-name" maxLength={60} style={champ} />
         </label>
+        {!parSms && <ChampEmail valeur={email} onChange={setEmail} />}
         <ChampTelephone valeur={telephone} onChange={setTelephone} />
+        {!parSms && <span className="texte-doux" style={{ marginTop: -6 }}>Pour que la mairie puisse vous rappeler en cas de crise.</span>}
         <ChampAdresse variante="app" commune obligatoire libelleChamp="Ma commune" onChoix={(r) => setCommune(r?.libelle ?? null)} />
         <label style={{ display: 'flex', alignItems: 'flex-start', gap: 10, fontSize: 13, lineHeight: 1.4, color: 'var(--texte-doux)' }}>
           <input
@@ -83,7 +87,7 @@ export default function Inscription() {
           {envoi ? 'Envoi du code…' : 'Recevoir mon code'}
         </button>
         <span className="texte-doux" style={{ textAlign: 'center' }}>
-          Pas de mot de passe : un code à 6 chiffres vous est envoyé par SMS.
+          Pas de mot de passe : un code à 6 chiffres vous est envoyé {moyenCode}.
         </span>
         <p style={{ textAlign: 'center', fontSize: 15 }}>
           Déjà un compte ?{' '}

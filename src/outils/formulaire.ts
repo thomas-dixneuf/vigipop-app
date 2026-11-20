@@ -1,3 +1,4 @@
+import type { TypeCode } from '../services/codeConnexion.ts'
 // Styles et validations partagés par l'inscription et la connexion
 
 export const champ = {
@@ -20,13 +21,16 @@ export function numeroValide(numero: string) {
 export type EtatCode = {
   prenom: string
   nom?: string
+  // Adresse qui reçoit le code de connexion
+  email: string
+  // Numéro pour être rappelé par la mairie (non vérifié)
   telephone: string
   commune: string
   nouveauCompte: boolean
-  // Changement de numéro depuis le profil : le code confirme le nouveau numéro
+  // Changement d'adresse e-mail depuis le profil : le code confirme la nouvelle adresse
   modification?: boolean
   // Écran où revenir une fois le compte créé (par défaut selon le mode)
   suite?: string
-  // Type de code envoyé par le serveur (connexion par SMS réelle)
-  typeCode?: 'sms' | 'phone_change'
+  // Type de code envoyé par le serveur (connexion réelle par e-mail ou SMS)
+  typeCode?: TypeCode
 }

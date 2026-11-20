@@ -12,7 +12,10 @@ les secours et l'alerte officielle (FR-Alert), elle ne les remplace jamais.
   navigation reste identique dans les deux.
 - Un signalement ne doit **jamais être bloqué** par la connexion, le réseau ou le GPS :
   saisie d'adresse en secours, envoi différé hors ligne.
-- Connexion prévue par code SMS, sans mot de passe.
+- Connexion sans mot de passe par un **code à 6 chiffres reçu par e-mail** (choix de Thomas, 20/11/2026,
+  `docs/CONNEXION.md`). Le numéro de mobile reste demandé pour être rappelé par la mairie (non vérifié).
+  Le SMS est un réglage caché (`VITE_CONNEXION_PAR=sms`) : rien ne doit parler de connexion par SMS dans l'app tant
+  qu'il n'est pas activé. Google / Apple : prévus ensuite.
 - **Sans compte, l'app n'est accessible qu'en mode crise** (`src/components/AccesProtege.tsx`) :
   signalement, consignes, lieux ouverts. Se proposer comme volontaire exige toujours un compte.
   Le 112 reste affiché sur l'écran de lancement, avec ou sans compte. Exception : la **carte**
@@ -51,7 +54,7 @@ les secours et l'alerte officielle (FR-Alert), elle ne les remplace jamais.
   message **anonyme** seulement (« Nouvelle alerte de votre commune »), jamais le contenu de l'alerte. Clé privée VAPID uniquement dans les secrets Supabase, jamais dans
   le dépôt ni dans une conversation. Complète FR-Alert, ne le remplace jamais.
 - **SMS** : SMS de secours reçus dans le tableau de bord (`recevoir-sms`, migration 0013, sans doublon
-  avec l'app) ; vrai code de connexion activé par `VITE_CONNEXION_SMS=1` (`docs/SMS.md`).
+  avec l'app). Connexion par SMS possible plus tard seulement (`docs/SMS.md`).
 - **RGPD** : suppression de compte par l'habitant, effacement automatique chaque nuit (migration 0014),
   déconnexion qui ne garde que les informations publiques ; « Mon foyer » reste sur le téléphone.
 - **Comptes inactifs** (migration 0016) : l'inactivité se juge sur l'**ouverture de l'app** (signalée une fois par jour,

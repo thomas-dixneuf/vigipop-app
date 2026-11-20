@@ -57,6 +57,9 @@ export type Utilisateur = {
   prenom: string
   // Nom de famille : demandé à l'inscription (modifiable dans « Mes informations »)
   nom?: string
+  // Adresse de connexion (code reçu par e-mail) ; absente sur les comptes créés avant
+  email?: string
+  // Numéro pour être rappelé par la mairie
   telephone: string
   commune: string
   // « Mon foyer » : pré-remplit la demande d'aide ; reste sur le téléphone

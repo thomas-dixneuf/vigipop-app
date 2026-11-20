@@ -3,7 +3,7 @@ import { Navigate, useLocation, useNavigate } from 'react-router-dom'
 import EnTeteRetour from '../components/EnTeteRetour.tsx'
 import type { EtatCode } from '../outils/formulaire.ts'
 import { useAppState } from '../state/AppState.tsx'
-import { connexionSmsActive, envoyerCode, verifierCode } from '../services/codeSms.ts'
+import { connexionActive, envoyerCode, identifiant, moyenCode, parSms, verifierCode } from '../services/codeConnexion.ts'
 
 export default function Code() {
   const navigate = useNavigate()
@@ -15,16 +15,16 @@ export default function Code() {
   const [erreur, setErreur] = useState('')
 
   if (!etat) return <Navigate to="/" replace />
-  const { nouveauCompte, modification, suite: suiteDemandee, typeCode = 'sms', ...utilisateur } = etat
+  const { nouveauCompte, modification, suite: suiteDemandee, typeCode = parSms ? 'sms' : 'email', ...utilisateur } = etat
 
   const valide = /^\d{6}$/.test(code)
 
   const verifier = async (e: FormEvent) => {
     e.preventDefault()
     if (!valide || verification) return
-    // Sans VITE_CONNEXION_SMS : démo, n'importe quel code à 6 chiffres est accepté
+    // Sans VITE_CONNEXION_EMAIL (ou _SMS) : démo, n'importe quel code à 6 chiffres est accepté
     setVerification(true)
-    const probleme = await verifierCode(utilisateur.telephone, code, typeCode)
+    const probleme = await verifierCode(identifiant(utilisateur), code, typeCode)
     setVerification(false)
     if (probleme) return setErreur(probleme)
     if (modification) {
@@ -43,7 +43,7 @@ export default function Code() {
     <div className="ecran">
       <EnTeteRetour retour={modification ? '/profil/infos' : nouveauCompte ? '/inscription' : '/connexion'}>
         <h1 style={{ fontSize: 21, fontWeight: 800, color: 'var(--bleu-nuit)' }}>Code de vérification</h1>
-        <span className="texte-doux">Envoyé par SMS au {utilisateur.telephone}</span>
+        <span className="texte-doux">Envoyé {moyenCode} {parSms ? 'au' : 'à'} {identifiant(utilisateur)}</span>
       </EnTeteRetour>
 
       <form onSubmit={(e) => void verifier(e)} className="contenu" style={{ paddingTop: 20, gap: 16 }}>
@@ -67,9 +67,9 @@ export default function Code() {
             {erreur}
           </p>
         )}
-        {!connexionSmsActive && (
+        {!connexionActive && (
           <p style={{ fontSize: 13, color: 'var(--bleu-nuit)', background: 'var(--bleu-voile)', borderRadius: 12, padding: '10px 12px', lineHeight: 1.4 }}>
-            <strong>Démo :</strong> aucun SMS n'est envoyé. Tapez n'importe quel code à 6 chiffres.
+            <strong>Démo :</strong> aucun {parSms ? 'SMS' : 'e-mail'} n'est envoyé. Tapez n'importe quel code à 6 chiffres.
           </p>
         )}
 
@@ -77,7 +77,7 @@ export default function Code() {
           type="button"
           onClick={async () => {
             setErreur('')
-            const resultat = await envoyerCode(utilisateur.telephone, nouveauCompte || !!modification)
+            const resultat = await envoyerCode(identifiant(utilisateur), nouveauCompte || !!modification)
             if ('erreur' in resultat) return setErreur(resultat.erreur)
             setRenvoye(true)
           }}
