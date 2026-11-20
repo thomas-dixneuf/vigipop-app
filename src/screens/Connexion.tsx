@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import ChampAdresse from '../components/ChampAdresse.tsx'
 import ChampEmail from '../components/ChampEmail.tsx'
+import ChampPaysCommune from '../components/ChampPaysCommune.tsx'
 import ChampTelephone from '../components/ChampTelephone.tsx'
 import EnTeteRetour from '../components/EnTeteRetour.tsx'
 import Logo from '../components/Logo.tsx'
@@ -15,11 +15,12 @@ export default function Connexion() {
   const [email, setEmail] = useState(compte?.email ?? '')
   const [telephone, setTelephone] = useState(compte?.telephone ?? '')
   // Commune choisie dans la liste officielle : l'app affiche ensuite ses services, si elle utilise Vigipop
+  const [pays, setPays] = useState(compte?.pays ?? 'FR')
   const [commune, setCommune] = useState<string | null>(compte?.commune || null)
   const [envoi, setEnvoi] = useState(false)
   const [erreur, setErreur] = useState('')
 
-  const valide = (parSms ? numeroValide(telephone) : emailValide(email)) && commune !== null
+  const valide = (parSms ? numeroValide(telephone, pays) : emailValide(email)) && commune !== null
 
   const envoyer = async (e: FormEvent) => {
     e.preventDefault()
@@ -39,6 +40,7 @@ export default function Connexion() {
       email: parSms ? (memeCompte ? (compte.email ?? '') : '') : adresse,
       telephone: parSms ? telephone : memeCompte ? compte.telephone : '',
       commune: commune ?? '',
+      pays,
       nouveauCompte: false,
       typeCode: resultat.type,
     }
@@ -56,15 +58,13 @@ export default function Connexion() {
         <div style={{ display: 'flex', justifyContent: 'center', padding: '12px 0' }}>
           <Logo taille={80} />
         </div>
-        {parSms ? <ChampTelephone valeur={telephone} onChange={setTelephone} /> : <ChampEmail valeur={email} onChange={setEmail} />}
-        <ChampAdresse
-          variante="app"
-          commune
-          obligatoire
-          libelleChamp="Ma commune"
+        {parSms ? <ChampTelephone valeur={telephone} onChange={setTelephone} pays={pays} /> : <ChampEmail valeur={email} onChange={setEmail} />}
+        <ChampPaysCommune
+          pays={pays}
+          onPays={setPays}
           valeurInitiale={compte?.commune ?? ''}
           verifieeInitialement={!!compte?.commune}
-          onChoix={(r) => setCommune(r?.libelle ?? null)}
+          onCommune={setCommune}
         />
 
         {erreur && (

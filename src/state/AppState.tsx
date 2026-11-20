@@ -62,6 +62,8 @@ export type Utilisateur = {
   // Numéro pour être rappelé par la mairie
   telephone: string
   commune: string
+  // Code du pays choisi à l'inscription (absent = France)
+  pays?: string
   // « Mon foyer » : pré-remplit la demande d'aide ; reste sur le téléphone
   foyer?: Foyer
 }

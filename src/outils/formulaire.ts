@@ -13,8 +13,10 @@ export const champ = {
 export const libelle = { display: 'flex', flexDirection: 'column', gap: 6, fontSize: 14, fontWeight: 700 } as const
 
 // Numéro mobile français : 06 / 07, ou +33 6 / +33 7
-export function numeroValide(numero: string) {
-  return /^(?:0|\+33)[67]\d{8}$/.test(numero.replace(/[\s.-]/g, ''))
+// Mobile français (06, 07 ou +33) ; dans un autre pays, un numéro de 6 à 15 chiffres, avec ou sans indicatif
+export function numeroValide(numero: string, pays = 'FR') {
+  const chiffres = numero.replace(/[\s.()-]/g, '')
+  return pays === 'FR' ? /^(?:0|\+33)[67]\d{8}$/.test(chiffres) : /^\+?\d{6,15}$/.test(chiffres)
 }
 
 // Ce que l'écran du code reçoit de l'inscription ou de la connexion
@@ -26,6 +28,8 @@ export type EtatCode = {
   // Numéro pour être rappelé par la mairie (non vérifié)
   telephone: string
   commune: string
+  // Code du pays (FR par défaut)
+  pays?: string
   nouveauCompte: boolean
   // Changement d'adresse e-mail depuis le profil : le code confirme la nouvelle adresse
   modification?: boolean
